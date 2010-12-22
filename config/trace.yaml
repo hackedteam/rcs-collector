@@ -1,7 +1,7 @@
 #
 # Available name trace:
 #	:cookie - the cookie of the current session 
-#	:host   - the server for the sync
+#	:peer   - the peer of the sync
 
 log4r_config:
   pre_config:

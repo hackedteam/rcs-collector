@@ -15,7 +15,7 @@ module RCS
 module Collector
 
 class Application
-  include Tracer
+  include RCS::Tracer
 
   # the main of the collector
   def run(options)
@@ -25,7 +25,7 @@ class Application
       typ = Dir.pwd
       ty = 'trace.yaml'
     else
-      typ = File.dirname(File.dirname(File.dirname(__FILE__))) + "/bin"
+      typ = File.dirname(File.dirname(File.dirname(__FILE__))) + "/config"
       ty = typ + "/trace.yaml"
       puts "Cannot find 'trace.yaml' using the default one (#{ty})"
     end
@@ -40,6 +40,8 @@ class Application
 
     begin
 
+      trace :info, "Starting the RCS Evidences Collector..."
+      
       #TODO: config file parsing
 
       #TODO: cache cleanup
@@ -58,7 +60,6 @@ class Application
     return 0
   end
 
-  # since we cannot use trace from a class method
   # we instantiate here an object and run it
   def self.run!(*argv)
     return Application.new.run(argv)
