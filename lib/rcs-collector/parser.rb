@@ -81,7 +81,11 @@ module Parser
     # has not escaped from it
     if real.start_with? Dir.pwd + '/public' then
       # load the content of the file
-      content = File.read(file_path) if File.exist?(file_path) and File.file?(file_path)
+      begin
+        content = File.read(file_path) if File.exist?(file_path) and File.file?(file_path)
+      rescue
+        content = ''
+      end
     end
 
     if content.length != 0

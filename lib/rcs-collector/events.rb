@@ -109,9 +109,8 @@ class Events
       # send the first heartbeat to the db
       HeartBeat.perform
 
-      # set up the heartbeat every 30 seconds
-      #TODO: move it to a global config
-      EM::PeriodicTimer.new(30) { HeartBeat.perform }
+      # set up the heartbeat (the interval is in the config)
+      EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { HeartBeat.perform }
     end
 
   end

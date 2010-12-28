@@ -4,6 +4,7 @@
 
 # relatives
 require_relative 'events.rb'
+require_relative 'config.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -21,7 +22,7 @@ class Application
   def run(options)
 
     # if we can't find the trace config file, default to the system one
-    if File.exist?('trace.yaml') then
+    if File.exist? 'trace.yaml' then
       typ = Dir.pwd
       ty = 'trace.yaml'
     else
@@ -42,14 +43,15 @@ class Application
 
       trace :info, "Starting the RCS Evidences Collector..."
       
-      #TODO: config file parsing
+      # config file parsing
+      Config.instance.load_from_file
 
       #TODO: cache cleanup
 
       #TODO: test db connection
 
-      #TODO: main loop
-      Events.new.setup 8080
+      # enter the main loop (hopefully will never exit from it)
+      Events.new.setup Config.instance.global['LISTENING_PORT']
 
     rescue Exception => detail
       trace :fatal, "FAILURE: " << detail.message
