@@ -42,3 +42,5 @@ pkg
 #*.swp
 
 .idea
+
+Gemfile.lock
