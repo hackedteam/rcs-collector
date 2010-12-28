@@ -5,6 +5,7 @@
 # relatives
 require_relative 'events.rb'
 require_relative 'config.rb'
+require_relative 'db.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -46,9 +47,11 @@ class Application
       # config file parsing
       Config.instance.load_from_file
 
-      #TODO: cache cleanup
+      # test the connection to the database
+      DB.instance.check_conn
 
-      #TODO: test db connection
+      # cache cleanup
+      DB.instance.cache_init if DB.instance.connected?
 
       # enter the main loop (hopefully will never exit from it)
       Events.new.setup Config.instance.global['LISTENING_PORT']

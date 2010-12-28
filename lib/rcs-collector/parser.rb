@@ -4,9 +4,11 @@
 
 # relatives
 require_relative 'network_controller.rb'
+require_relative 'protocol.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
+require 'rcs-common/mime'
 
 
 module RCS
@@ -20,35 +22,34 @@ module Parser
   def http_parse(req_method, req_uri, req_cookie, req_content)
 
     # default values
-    resp_content = ""
-    resp_content_type = "text/html"
+    resp_content = nil
+    resp_content_type = nil
     resp_cookie = nil
 
     case req_method
       when 'GET'
         # serve the requested file
         resp_content, resp_content_type = http_get_file req_uri
-        # the file was not found, display the decoy
-        resp_content, resp_content_type = http_decoy_page if resp_content.length == 0
 
       when 'POST'
-        #TODO: implement the REST protocol
-        trace :debug, req_method
+        # the REST protocol for synchronization
+        resp_content, resp_content_type, resp_cookie = Protocol.parse @peer, req_uri, req_cookie, req_content
 
       when 'PUT'
+        # send a PUSH notification to the Network Element
         # only the DB is authorized to send PUSH commands
         if @peer.eql? Config.instance.global['DB_ADDRESS'] then
-          # send a PUSH notification to the Network Element
           resp_content, resp_content_type = NetworkController.push req_uri.delete('/'), req_content
         else
-          trace :error, "HACK ALERT: #{@peer} is trying to send PUSH commands to NC !!!"
-          resp_content, resp_content_type = http_decoy_page
+          trace :error, "HACK ALERT: #{@peer} is trying to send PUSH [#{req_uri}] commands!!!"
         end
 
-      else
-        # everything that we don't understand will get the decoy page
-        resp_content, resp_content_type = http_decoy_page
     end
+
+    # fallback for all the cases.
+    # if the content is empty (which means an error at any level)
+    # return the decoy page
+    resp_content, resp_content_type = http_decoy_page if resp_content.nil?
 
     return resp_content, resp_content_type, resp_cookie
   end
@@ -73,7 +74,8 @@ module Parser
   # returns the content of a file in the public directory
   def http_get_file(uri)
 
-    content = ""
+    content = nil
+    type = nil
 
     # search the file in the public directory
     file_path = Dir.pwd + '/public' + uri
@@ -95,8 +97,8 @@ module Parser
       # load the content of the file
       begin
         content = File.read(file_path) if File.exist?(file_path) and File.file?(file_path)
+        type = MimeType.get(uri)
       rescue
-        content = ''
       end
     end
 
@@ -106,7 +108,7 @@ module Parser
       trace :info, "[#{@peer}] file not found"
     end
 
-    return content
+    return content, type
   end
 
 end #Parser
