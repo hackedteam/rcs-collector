@@ -1,6 +1,9 @@
 #
-#  
+#  HTTP requests parsing module
 #
+
+# relatives
+require_relative 'network_controller.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -27,12 +30,21 @@ module Parser
         resp_content, resp_content_type = http_get_file req_uri
         # the file was not found, display the decoy
         resp_content, resp_content_type = http_decoy_page if resp_content.length == 0
+
       when 'POST'
         #TODO: implement the REST protocol
         trace :debug, req_method
+
       when 'PUT'
-        #TODO: implement PUSH notification for NC
-         trace :debug, req_method
+        # only the DB is authorized to send PUSH commands
+        if @peer.eql? Config.instance.global['DB_ADDRESS'] then
+          # send a PUSH notification to the Network Element
+          resp_content, resp_content_type = NetworkController.push req_uri.delete('/'), req_content
+        else
+          trace :error, "HACK ALERT: #{@peer} is trying to send PUSH commands to NC !!!"
+          resp_content, resp_content_type = http_decoy_page
+        end
+
       else
         # everything that we don't understand will get the decoy page
         resp_content, resp_content_type = http_decoy_page

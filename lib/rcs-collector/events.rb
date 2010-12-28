@@ -5,6 +5,7 @@
 # relatives
 require_relative 'heartbeat.rb'
 require_relative 'parser.rb'
+require_relative 'network_controller.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -106,11 +107,14 @@ class Events
       EM::start_server("0.0.0.0", port, HTTPHandler)
       trace :info, "Listening on port #{port}..."
 
-      # send the first heartbeat to the db
+      # send the first heartbeat to the db, we are alive and want to notify the db immediately
       HeartBeat.perform
 
       # set up the heartbeat (the interval is in the config)
       EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { HeartBeat.perform }
+
+      # set up the network checks (the interval is in the config)
+      EM::PeriodicTimer.new(Config.instance.global['NC_INTERVAL']) { NetworkController.perform }
     end
 
   end
