@@ -16,6 +16,7 @@ module Parser
   #
   def http_parse(req_method, req_uri, req_cookie, req_content)
 
+    # default values
     resp_content = ""
     resp_content_type = "text/html"
     resp_cookie = nil
@@ -23,14 +24,18 @@ module Parser
     case req_method
       when 'GET'
         # serve the requested file
-        resp_content = http_get_file req_uri
+        resp_content, resp_content_type = http_get_file req_uri
         # the file was not found, display the decoy
-        resp_content = http_decoy_page if resp_content.length == 0
+        resp_content, resp_content_type = http_decoy_page if resp_content.length == 0
       when 'POST'
+        #TODO: implement the REST protocol
         trace :debug, req_method
+      when 'PUT'
+        #TODO: implement PUSH notification for NC
+         trace :debug, req_method
       else
         # everything that we don't understand will get the decoy page
-        resp_content = http_decoy_page
+        resp_content, resp_content_type = http_decoy_page
     end
 
     return resp_content, resp_content_type, resp_cookie
@@ -50,7 +55,7 @@ module Parser
 
     trace :info, "[#{@peer}] Decoy page displayed"
 
-    return page
+    return page, 'text/html'
   end
 
   # returns the content of a file in the public directory
@@ -59,12 +64,25 @@ module Parser
     content = ""
 
     # search the file in the public directory
-    file_path = Dir.pwd + "/public" + uri
+    file_path = Dir.pwd + '/public' + uri
 
     trace :info, "[#{@peer}] serving #{file_path}"
 
-    # load the content of the file
-    content = File.read(file_path) if File.exist?(file_path) and File.file?(file_path)
+    # get the real (escaped) path of the file to prevent
+    # the injection of some ../../ paths in the uri
+    begin
+      real = File.realdirpath file_path
+    rescue
+      real = ''
+    end
+
+    # if the real path starts with our public directory
+    # it means that we are inside the directory and the uri
+    # has not escaped from it
+    if real.start_with? Dir.pwd + '/public' then
+      # load the content of the file
+      content = File.read(file_path) if File.exist?(file_path) and File.file?(file_path)
+    end
 
     if content.length != 0
       trace :info, "[#{@peer}] " + File.size(file_path).to_s + " bytes served"

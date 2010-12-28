@@ -110,6 +110,7 @@ class Events
       HeartBeat.perform
 
       # set up the heartbeat every 30 seconds
+      #TODO: move it to a global config
       EM::PeriodicTimer.new(30) { HeartBeat.perform }
     end
 
