@@ -50,11 +50,17 @@ class DB
   end
 
   def class_key_of(build_id)
+    #TODO: real query
     return Digest::MD5.digest '-HcIbnSmrnaXFk6peeZJMx8HFcJPg9Hx'
   end
 
   def status_of(build_id, instance_id, subtype)
+    #TODO: real query
     return ACTIVE_BACKDOOR, 0
+  end
+
+  def sync_for(bid, version, user, device, source, time)
+    #TODO: implement
   end
 
 end #DB

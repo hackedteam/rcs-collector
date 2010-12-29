@@ -31,6 +31,7 @@ class SessionManager
                          :instance => instance,
                          :subtype => subtype,
                          :key => k,
+                         :cookie => cookie,
                          :time => Time.now}
 
     return cookie

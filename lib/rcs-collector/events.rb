@@ -6,7 +6,7 @@
 require_relative 'heartbeat.rb'
 require_relative 'parser.rb'
 require_relative 'network_controller.rb'
-require_relative 'session.rb'
+require_relative 'sessions.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -77,7 +77,7 @@ class HTTPHandler < EM::Connection
       resp.status = 200
       resp.content = content
       resp.headers['Content-Type'] = content_type
-      resp.headers['Set-Cookie'] = cookie unless cookie == nil
+      resp.headers['Set-Cookie'] = cookie unless cookie.nil?
     end
 
     # Callback block to execute once the request is fulfilled
