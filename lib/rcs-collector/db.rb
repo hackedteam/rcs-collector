@@ -19,6 +19,11 @@ class DB
   include Singleton
   include RCS::Tracer
 
+  ACTIVE_BACKDOOR = 0
+  DELETED_BACKDOOR = 1
+  CLOSED_BACKDOOR = 2
+  NO_SUCH_BACKDOOR = 3
+  
   attr_reader :backdoor_signature
 
   def initialize
@@ -43,7 +48,15 @@ class DB
     #TODO: is the database available ?
     return @db_avail
   end
-  
+
+  def class_key_of(build_id)
+    return Digest::MD5.digest '-HcIbnSmrnaXFk6peeZJMx8HFcJPg9Hx'
+  end
+
+  def status_of(build_id, instance_id, subtype)
+    return ACTIVE_BACKDOOR, 0
+  end
+
 end #DB
 
 end #Collector::

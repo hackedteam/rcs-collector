@@ -6,6 +6,7 @@
 require_relative 'heartbeat.rb'
 require_relative 'parser.rb'
 require_relative 'network_controller.rb'
+require_relative 'session.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -115,6 +116,9 @@ class Events
 
       # set up the network checks (the interval is in the config)
       EM::PeriodicTimer.new(Config.instance.global['NC_INTERVAL']) { NetworkController.perform }
+
+      # timeout for the sessions (will destroy inactive sessions)
+      EM::PeriodicTimer.new(60) { SessionManager.instance.timeout }
     end
 
   end

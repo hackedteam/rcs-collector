@@ -41,7 +41,7 @@ module Parser
         if @peer.eql? Config.instance.global['DB_ADDRESS'] then
           resp_content, resp_content_type = NetworkController.push req_uri.delete('/'), req_content
         else
-          trace :error, "HACK ALERT: #{@peer} is trying to send PUSH [#{req_uri}] commands!!!"
+          trace :warn, "HACK ALERT: #{@peer} is trying to send PUSH [#{req_uri}] commands!!!"
         end
 
     end
