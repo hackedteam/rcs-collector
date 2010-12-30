@@ -54,9 +54,9 @@ class SessionManager
     @sessions.delete(cookie)
   end
 
-  def timeout
+  def timeout(delta = 600)
     trace :debug, "Session Manager timeouting entries..."
-    @sessions.delete_if { |key, value| Time.now - value[:time] >= 600 }
+    @sessions.delete_if { |key, value| Time.now - value[:time] >= delta }
   end
 
 end #SessionManager

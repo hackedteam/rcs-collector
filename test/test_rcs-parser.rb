@@ -14,7 +14,7 @@ class TestRcsCollector < Test::Unit::TestCase
     c = Classy.new
     content, type = c.http_get_file("ciao")
 
-    assert_equal 0, content.length
+    assert_nil content
   end
 
   def test_parser_get_file_in_public
@@ -44,7 +44,7 @@ class TestRcsCollector < Test::Unit::TestCase
     # this must not be able to retrieve the file since it is out of the public dir
     assert_not_equal 'this is a test', content
     # this should be empty
-    assert_equal '', type
+    assert_nil type
   end
 
 end

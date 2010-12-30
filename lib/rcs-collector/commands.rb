@@ -78,6 +78,8 @@ module Commands
 
     # destroy the current session
     SessionManager.instance.delete(session[:cookie])
+
+    #TODO pusher not syncing
     
     return [PROTO_OK].pack('i')
   end
