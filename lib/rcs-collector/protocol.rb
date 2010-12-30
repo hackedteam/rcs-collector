@@ -175,7 +175,12 @@ class Protocol
     end
     
     # crypt the message with the session key
-    response = aes_encrypt(response, session[:key])
+    begin
+      response = aes_encrypt(response, session[:key])
+    rescue
+      trace :error, "[#{peer}][#{cookie}] Invalid message encryption"
+      return
+    end
 
     return response, 'application/octet-stream'
   end

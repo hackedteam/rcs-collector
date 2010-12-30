@@ -63,6 +63,28 @@ class DB
     #TODO: implement
   end
 
+  def new_conf?(bid)
+    #TODO: implement
+    return false
+  end
+  def new_conf(bid)
+    #TODO: implement
+    return nil
+  end
+
+  def new_upload?(bid)
+    #TODO: implement
+    return false
+  end
+  def new_download?(bid)
+    #TODO: implement
+    return false
+  end
+  def new_filesystem?(bid)
+    #TODO: implement
+    return false
+  end
+
 end #DB
 
 end #Collector::

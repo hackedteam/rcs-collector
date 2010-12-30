@@ -55,8 +55,12 @@ class SessionManager
   end
 
   def timeout(delta = 600)
-    trace :debug, "Session Manager timeouting entries..."
+    trace :debug, "Session Manager timeouting entries..." if @sessions.length > 0
+    # save the size of the hash before deletion
+    size = @sessions.length
+    # apply the filter
     @sessions.delete_if { |key, value| Time.now - value[:time] >= delta }
+    trace :info, "Session Manager timeouted #{size - @sessions.length} sessions"
   end
 
 end #SessionManager
