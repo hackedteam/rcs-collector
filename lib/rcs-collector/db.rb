@@ -72,17 +72,31 @@ class DB
     return nil
   end
 
-  def new_upload?(bid)
+  def new_uploads?(bid)
     #TODO: implement
     return false
   end
-  def new_download?(bid)
+  def new_uploads(bid)
     #TODO: implement
-    return false
+    return []
   end
-  def new_filesystem?(bid)
+
+  def new_downloads?(bid)
     #TODO: implement
-    return false
+    return true
+  end
+  def new_downloads(bid)
+    #TODO: implement
+    return ['c:\alor', 'c:\windows']
+  end
+
+  def new_filesystems?(bid)
+    #TODO: implement
+    return true
+  end
+  def new_filesystems(bid)
+    #TODO: implement
+    return [{:depth => 1, :path => 'c:\ciao'}, {:depth => 2, :path => 'd:\miao'}]
   end
 
 end #DB

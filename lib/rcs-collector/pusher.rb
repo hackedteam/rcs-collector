@@ -20,12 +20,12 @@ class Pusher
   def sync_for(session, version, user, device, source, time)
 
     # notify the database that the sync is in progress
-    DB.instance.sync_for session[:bid], version, user_id, device_id, source_id, Time.now
+    DB.instance.sync_for session[:bid], version, user, device, source, Time.now
 
     #TODO: implement
   end
 
-  def sync_end()
+  def sync_end(session)
     #TODO: implement
   end
 
