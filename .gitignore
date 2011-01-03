@@ -39,8 +39,13 @@ pkg
 #.\#*
 #
 # For vim:
-#*.swp
+*.swp
 
+# RubyMine
 .idea
 
+# bundler
 Gemfile.lock
+
+# log files
+log

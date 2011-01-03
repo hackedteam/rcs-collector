@@ -27,8 +27,8 @@ class Application
       typ = Dir.pwd
       ty = 'trace.yaml'
     else
-      typ = File.dirname(File.dirname(File.dirname(__FILE__))) + "/config"
-      ty = typ + "/trace.yaml"
+      typ = File.dirname(File.dirname(File.dirname(__FILE__)))
+      ty = typ + "/config/trace.yaml"
       puts "Cannot find 'trace.yaml' using the default one (#{ty})"
     end
 
@@ -48,10 +48,14 @@ class Application
       Config.instance.load_from_file
 
       # test the connection to the database
-      DB.instance.check_conn
+      if DB.instance.check_conn then
+        trace :info, "Database connection succeeded"
+      else
+        trace :ward, "Database connection failed, using local cache..."
+      end
 
-      # cache cleanup
-      DB.instance.cache_init if DB.instance.connected?
+      # cache initialization
+      DB.instance.cache_init
 
       # enter the main loop (hopefully will never exit from it)
       Events.new.setup Config.instance.global['LISTENING_PORT']

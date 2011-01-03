@@ -29,11 +29,17 @@ class DB
   def initialize
     @db_host = Config.instance.global['DB_ADDRESS'].to_s + ":" + Config.instance.global['DB_PORT'].to_s
     @db_avail = false
+    
+    return @db_avail
   end
 
   def cache_init
-    trace :info, "Initializing the DB cache..."
-    #TODO: empty the cache and populate it again
+    if @db_avail then
+      trace :info, "Initializing the DB cache..."
+      #TODO: empty the cache and populate it again
+    else
+      #TODO: check if the cache already exists and has some entries
+    end
     @backdoor_signature = Digest::MD5.digest '4yeN5zu0+il3Jtcb5a1sBcAdjYFcsD9z'
   end
 
