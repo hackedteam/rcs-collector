@@ -22,16 +22,18 @@ class Pusher
     # notify the database that the sync is in progress
     DB.instance.sync_for session[:bid], version, user, device, source, Time.now
 
-    #TODO: implement
+    #TODO: create the LOGREPO/INSTANCE dir
+
+    #TODO: set the SYNC_IN_PROGRESS in the offline.ini
   end
 
   def sync_end(session)
-    #TODO: implement
+    #TODO: reset the SYNC_IN_PROGRESS in the offline.ini
   end
 
   def evidence(size, content)
-    #TODO: implement
-    return true
+    #TODO: write the evidence in the enc directory
+    raise "not implemented"
   end
 
 end #Pusher

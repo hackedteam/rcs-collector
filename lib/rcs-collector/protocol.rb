@@ -167,7 +167,7 @@ class Protocol
     command = command.unpack('i').first.to_i
 
     # invoke the right method for parsing
-    if !Commands::LOOKUP[command].nil? then
+    if not Commands::LOOKUP[command].nil? then
       response = self.send Commands::LOOKUP[command], peer, session, message
     else
       trace :warn, "[#{peer}][#{cookie}] unknown command [#{command}]"

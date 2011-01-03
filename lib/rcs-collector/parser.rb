@@ -102,7 +102,7 @@ module Parser
       end
     end
 
-    if !content.nil?
+    if not content.nil?
       trace :info, "[#{@peer}] " + File.size(file_path).to_s + " bytes served"
     else
       trace :info, "[#{@peer}] file not found"

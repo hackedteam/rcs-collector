@@ -216,12 +216,16 @@ module Commands
     # get the file size
     size = message.slice!(0..3).unpack('i').first
 
-    trace :info, "[#{peer}][#{session[:cookie]}] Evidence received (#{size} bytes)"
-
     # send the evidence to the db
-    result =  Pusher.instance.evidence size, message
+    begin
+      Pusher.instance.evidence size, message
+      trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes)"
+    rescue Exception => e
+      trace :warn, "[#{peer}][#{session[:cookie]}] Evidence NOT saved: #{e.message}"
+      return [PROTO_NO].pack('i')
+    end
 
-    (result) ? [PROTO_OK].pack('i') : [PROTO_NO].pack('i')
+    return [PROTO_OK].pack('i')
   end
 
 end #Commands

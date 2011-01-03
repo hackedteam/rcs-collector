@@ -55,6 +55,11 @@ class DB
     return @db_avail
   end
 
+  def update_status(message)
+    #TODO: implement the real heartbeat
+    trace :debug, "update status: #{message}"
+  end
+
   def class_key_of(build_id)
     #TODO: real query
     return Digest::MD5.digest '-HcIbnSmrnaXFk6peeZJMx8HFcJPg9Hx'
