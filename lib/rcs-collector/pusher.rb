@@ -29,6 +29,11 @@ class Pusher
     #TODO: implement
   end
 
+  def evidence(size, content)
+    #TODO: implement
+    return true
+  end
+
 end #Pusher
 
 end #Collector::

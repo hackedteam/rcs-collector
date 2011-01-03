@@ -208,8 +208,20 @@ module Commands
     return response
   end
 
+  # Protocol Evidence
+  # -> PROTO_EVIDENCE [ size, content ]
+  # <- PROTO_OK | PROTO_NO
   def command_evidence(peer, session, message)
-    #TODO: implement
+
+    # get the file size
+    size = message.slice!(0..3).unpack('i').first
+
+    trace :info, "[#{peer}][#{session[:cookie]}] Evidence received (#{size} bytes)"
+
+    # send the evidence to the db
+    result =  Pusher.instance.evidence size, message
+
+    (result) ? [PROTO_OK].pack('i') : [PROTO_NO].pack('i')
   end
 
 end #Commands
