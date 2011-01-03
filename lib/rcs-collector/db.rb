@@ -74,11 +74,11 @@ class DB
 
   def new_uploads?(bid)
     #TODO: implement
-    return false
+    return true
   end
   def new_uploads(bid)
     #TODO: implement
-    return []
+    return {:filename => "c:\\cicciopasticcio", :content => "bubbaloa"}, 0
   end
 
   def new_downloads?(bid)

