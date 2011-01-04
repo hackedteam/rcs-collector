@@ -20,7 +20,7 @@ class Pusher
   def sync_for(session, version, user, device, source, time)
 
     # notify the database that the sync is in progress
-    DB.instance.sync_for session[:bid], version, user, device, source, Time.now
+    DB.instance.sync_for session[:bid], version, user, device, source, time
 
     #TODO: create the LOGREPO/INSTANCE dir
 

