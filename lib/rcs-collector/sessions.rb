@@ -60,7 +60,7 @@ class SessionManager
     size = @sessions.length
     # apply the filter
     @sessions.delete_if { |key, value| Time.now - value[:time] >= delta }
-    trace :info, "Session Manager timeouted #{size - @sessions.length} sessions"
+    trace :info, "Session Manager timeouted #{size - @sessions.length} sessions" if size - @sessions.length > 0
   end
 
   def how_many

@@ -19,7 +19,7 @@ class HeartBeat
 
     # if the database connection has gone
     # try to re-login to the database again
-    DB.instance.check_conn if not DB.instance.connected?
+    DB.instance.connect! if not DB.instance.connected?
     
     # retrieve how many session we have
     # this number represents the number of backdoor that are synchronizing
@@ -31,8 +31,11 @@ class HeartBeat
     # if we are serving backdoors, report it accordingly
     message = "Serving #{active_sessions} sessions" if active_sessions > 0
 
+    # everything ok for us...
+    status = "OK"
+
     # send my status to the db
-    DB.instance.update_status message
+    DB.instance.update_status status, message
 
   end
 end

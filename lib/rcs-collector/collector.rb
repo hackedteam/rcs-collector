@@ -48,10 +48,10 @@ class Application
       Config.instance.load_from_file
 
       # test the connection to the database
-      if DB.instance.check_conn then
+      if DB.instance.connect! then
         trace :info, "Database connection succeeded"
       else
-        trace :ward, "Database connection failed, using local cache..."
+        trace :warn, "Database connection failed, using local cache..."
       end
 
       # cache initialization

