@@ -67,7 +67,7 @@ class Protocol
     trace :debug, "[#{peer}] Auth -- sha: " << sha.unpack('H*').to_s
 
     # get the class key from the db
-    conf_key = DB.instance.class_key_of build_id
+    conf_key = DB.instance.class_key_of build_id.delete("\x00")
 
     # this class does not exist
     return if conf_key.nil?

