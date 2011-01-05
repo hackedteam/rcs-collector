@@ -23,7 +23,7 @@ class HeartBeat
     
     # retrieve how many session we have
     # this number represents the number of backdoor that are synchronizing
-    active_sessions = SessionManager.instance.how_many
+    active_sessions = SessionManager.instance.length
 
     # default message
     message = "Idle..."

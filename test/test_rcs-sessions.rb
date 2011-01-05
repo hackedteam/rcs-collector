@@ -22,7 +22,7 @@ class TestRcsCollector < Test::Unit::TestCase
     session = SessionManager.instance.get(cookie)
     assert_equal "BUILD", session[:build]
 
-    assert_equal 1, SessionManager.instance.how_many
+    assert_equal 1, SessionManager.instance.length
 
     # simulate the timeout
     sleep 2
@@ -34,7 +34,7 @@ class TestRcsCollector < Test::Unit::TestCase
     session = SessionManager.instance.get(cookie)
     assert_nil session
 
-    assert_equal 0, SessionManager.instance.how_many
+    assert_equal 0, SessionManager.instance.length
 
   end
 end
