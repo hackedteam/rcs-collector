@@ -115,8 +115,8 @@ class Protocol
       when DB::QUEUED_BACKDOOR
         response = [Commands::PROTO_NO].pack('i')
         trace :warn, "[#{peer}] was queued for license limit exceeded"
-      when DB::ACTIVE_BACKDOOR
-        # everything is ok
+      when DB::ACTIVE_BACKDOOR, DB::UNKNOWN_BACKDOOR
+        # everything is ok or the db is not connected, proceed
         response = [Commands::PROTO_OK].pack('i')
 
         # create a valid cookie session

