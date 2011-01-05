@@ -20,7 +20,7 @@ class DB_xmlrpc
 
     # create the xml-rpc server
     @server = XMLRPC::Client.new(@host, '/server.php', @port, nil, nil, nil, nil, true)
-
+    
     # we need to set an attribute inside the http instance variable of @server
     # we can get a reference here and manipulate it later
     http = @server.instance_variable_get(:@http)
@@ -32,7 +32,7 @@ class DB_xmlrpc
     http.ca_file = Dir.pwd + "/config/" + Config.instance.global['DB_CERT']
 
     # our client certificate to send to the server
-    http.cert = OpenSSL::X509::Certificate.new(File.read(Dir.pwd + "/config/" + Config.instance.global['DB_CERT'])) 
+    http.cert = OpenSSL::X509::Certificate.new(File.read(Dir.pwd + "/config/" + Config.instance.global['DB_CERT']))
 
     trace :debug, "Using XML-RPC to communicate with #{@host}:#{@port}"
   end
@@ -48,7 +48,7 @@ class DB_xmlrpc
 
       # we can get a "method not found" error only if we are already logged in
       # in this case, we force a logout and retry the login
-      if e.faultCode == -32601 then  # -32601 is METHOD NOT FOUND
+      if e.respond_to?(:faultCode) and e.faultCode == -32601 then  # -32601 is METHOD NOT FOUND
         trace :debug, "forcing logout and retrying..."
         logout
         return login(user, pass)

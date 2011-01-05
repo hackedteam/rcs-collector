@@ -61,6 +61,7 @@ class DB
       @available = false
       trace :error, "Cannot login to DB"
     end
+    return @available
   end
 
   def disconnect!
