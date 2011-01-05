@@ -97,7 +97,7 @@ class DB
       # save in the permanent cache
       Cache.signature = sig
       Cache.add_class_keys @class_keys
-      trace :info, "#{class_keys.length} entries saved in the the DB cache."
+      trace :info, "#{@class_keys.length} entries saved in the the DB cache"
 
       return true
     end
@@ -105,12 +105,13 @@ class DB
     # the db is not available
     # check if the cache already exists and has some entries
     if Cache.length > 0 then
+      trace :info, "Loading the DB cache..."
 
       # populate the memory cache from the permanent one
       @backdoor_signature = Digest::MD5.digest Cache.signature unless Cache.signature.nil?
       @class_keys = Cache.class_keys
 
-      trace :info, "#{class_keys.length} entries loaded from permanent cache."
+      trace :info, "#{@class_keys.length} entries loaded from DB cache"
 
       return true
     end

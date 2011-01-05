@@ -4,6 +4,7 @@ source "http://rubygems.org"
 #   gem "activesupport", ">= 2.3.5"
 gem 'eventmachine'
 gem 'eventmachine_httpserver'
+gem 'sqlite3-ruby'
 gem 'rcs-common'
 
 # Add dependencies to develop your gem here.
