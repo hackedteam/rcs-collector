@@ -1,6 +1,7 @@
 require 'helper'
+require 'rcs-collector/parser.rb'
 
-class TestRcsCollector < Test::Unit::TestCase
+class TestRcsParser < Test::Unit::TestCase
 
   # fake class to hold the Mixin
   class Classy

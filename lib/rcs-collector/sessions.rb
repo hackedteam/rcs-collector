@@ -63,7 +63,7 @@ class SessionManager
     trace :info, "Session Manager timeouted #{size - @sessions.length} sessions" if size - @sessions.length > 0
   end
 
-  def how_many
+  def length
     return @sessions.length
   end
 end #SessionManager
