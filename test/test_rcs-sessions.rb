@@ -1,9 +1,10 @@
 require 'helper'
+require 'rcs-collector/sessions.rb'
 
 module RCS
 module Collector
 
-class TestRcsCollector < Test::Unit::TestCase
+class TestRcsSession < Test::Unit::TestCase
 
   # dirty hack to fake the trace function
   class RCS::Collector::SessionManager
