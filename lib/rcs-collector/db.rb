@@ -179,7 +179,6 @@ class DB
   end
 
   def new_conf?(bid)
-
     # check if we have the config in the cache
     # probably and old one not yet sent
     return true if Cache.new_conf? bid
@@ -200,7 +199,7 @@ class DB
     return nil if config.nil?
 
     # set the status to "sent" in the db
-    #@db.conf_sent cid
+    @db.conf_sent cid
 
     # delete the conf from the cache
     Cache.del_conf bid
@@ -219,23 +218,69 @@ class DB
   end
 
   def new_downloads?(bid)
-    #TODO: downloads retrieval
-    #TODO: put the downloads in the cache
-    return false
+    # check if we have the downloads in the cache
+    # probably and old one not yet sent
+    return true if Cache.new_downloads? bid
+
+    # retrieve the downloads from the db
+    downloads = @db.new_downloads bid
+
+    # put the config in the cache
+    Cache.save_downloads bid, downloads unless downloads.empty?
+
+    return (downloads.empty?) ? false : true
   end
+
   def new_downloads(bid)
-    #TODO: retrieve the downloads from the cache
-    return ['c:\alor', 'c:\windows']
+    # retrieve the downloads from the cache
+    downloads = Cache.new_downloads bid
+
+    return [] if downloads.empty?
+
+    down = []
+    # remove the downlaods from the db
+    downloads.each_pair do |key, value|
+      @db.del_download key
+      down << value
+    end
+
+    # delete the conf from the cache
+    Cache.del_downloads bid
+
+    return down
   end
 
   def new_filesystems?(bid)
-    #TODO: filesystem retrieval
-    #TODO: put the filesystem in the cache
-    return false
+    # check if we have the filesystems in the cache
+    # probably and old one not yet sent
+    return true if Cache.new_filesystems? bid
+
+    # retrieve the downloads from the db
+    filesystems = @db.new_filesystems bid
+
+    # put the config in the cache
+    Cache.save_filesystems bid, filesystems unless filesystems.empty?
+
+    return (filesystems.empty?) ? false : true
   end
+
   def new_filesystems(bid)
-    #TODO: retrieve the filesystem from the cache
-    return [{:depth => 1, :path => 'c:\ciao'}, {:depth => 2, :path => 'd:\miao'}]
+    # retrieve the filesystems from the cache
+    filesystems = Cache.new_filesystems bid
+
+    return [] if filesystems.empty?
+
+    files = []
+    # remove the filesystems from the db
+    filesystems.each_pair do |key, value|
+      @db.del_filesystem key
+      files << value
+    end
+
+    # delete the conf from the cache
+    Cache.del_filesystems bid
+
+    return files
   end
 
 end #DB

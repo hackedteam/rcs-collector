@@ -118,7 +118,39 @@ class TestRcsCache < Test::Unit::TestCase
     # delete the config
     Cache.del_conf bid
     assert_false Cache.new_conf? bid
+  end
 
+  def test_download
+    # random ids
+    bid = SecureRandom.random_number(1024)
+    d1 = SecureRandom.random_number(1024)
+    d2 = SecureRandom.random_number(1024)
+    # random string for the download
+    filename1 = SecureRandom.base64(100)
+    filename2 = SecureRandom.base64(100)
+
+    # not yet in cache
+    assert_false Cache.new_downloads? bid
+
+    downloads = {d1 => filename1, d2 => filename2}
+
+    # save a config in the cache
+    Cache.save_downloads(bid, downloads)
+
+    # the config should be in cache
+    assert_true Cache.new_downloads? bid
+    # the bid - 1 does not exist in cache
+    assert_false Cache.new_downloads? bid - 1
+
+    # retrieve the config
+    cdown = Cache.new_downloads bid
+
+    assert_equal downloads[d1], cdown[d1]
+    assert_equal downloads[d2], cdown[d2]
+
+    # delete the config
+    Cache.del_downloads bid
+    assert_false Cache.new_downloads? bid
   end
 
 end

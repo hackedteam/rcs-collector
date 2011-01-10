@@ -26,7 +26,9 @@ class Cache
     # the schema
     schema = ["CREATE TABLE signature (signature CHAR(32))",
               "CREATE TABLE class_keys (id CHAR(16), key CHAR(32))",
-              "CREATE TABLE configs (bid INT, cid INT, config BLOB)"]
+              "CREATE TABLE configs (bid INT, cid INT, config BLOB)",
+              "CREATE TABLE downloads (bid INT, did INT, filename TEXT)"
+             ]
 
     # create all the tables
     schema.each do |query|
@@ -143,7 +145,7 @@ class Cache
   end
 
   ##############################################
-  # CONFIGURATION
+  # CONFIG
   ##############################################
 
   def self.new_conf?(bid)
@@ -198,6 +200,110 @@ class Cache
     rescue Exception => e
       trace :warn, "Cannot write the cache: #{e.message}"
     end
+  end
+
+  ##############################################
+  # UPLOADS
+  ##############################################
+
+  def self.new_uploads?(bid)
+    #TODO: implement
+  end
+
+  def self.new_uploads(bid)
+    #TODO: implement
+  end
+
+  def self.save_uploads(bid, uploads)
+    #TODO: implement
+  end
+
+  def self.del_uploads(bid)
+    #TODO: implement
+  end
+
+  ##############################################
+  # DOWNLOADS
+  ##############################################
+
+  def self.new_downloads?(bid)
+    return false unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      ret = db.execute("SELECT did FROM downloads WHERE bid = #{bid};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    return (ret.empty?) ? false : true
+  end
+
+  def self.new_downloads(bid)
+    return {} unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      ret = db.execute("SELECT did, filename FROM downloads WHERE bid = #{bid};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    downloads = {}
+    # parse the results
+    ret.each do |elem|
+      downloads[elem[0]] = elem[1]
+    end
+    return downloads
+  end
+
+  def self.save_downloads(bid, downloads)
+    # ensure the db was already created, otherwise create it
+    create! unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      downloads.each_pair do |key, value|
+        db.execute("INSERT INTO downloads VALUES (#{bid}, #{key}, '#{value}' )")
+      end
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot save the cache: #{e.message}"
+    end
+  end
+
+  def self.del_downloads(bid)
+    return unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      db.execute("DELETE FROM downloads WHERE bid = #{bid};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot write the cache: #{e.message}"
+    end
+  end
+
+  ##############################################
+  # FILESYSTEM
+  ##############################################
+
+  def self.new_filesystems?(bid)
+    #TODO: implement
+  end
+
+  def self.new_filesystems(bid)
+    #TODO: implement
+  end
+
+  def self.save_filesystems(bid, filesystems)
+    #TODO: implement
+  end
+
+  def self.del_filesystems(bid)
+    #TODO: implement
   end
 
 end #Cache

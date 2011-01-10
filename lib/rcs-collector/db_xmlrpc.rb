@@ -199,6 +199,56 @@ class DB_xmlrpc
     end
   end
 
+  # retrieve the download list from db (if any)
+  def new_downloads(bid)
+    begin
+      ret = @xmlrpc.call('download.get', bid)
+
+      down = {}
+      # parse the results
+      ret.each do |elem|
+        down[elem['download_id']] = elem['filename']
+      end
+      
+      return down
+    rescue Exception => e
+      trace :error, "Error calling download.get: #{e.message}"
+    end
+  end
+
+  def del_download(id)
+    begin
+      @xmlrpc.call('download.del', id)
+    rescue Exception => e
+      trace :error, "Error calling download.del: #{e.message}"
+    end
+  end
+
+  # retrieve the filesystems list from db (if any)
+  def new_filesystems(bid)
+    begin
+      ret = @xmlrpc.call('filesystem.get', bid)
+
+      #TODO: fixme
+      #pp ret
+
+      return {}
+    rescue Exception => e
+      trace :error, "Error calling filesystem.get: #{e.message}"
+    end
+  end
+
+  def del_filesystem(id)
+    #TODO: fixme
+    return
+
+    begin
+      @xmlrpc.call('filesystem.del', id)
+    rescue Exception => e
+      trace :error, "Error calling filesystem.del: #{e.message}"
+    end
+  end
+
 end #
 
 end #Collector::
