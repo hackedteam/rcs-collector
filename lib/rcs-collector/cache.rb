@@ -25,7 +25,6 @@ class Cache
 
     # the schema
     schema = ["CREATE TABLE signature (signature CHAR(32))",
-              "INSERT INTO signature VALUES ('no signature')",  # insert a fake value to be updated later
               "CREATE TABLE class_keys (id CHAR(16), key CHAR(32))"]
 
     # create all the tables
@@ -75,7 +74,8 @@ class Cache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("UPDATE signature SET signature = '#{sig}';")
+      db.execute("DELETE FROM signature;")
+      db.execute("INSERT INTO signature VALUES ('#{sig}');")
       db.close
     rescue Exception => e
       trace :warn, "Cannot save the cache: #{e.message}"

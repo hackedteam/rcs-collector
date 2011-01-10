@@ -89,13 +89,13 @@ class DB
       # get the global signature (per customer) for all the backdoors
       sig = @db.backdoor_signature
       @backdoor_signature = Digest::MD5.digest sig unless sig.nil? 
-      trace :debug, "Backdoor signature: [#{sig}]"
-
+      
       # get the classkey of every backdoor and store it in the cache
       @class_keys = @db.class_keys
 
       # save in the permanent cache
       Cache.signature = sig
+      trace :info, "Backdoor signature saved in the DB cache"
       Cache.add_class_keys @class_keys
       trace :info, "#{@class_keys.length} entries saved in the the DB cache"
 
@@ -125,7 +125,7 @@ class DB
     component = "RCS::Collector"
     remoteip = '' # used only by NC
 
-    #TODO: implement these metrics
+    #TODO: implement these metrics (ARGH!!)
     disk = 0
     cpu = 0
     pcpu = 0
@@ -177,38 +177,42 @@ class DB
   end
 
   def new_conf?(bid)
-    #TODO: implement
+    #TODO: config retrieval
+    #TODO: put the config in the cache
     return false
   end
   def new_conf(bid)
-    #TODO: implement
+    #TODO: retrieve the config from the cache
     return nil
   end
 
   def new_uploads?(bid)
-    #TODO: implement
+    #TODO: uploads retrieval
+    #TODO: put the uploads in the cache
     return false
   end
   def new_uploads(bid)
-    #TODO: implement
+    #TODO: retrieve the uploads from the cache
     return {:filename => "c:\\cicciopasticcio", :content => "bubbaloa"}, 0
   end
 
   def new_downloads?(bid)
-    #TODO: implement
+    #TODO: downloads retrieval
+    #TODO: put the downloads in the cache
     return false
   end
   def new_downloads(bid)
-    #TODO: implement
+    #TODO: retrieve the downloads from the cache
     return ['c:\alor', 'c:\windows']
   end
 
   def new_filesystems?(bid)
-    #TODO: implement
+    #TODO: filesystem retrieval
+    #TODO: put the filesystem in the cache
     return false
   end
   def new_filesystems(bid)
-    #TODO: implement
+    #TODO: retrieve the filesystem from the cache
     return [{:depth => 1, :path => 'c:\ciao'}, {:depth => 2, :path => 'd:\miao'}]
   end
 

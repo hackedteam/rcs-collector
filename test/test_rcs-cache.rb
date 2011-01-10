@@ -61,6 +61,14 @@ class TestRcsCache < Test::Unit::TestCase
     assert_equal "test signature", Cache.signature
   end
 
+  def test_empty_init
+    # clear the cache
+    Cache.empty!
+
+    assert_nil Cache.signature
+    assert_equal 0, Cache.length
+  end
+
   def test_class_keys
     entries = {'BUILD001' => 'secret class key', 'BUILD002' => "another secret"}
     entry = {'BUILD003' => 'top secret'}
