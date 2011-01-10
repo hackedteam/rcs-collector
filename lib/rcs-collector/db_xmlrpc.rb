@@ -229,19 +229,19 @@ class DB_xmlrpc
     begin
       ret = @xmlrpc.call('filesystem.get', bid)
 
-      #TODO: fixme
-      #pp ret
-
-      return {}
+      files = {}
+      # parse the results
+      ret.each do |elem|
+        files[elem['filesystem_id']] = {:depth => elem['depth'], :path => elem['path']}
+      end
+      
+      return files
     rescue Exception => e
       trace :error, "Error calling filesystem.get: #{e.message}"
     end
   end
 
   def del_filesystem(id)
-    #TODO: fixme
-    return
-
     begin
       @xmlrpc.call('filesystem.del', id)
     rescue Exception => e

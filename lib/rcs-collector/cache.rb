@@ -27,7 +27,8 @@ class Cache
     schema = ["CREATE TABLE signature (signature CHAR(32))",
               "CREATE TABLE class_keys (id CHAR(16), key CHAR(32))",
               "CREATE TABLE configs (bid INT, cid INT, config BLOB)",
-              "CREATE TABLE downloads (bid INT, did INT, filename TEXT)"
+              "CREATE TABLE downloads (bid INT, did INT, filename TEXT)",
+              "CREATE TABLE filesystems (bid INT, fid INT, depth INT, path TEXT)"
              ]
 
     # create all the tables
@@ -291,19 +292,63 @@ class Cache
   ##############################################
 
   def self.new_filesystems?(bid)
-    #TODO: implement
+    return false unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      ret = db.execute("SELECT fid FROM filesystems WHERE bid = #{bid};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    return (ret.empty?) ? false : true
   end
 
   def self.new_filesystems(bid)
-    #TODO: implement
+    return {} unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      ret = db.execute("SELECT fid, depth, path FROM filesystems WHERE bid = #{bid};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    filesystems = {}
+    # parse the results
+    ret.each do |elem|
+      filesystems[elem[0]] = {:depth => elem[1], :path => elem[2]}
+    end
+    return filesystems
   end
 
   def self.save_filesystems(bid, filesystems)
-    #TODO: implement
+    # ensure the db was already created, otherwise create it
+    create! unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      filesystems.each_pair do |key, value|
+        db.execute("INSERT INTO filesystems VALUES (#{bid}, #{key}, #{value[:depth]}, '#{value[:path]}' )")
+      end
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot save the cache: #{e.message}"
+    end
   end
 
   def self.del_filesystems(bid)
-    #TODO: implement
+    return unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      db.execute("DELETE FROM filesystems WHERE bid = #{bid};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot write the cache: #{e.message}"
+    end
   end
 
 end #Cache

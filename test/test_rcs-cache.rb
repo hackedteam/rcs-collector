@@ -104,7 +104,7 @@ class TestRcsCache < Test::Unit::TestCase
     # save a config in the cache
     Cache.save_conf(bid, cid, config)
 
-    # the config should be in cache
+    # should be in cache
     assert_true Cache.new_conf? bid
     # the bid - 1 does not exist in cache
     assert_false Cache.new_conf? bid - 1
@@ -137,7 +137,7 @@ class TestRcsCache < Test::Unit::TestCase
     # save a config in the cache
     Cache.save_downloads(bid, downloads)
 
-    # the config should be in cache
+    # should be in cache
     assert_true Cache.new_downloads? bid
     # the bid - 1 does not exist in cache
     assert_false Cache.new_downloads? bid - 1
@@ -151,6 +151,40 @@ class TestRcsCache < Test::Unit::TestCase
     # delete the config
     Cache.del_downloads bid
     assert_false Cache.new_downloads? bid
+  end
+
+  def test_filesystem
+    # random ids
+    bid = SecureRandom.random_number(1024)
+    f1 = SecureRandom.random_number(1024)
+    f2 = SecureRandom.random_number(1024)
+    # random string for the download
+    filename1 = SecureRandom.base64(100)
+    filename2 = SecureRandom.base64(100)
+
+    # not yet in cache
+    assert_false Cache.new_filesystems? bid
+
+    filesystems = {f1 => {:depth => 1, :path => filename1},
+                   f2 => {:depth => 2, :path => filename2}}
+
+    # save a config in the cache
+    Cache.save_filesystems(bid, filesystems)
+
+    # should be in cache
+    assert_true Cache.new_filesystems? bid
+    # the bid - 1 does not exist in cache
+    assert_false Cache.new_filesystems? bid - 1
+
+    # retrieve the config
+    cfiles = Cache.new_filesystems bid
+
+    assert_equal filesystems[f1], cfiles[f1]
+    assert_equal filesystems[f2], cfiles[f2]
+
+    # delete the config
+    Cache.del_filesystems bid
+    assert_false Cache.new_filesystems? bid
   end
 
 end
