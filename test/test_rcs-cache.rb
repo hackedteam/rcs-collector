@@ -9,6 +9,7 @@ class TestRcsCache < Test::Unit::TestCase
   # dirty hack to fake the trace function
   class RCS::Collector::Cache
     def self.trace(a, b)
+      puts b
     end
   end
 
@@ -88,6 +89,36 @@ class TestRcsCache < Test::Unit::TestCase
     assert_equal "top secret", Cache.class_keys['BUILD003']
     assert_equal "another secret", Cache.class_keys['BUILD002']
     assert_equal "secret class key", Cache.class_keys['BUILD001']
+  end
+
+  def test_config
+    # random ids
+    bid = SecureRandom.random_number(1024)
+    cid = SecureRandom.random_number(1024)
+    # random binary bytes for the config
+    config = SecureRandom.random_bytes(1024)
+    
+    # not yet in cache
+    assert_false Cache.new_conf? bid
+
+    # save a config in the cache
+    Cache.save_conf(bid, cid, config)
+
+    # the config should be in cache
+    assert_true Cache.new_conf? bid
+    # the bid - 1 does not exist in cache
+    assert_false Cache.new_conf? bid - 1
+
+    # retrieve the config
+    ccid, cconfig = Cache.new_conf bid
+
+    assert_equal cid, ccid
+    assert_equal config, cconfig
+    
+    # delete the config
+    Cache.del_conf bid
+    assert_false Cache.new_conf? bid
+
   end
 
 end

