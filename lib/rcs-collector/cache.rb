@@ -23,10 +23,11 @@ class Cache
       trace :error, "Problems creating the cache file: #{e.message}"
     end
 
-    # the schema
+    # the schema of the persistent cache
     schema = ["CREATE TABLE signature (signature CHAR(32))",
               "CREATE TABLE class_keys (id CHAR(16), key CHAR(32))",
               "CREATE TABLE configs (bid INT, cid INT, config BLOB)",
+              "CREATE TABLE uploads (bid INT, uid INT, filename TEXT, content BLOB)",
               "CREATE TABLE downloads (bid INT, did INT, filename TEXT)",
               "CREATE TABLE filesystems (bid INT, fid INT, depth INT, path TEXT)"
              ]
@@ -208,19 +209,72 @@ class Cache
   ##############################################
 
   def self.new_uploads?(bid)
-    #TODO: implement
+    return false unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      ret = db.execute("SELECT uid FROM uploads WHERE bid = #{bid};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    return (ret.empty?) ? false : true
   end
 
-  def self.new_uploads(bid)
-    #TODO: implement
+  def self.new_upload(bid)
+    return {}, 0 unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+
+      # take just the first one
+      # the others will be sent in later requests
+      ret = db.execute("SELECT uid, filename, content FROM uploads " +
+                       "WHERE bid = #{bid} " +
+                       "ORDER BY uid " +
+                       "LIMIT 1")
+      count = db.execute("SELECT COUNT(*) FROM uploads WHERE bid = #{bid};")
+
+      # how many upload do we have still to send after this one ?
+      left = count[0][0].to_i - 1
+
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    ret = ret.first
+    return nil, 0 if ret.nil?
+
+    return { :id => ret[0], :upload => {:filename => ret[1], :content => ret[2]}}, left
   end
 
   def self.save_uploads(bid, uploads)
-    #TODO: implement
+    # ensure the db was already created, otherwise create it
+    create! unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      uploads.each_pair do |key, value|
+        db.execute("INSERT INTO uploads VALUES (#{bid}, #{key}, '#{value[:filename]}', ? )", SQLite3::Blob.new(value[:content]))
+      end
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot save the cache: #{e.message}"
+    end
   end
 
-  def self.del_uploads(bid)
-    #TODO: implement
+  def self.del_upload(id)
+    return unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      db.execute("DELETE FROM uploads WHERE uid = #{id};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot write the cache: #{e.message}"
+    end
   end
 
   ##############################################

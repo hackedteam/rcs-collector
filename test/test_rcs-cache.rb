@@ -120,12 +120,72 @@ class TestRcsCache < Test::Unit::TestCase
     assert_false Cache.new_conf? bid
   end
 
+  def test_upload
+    # random ids
+    bid = SecureRandom.random_number(1024)
+    u1 = SecureRandom.random_number(1024)
+    u2 = u1 + SecureRandom.random_number(1024) # ensure it is greater
+    # random string for the download
+    filename1 = SecureRandom.base64(100)
+    filename2 = SecureRandom.base64(100)
+    # random content for the files
+    content1 = SecureRandom.random_bytes(1024)
+    content2 = SecureRandom.random_bytes(1024)
+
+    # not yet in cache
+    assert_false Cache.new_uploads? bid
+
+    uploads = {u1 => {:filename => filename1, :content => content1},
+               u2 => {:filename => filename2, :content => content2}}
+
+    # save in the cache
+    Cache.save_uploads(bid, uploads)
+
+    # should be in cache
+    assert_true Cache.new_uploads? bid
+    # the bid - 1 does not exist in cache
+    assert_false Cache.new_uploads? bid - 1
+
+    # retrieve the first upload
+    upload1, left = Cache.new_upload bid
+    # we have two files in the upload table, left should be one
+    assert_equal 1, left
+
+    # consistency check
+    assert_equal u1, upload1[:id]
+    assert_equal filename1, upload1[:upload][:filename]
+    assert_equal content1, upload1[:upload][:content]
+
+    # delete the entry
+    Cache.del_upload upload1[:id]
+
+    # retrieve the second upload
+    upload2, left = Cache.new_upload bid
+    # we have two files in the upload table, left should be one
+    assert_equal 0, left
+
+    # consistency check
+    assert_equal u2, upload2[:id]
+    assert_equal filename2, upload2[:upload][:filename]
+    assert_equal content2, upload2[:upload][:content]
+
+    # delete the entry
+    Cache.del_upload upload2[:id]
+
+    # no more uploads
+    assert_false Cache.new_uploads? bid
+
+    # the table is empty, should return nil
+    upload3, left = Cache.new_upload bid
+    assert_nil upload3
+  end
+
   def test_download
     # random ids
     bid = SecureRandom.random_number(1024)
     d1 = SecureRandom.random_number(1024)
     d2 = SecureRandom.random_number(1024)
-    # random string for the download
+    # random string for the filename
     filename1 = SecureRandom.base64(100)
     filename2 = SecureRandom.base64(100)
 
@@ -134,7 +194,7 @@ class TestRcsCache < Test::Unit::TestCase
 
     downloads = {d1 => filename1, d2 => filename2}
 
-    # save a config in the cache
+    # save in the cache
     Cache.save_downloads(bid, downloads)
 
     # should be in cache
@@ -142,15 +202,19 @@ class TestRcsCache < Test::Unit::TestCase
     # the bid - 1 does not exist in cache
     assert_false Cache.new_downloads? bid - 1
 
-    # retrieve the config
+    # retrieve the entries
     cdown = Cache.new_downloads bid
 
     assert_equal downloads[d1], cdown[d1]
     assert_equal downloads[d2], cdown[d2]
 
-    # delete the config
+    # delete the entry
     Cache.del_downloads bid
     assert_false Cache.new_downloads? bid
+
+    # the table is empty, should return {}
+    down = Cache.new_downloads bid
+    assert_true down.empty?
   end
 
   def test_filesystem
@@ -158,17 +222,17 @@ class TestRcsCache < Test::Unit::TestCase
     bid = SecureRandom.random_number(1024)
     f1 = SecureRandom.random_number(1024)
     f2 = SecureRandom.random_number(1024)
-    # random string for the download
-    filename1 = SecureRandom.base64(100)
-    filename2 = SecureRandom.base64(100)
+    # random string for the paths
+    path1 = SecureRandom.base64(100)
+    path2 = SecureRandom.base64(100)
 
     # not yet in cache
     assert_false Cache.new_filesystems? bid
 
-    filesystems = {f1 => {:depth => 1, :path => filename1},
-                   f2 => {:depth => 2, :path => filename2}}
+    filesystems = {f1 => {:depth => 1, :path => path1},
+                   f2 => {:depth => 2, :path => path2}}
 
-    # save a config in the cache
+    # save in the cache
     Cache.save_filesystems(bid, filesystems)
 
     # should be in cache
@@ -176,15 +240,19 @@ class TestRcsCache < Test::Unit::TestCase
     # the bid - 1 does not exist in cache
     assert_false Cache.new_filesystems? bid - 1
 
-    # retrieve the config
+    # retrieve the entries
     cfiles = Cache.new_filesystems bid
 
     assert_equal filesystems[f1], cfiles[f1]
     assert_equal filesystems[f2], cfiles[f2]
 
-    # delete the config
+    # delete the entry
     Cache.del_filesystems bid
     assert_false Cache.new_filesystems? bid
+
+    # the table is empty, should return {}
+    file = Cache.new_filesystems bid
+    assert_true file.empty?
   end
 
 end

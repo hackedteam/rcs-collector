@@ -199,6 +199,31 @@ class DB_xmlrpc
     end
   end
 
+  def new_uploads(bid)
+    begin
+      ret = @xmlrpc.call('upload.get', bid)
+
+      upl = {}
+      # parse the results and get the contents of the uploads
+      ret.each do |elem|
+        upl[elem['upload_id']] = {:filename => elem['filename'],
+                                  :content => get_file(:resource => 'upload', :upload_id => elem['upload_id'])}
+      end
+
+      return upl
+    rescue Exception => e
+      trace :error, "Error calling download.get: #{e.message}"
+    end
+  end
+
+  def del_upload(id)
+    begin
+      @xmlrpc.call('upload.del', id)
+    rescue Exception => e
+      trace :error, "Error calling upload.del: #{e.message}"
+    end
+  end
+
   # retrieve the download list from db (if any)
   def new_downloads(bid)
     begin
