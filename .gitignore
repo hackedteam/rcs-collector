@@ -49,3 +49,6 @@ Gemfile.lock
 
 # log files
 log
+
+# the cache
+config/cache.db

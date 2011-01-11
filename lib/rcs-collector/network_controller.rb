@@ -20,7 +20,7 @@ class NetworkController
 
   def self.push(host, content)
     #TODO: implement the real push
-    trace :debug, "network: #{Time.now} -> #{host}"
+    #trace :debug, "network: #{Time.now} -> #{host}"
 
     return "PUSHED", "text/html"
   end

