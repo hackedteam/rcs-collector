@@ -120,17 +120,11 @@ class DB
     return false
   end
 
-  def update_status(status, message)
+  def update_status(component, ip, status, message, stats)
     trace :debug, "update status: #{message}"
-    component = "RCS::Collector"
-    remoteip = '' # used only by NC
 
-    #TODO: implement these metrics (ARGH!!)
-    disk = 0
-    cpu = 0
-    pcpu = 0
 
-    @db.update_status component, remoteip, status, message, disk, cpu, pcpu 
+    @db.update_status component, ip, status, message, stats[:disk], stats[:cpu], stat[:pcpu]
   end
 
   def class_key_of(build_id)
