@@ -121,10 +121,9 @@ class DB
   end
 
   def update_status(component, ip, status, message, stats)
-    trace :debug, "update status: #{message}"
+    trace :debug, "update status: #{status} #{message} #{stats}"
 
-
-    @db.update_status component, ip, status, message, stats[:disk], stats[:cpu], stat[:pcpu]
+    @db.update_status component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu]
   end
 
   def class_key_of(build_id)

