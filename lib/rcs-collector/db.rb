@@ -14,7 +14,6 @@ require 'rcs-common/trace'
 require 'digest/md5'
 require 'singleton'
 require 'uuidtools'
-require 'pp'
 
 module RCS
 module Collector
@@ -124,17 +123,10 @@ class DB
     return false
   end
 
-  def update_status(status, message)
-    trace :debug, "update status: #{message}"
-    component = "RCS::Collector"
-    remoteip = '' # used only by NC
+  def update_status(component, ip, status, message, stats)
+    trace :debug, "update status: #{status} #{message} #{stats}"
 
-    #TODO: implement these metrics (ARGH!!)
-    disk = 0
-    cpu = 0
-    pcpu = 0
-
-    @db.update_status component, remoteip, status, message, disk, cpu, pcpu 
+    @db.update_status component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu]
   end
 
   def class_key_of(build_id)
