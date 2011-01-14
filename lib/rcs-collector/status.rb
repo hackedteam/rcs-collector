@@ -51,8 +51,22 @@ class Status
 
   # returns the CPU usage of the current process
   def self.my_cpu_load
-    #TODO: implement process cpu percentage
-    return 0
+    # the first call to it
+    @@prev_cpu ||= Process.times
+    @@prev_time ||= Time.now
+
+    # calculate the current cpu time
+    current_cpu = Process.times
+
+    # diff them and divide by the call interval
+    cpu_time = (current_cpu.utime + current_cpu.stime) - (@@prev_cpu.utime + @@prev_cpu.stime)
+    cpu_percent = cpu_time / (Time.now - @@prev_time)
+
+    # remember it for the next iteration
+    @@previous_times = Process.times
+    @@prev_time = Time.now
+
+    return cpu_percent.ceil
   end
 
 end #Status
