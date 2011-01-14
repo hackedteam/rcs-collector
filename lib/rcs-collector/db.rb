@@ -13,7 +13,6 @@ require 'rcs-common/trace'
 # system
 require 'digest/md5'
 require 'singleton'
-require 'pp'
 
 module RCS
 module Collector

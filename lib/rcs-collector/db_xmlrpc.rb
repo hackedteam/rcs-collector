@@ -7,7 +7,6 @@ require 'rcs-common/trace'
 
 # system
 require 'xmlrpc/client'
-require 'pp'
 
 module RCS
 module Collector

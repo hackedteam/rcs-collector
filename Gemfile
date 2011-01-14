@@ -3,8 +3,10 @@ source "http://rubygems.org"
 # Example:
 #   gem "activesupport", ">= 2.3.5"
 gem 'eventmachine'
-gem 'eventmachine_httpserver'
+gem 'eventmachine_httpserver', ">= 0.2.1"
 gem 'sqlite3-ruby'
+gem 'sys-filesystem'
+gem 'sys-cpu'
 gem 'rcs-common'
 
 # Add dependencies to develop your gem here.
