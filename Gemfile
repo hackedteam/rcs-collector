@@ -5,12 +5,9 @@ source "http://rubygems.org"
 gem 'eventmachine'
 gem 'eventmachine_httpserver', ">= 0.2.1"
 gem 'sqlite3-ruby'
-<<<<<<< HEAD
 gem 'uuidtools'
-=======
 gem 'sys-filesystem'
 gem 'sys-cpu'
->>>>>>> monitor
 gem 'rcs-common'
 
 # Add dependencies to develop your gem here.
