@@ -178,6 +178,8 @@ class DB
     # check if we have the config in the cache
     # probably and old one not yet sent
     return true if Cache.new_conf? bid
+    # cannot reach the db, return false
+    return false unless @available
 
     # retrieve the config from the db
     cid, config = @db.new_conf bid
@@ -207,6 +209,8 @@ class DB
     # check if we have the uploads in the cache
     # probably and old one not yet sent
     return true if Cache.new_uploads? bid
+    # cannot reach the db, return false
+    return false unless @available
 
     # retrieve the downloads from the db
     uploads = @db.new_uploads bid
@@ -235,6 +239,8 @@ class DB
     # check if we have the downloads in the cache
     # probably and old one not yet sent
     return true if Cache.new_downloads? bid
+    # cannot reach the db, return false
+    return false unless @available
 
     # retrieve the downloads from the db
     downloads = @db.new_downloads bid
@@ -270,6 +276,8 @@ class DB
     # check if we have the filesystems in the cache
     # probably and old one not yet sent
     return true if Cache.new_filesystems? bid
+    # cannot reach the db, return false
+    return false unless @available
 
     # retrieve the downloads from the db
     filesystems = @db.new_filesystems bid
