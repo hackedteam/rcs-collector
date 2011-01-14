@@ -5,6 +5,7 @@ source "http://rubygems.org"
 gem 'eventmachine'
 gem 'eventmachine_httpserver'
 gem 'sqlite3-ruby'
+gem 'uuidtools'
 gem 'rcs-common'
 
 # Add dependencies to develop your gem here.

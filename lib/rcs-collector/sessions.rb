@@ -7,7 +7,7 @@ require 'rcs-common/trace'
 
 # system
 require 'singleton'
-require 'securerandom'
+require 'uuidtools'
 
 module RCS
 module Collector
@@ -23,7 +23,8 @@ class SessionManager
   def create(bid, build, instance, subtype, k)
 
     # create a new random cookie
-    cookie = SecureRandom.random_bytes(8).unpack('H*').first
+    #cookie = SecureRandom.random_bytes(8).unpack('H*').first
+    cookie = UUIDTools::UUID.random_create.to_s
 
     # store the sessions
     @sessions[cookie] = {:bid => bid,

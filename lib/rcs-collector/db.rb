@@ -13,6 +13,7 @@ require 'rcs-common/trace'
 # system
 require 'digest/md5'
 require 'singleton'
+require 'uuidtools'
 require 'pp'
 
 module RCS
@@ -35,8 +36,11 @@ class DB
     # database address
     @host = Config.instance.global['DB_ADDRESS'].to_s + ":" + Config.instance.global['DB_PORT'].to_s
 
-    # database credentials
-    @username = "9b7b0492433bd580805ba7685ae41b73RSS" #TODO: use an unique id
+    # the username is an unique identifier for each machine.
+    # we use the MD5 of the MAC address
+    #TODO: remove the RSS retro-compatibility
+    @username = Digest::MD5.hexdigest(UUIDTools::UUID.mac_address.to_s) + "RSS"
+    # the password is a signature taken from a file
     @password = File.read(Dir.pwd + "/config/" + Config.instance.global['DB_SIGN'])
 
     # status of the db connection
