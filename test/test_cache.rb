@@ -4,14 +4,15 @@ require 'rcs-collector/cache.rb'
 module RCS
 module Collector
 
-class TestRcsCache < Test::Unit::TestCase
-
-  # dirty hack to fake the trace function
-  class RCS::Collector::Cache
-    def self.trace(a, b)
-      puts b
-    end
+# dirty hack to fake the trace function
+# re-open the class and override the method
+class Cache
+  def self.trace(a, b)
+    puts b
   end
+end
+
+class TestCache < Test::Unit::TestCase
 
   # Called before every test method runs. Can be used
   # to set up fixture information.

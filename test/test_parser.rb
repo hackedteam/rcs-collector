@@ -1,15 +1,15 @@
 require 'helper'
 require 'rcs-collector/parser.rb'
 
-class TestRcsParser < Test::Unit::TestCase
-
-  # fake class to hold the Mixin
-  class Classy
-    include RCS::Collector::Parser
-    # fake trace method for testing
-    def trace(a, b)
-    end
+# fake class to hold the Mixin
+class Classy
+  include RCS::Collector::Parser
+  # fake trace method for testing
+  def trace(a, b)
   end
+end
+
+class TestParser < Test::Unit::TestCase
 
   def test_parser_get_file_not_existent
     c = Classy.new

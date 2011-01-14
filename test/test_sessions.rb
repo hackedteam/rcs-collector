@@ -4,13 +4,14 @@ require 'rcs-collector/sessions.rb'
 module RCS
 module Collector
 
-class TestRcsSession < Test::Unit::TestCase
-
-  # dirty hack to fake the trace function
-  class RCS::Collector::SessionManager
-    def trace(a, b)
-    end
+# dirty hack to fake the trace function
+# re-open the class and override the method
+class SessionManager
+  def trace(a, b)
   end
+end
+
+class TestSessions < Test::Unit::TestCase
 
   # Called before every test method runs. Can be used
   # to set up fixture information.
