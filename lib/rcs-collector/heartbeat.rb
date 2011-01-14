@@ -22,6 +22,8 @@ class HeartBeat
     # try to re-login to the database again
     DB.instance.connect! if not DB.instance.connected?
 
+    # still no luck ?  return and wait for the next iteration 
+    return unless DB.instance.connected?
 
     # report our status to the db
     component = "RCS::Collector"

