@@ -32,7 +32,7 @@ class Status
   # returns the percentage of free space
   def self.disk_free
     # check the filesystem containing the current dir
-    stat = Filesystem.stat(Dir.pwd)
+    stat = Filesystem.stat(File.dirname(Dir.pwd))
     # get the free and total blocks
     free = stat.blocks_free.to_f
     total = stat.blocks.to_f
@@ -44,9 +44,18 @@ class Status
   # not exactly the CPU usage percentage, but very close to it
   def self.cpu_load
     # cpu load in the last minute
-    load_last_minute = CPU.load_avg.first
-    # on multi core systems we have to divide by the number of CPUs
-    return (load_last_minute / CPU.num_cpu * 100).floor
+    avg = CPU.load_avg
+    if avg.is_a? Array then
+      # under unix like, there are 3 values (1, 15 and 15 minutes)
+      load_last_minute = avg.first
+      # on multi core systems we have to divide by the number of CPUs
+      percentage = (load_last_minute / CPU.num_cpu * 100).floor
+    else
+      # under windows there is only one value that is the percentage
+      percentage = avg
+    end
+
+    return percentage
   end
 
   # returns the CPU usage of the current process
@@ -60,7 +69,11 @@ class Status
 
     # diff them and divide by the call interval
     cpu_time = (current_cpu.utime + current_cpu.stime) - (@@prev_cpu.utime + @@prev_cpu.stime)
-    cpu_percent = cpu_time / (Time.now - @@prev_time)
+    time_diff = Time.now - @@prev_time
+    # prevent division by zero on low res systems
+    time_diff = (time_diff == 0) ? 1 : time_diff
+    # calculate the percentage
+    cpu_percent = cpu_time / time_diff
 
     # remember it for the next iteration
     @@previous_times = Process.times
