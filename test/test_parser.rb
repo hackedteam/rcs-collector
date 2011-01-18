@@ -11,6 +11,11 @@ end
 
 class TestParser < Test::Unit::TestCase
 
+  def setup
+    # ensure the directory is present
+    Dir::mkdir(Dir.pwd + '/public') if not File.directory?(Dir.pwd + '/public')
+  end
+
   def test_parser_get_file_not_existent
     c = Classy.new
     content, type = c.http_get_file("ciao")
@@ -19,7 +24,6 @@ class TestParser < Test::Unit::TestCase
   end
 
   def test_parser_get_file_in_public
-
     # create the file to be retrieved
     File.open(Dir.pwd + '/public/test.cod', 'w') { |f| f.write('this is a test') }
 
