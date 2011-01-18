@@ -16,7 +16,7 @@ class DB_xmlrpc
   include RCS::Tracer
 
   # if a method does not reply in X seconds consider db down
-  DB_TIMEOUT = 5
+  DB_TIMEOUT = 10
 
   def initialize(host)
     @host, @port = host.split(':')

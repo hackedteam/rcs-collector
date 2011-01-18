@@ -52,7 +52,7 @@ class Protocol
 
     # the build_id identification
     build_id = message.slice!(0..15)
-    trace :info, "[#{peer}] Auth -- BuildId: " << build_id
+    trace :info, "[#{peer}] Auth -- BuildId: " << build_id.delete("\x00")
 
     # instance of the device
     instance_id = message.slice!(0..19)
@@ -60,7 +60,7 @@ class Protocol
 
     # subtype of the device
     subtype = message.slice!(0..15)
-    trace :info, "[#{peer}] Auth -- subtype: " << subtype
+    trace :info, "[#{peer}] Auth -- subtype: " << subtype.delete("\x00")
 
     # identification digest
     sha = message.slice!(0..19)
