@@ -51,3 +51,33 @@ Rake::RDocTask.new do |rdoc|
   rdoc.rdoc_files.include('README*')
   rdoc.rdoc_files.include('lib/**/*.rb')
 end
+
+
+def execute(message)
+  print message + '...'
+  STDOUT.flush
+  if block_given? then
+    yield
+  end
+  puts ' ok'
+end
+
+desc "Housekeeping for the project"
+task :clean do
+  execute "Cleaning the log directory" do
+    Dir['./log/*'].each do |f|
+      File.delete(f)
+    end
+  end
+  execute "Cleaning the DB cache" do
+    File.delete('./config/cache.db') if File.exist?('./config/cache.db')
+  end
+end
+
+desc "Create the NSIS installer for windows"
+task :nsis do
+  puts "Housekeeping..."
+  Rake::Task[:clean].invoke
+  puts "Creating NSIS installer..."
+  #TODO: nsis installer
+end
