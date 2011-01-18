@@ -29,7 +29,7 @@ class Application
     else
       typ = File.dirname(File.dirname(File.dirname(__FILE__)))
       ty = typ + "/config/trace.yaml"
-      puts "Cannot find 'trace.yaml' using the default one (#{ty})"
+      #puts "Cannot find 'trace.yaml' using the default one (#{ty})"
     end
 
     # initialize the tracing facility
@@ -42,7 +42,8 @@ class Application
 
     begin
 
-      trace :info, "Starting the RCS Evidences Collector..."
+      version = File.read(Dir.pwd + '/config/version.txt')
+      trace :info, "Starting the RCS Evidences Collector #{version}..."
       
       # config file parsing
       Config.instance.load_from_file
