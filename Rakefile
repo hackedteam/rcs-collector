@@ -1,5 +1,7 @@
 require 'rubygems'
 require 'bundler'
+require 'fileutils'
+
 begin
   Bundler.setup(:default, :development)
 rescue Bundler::BundlerError => e
@@ -50,4 +52,52 @@ Rake::RDocTask.new do |rdoc|
   rdoc.title = "rcs-collector #{version}"
   rdoc.rdoc_files.include('README*')
   rdoc.rdoc_files.include('lib/**/*.rb')
+end
+
+
+def execute(message)
+  print message + '...'
+  STDOUT.flush
+  if block_given? then
+    yield
+  end
+  puts ' ok'
+end
+
+desc "Housekeeping for the project"
+task :clean do
+  execute "Cleaning the release folder" do
+    Dir[Dir.pwd + '/lib/rcs-collector-release/*'].each do |f|
+      File.delete(f) unless File.directory?(f)
+    end
+    Dir[Dir.pwd + '/lib/rcs-collector-release/rgloader/*'].each do |f|
+      File.delete(f) unless File.directory?(f)
+    end
+    Dir.delete(Dir.pwd + '/lib/rcs-collector-release/rgloader') if File.exist?(Dir.pwd + '/lib/rcs-collector-release/rgloader')
+    Dir.delete(Dir.pwd + '/lib/rcs-collector-release') if File.exist?(Dir.pwd + '/lib/rcs-collector-release')
+  end
+end
+
+desc "Create the encrypted code for release"
+task :protect do
+  Rake::Task[:clean].invoke
+  execute "Creating release folder" do
+    Dir.mkdir(Dir.pwd + '/lib/rcs-collector-release') if not File.directory?(Dir.pwd + '/lib/rcs-collector-release')
+  end
+  execute "Copying the rgloader" do
+    RGPATH = '/Applications/Development/RubyEncoder/rgloader'
+    Dir.mkdir(Dir.pwd + '/lib/rcs-collector-release/rgloader')
+    files = Dir[RGPATH + '/*']
+    # keep only the interesting files (1.9.2 windows, macos, linux)
+    files.delete_if {|v| v.match(/rgloader\./)}
+    files.delete_if {|v| v.match(/19[\.1]/)}
+    files.delete_if {|v| v.match(/bsd/)}
+    files.each do |f|
+      FileUtils.cp(f, Dir.pwd + '/lib/rcs-collector-release/rgloader')
+    end
+  end
+  execute "Encrypting code" do
+    #TODO: rubyencoder -o lib/rcs-collector-release --ruby 1.9.2 lib/rcs-collector/*.rb
+
+  end
 end
