@@ -78,6 +78,9 @@ desc "Create the NSIS installer for windows"
 task :nsis do
   puts "Housekeeping..."
   Rake::Task[:clean].invoke
-  puts "Creating NSIS installer..."
-  #TODO: nsis installer
+  execute "Creating NSIS installer" do
+    # invoke the nsis builder
+    system "\"C:\\Program Files\\NSIS\\makensisw.exe\" ./nsis/RCSCollector.nsi"
+    #system "\"C:\\Program Files\\NSIS\\makensis.exe\" /V2 ./nsis/RCSCollector.nsi"
+  end
 end

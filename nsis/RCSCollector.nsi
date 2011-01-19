@@ -31,7 +31,7 @@
   OutFile "RCSCollector-${PACKAGE_VERSION}.exe"
 
   ;Default installation folder
-  InstallDir "C:\RCSCollector\"
+  InstallDir "C:\RCS\"
 
   ShowInstDetails "show"
   ShowUnInstDetails "show"
@@ -58,7 +58,6 @@
 ;Pages
 
   !insertmacro MUI_PAGE_WELCOME
-  ;!insertmacro MUI_PAGE_LICENSE "license.rtf"
   Page custom FuncConfigureService FuncConfigureServiceLeave
   Page custom FuncConfigureConnection FuncConfigureConnectionLeave
   !insertmacro MUI_PAGE_INSTFILES
@@ -75,48 +74,12 @@
 ;Installer Sections
 
 Section "Update Section" SecUpdate
-
    SectionIn 2
 
-  ${If} $serviceRLD == ${BST_CHECKED}
-    DetailPrint ""
-    DetailPrint "Stopping RLD..."
-    nsExec::ExecToLog 'net stop RLD'
-    nsExec::ExecToLog '"$INSTDIR\RCSASP" uninstall RLD'
-  ${EndIf}
-
-  ${If} $serviceRSS == ${BST_CHECKED}    
-    DetailPrint ""
-    DetailPrint "Stopping RSS..."
-    nsExec::ExecToLog 'net stop RSS'
-    nsExec::ExecToLog '"$INSTDIR\RCSASP" uninstall RSS'
-  ${EndIf}
-
-  ${If} $serviceRNC == ${BST_CHECKED}    
-    DetailPrint ""
-    DetailPrint "Stopping RNC..."
-    nsExec::ExecToLog 'net stop RNC'
-    nsExec::ExecToLog '"$INSTDIR\RCSASP" uninstall RNC'
-  ${EndIf}
-
-  ${If} $serviceRSSM == ${BST_CHECKED}
-    DetailPrint ""
-    DetailPrint "Killing MobileGui..."
-    nsExec::ExecToLog 'taskkill /F /IM MobileGui.exe'
-    DetailPrint ""
-    DetailPrint "Stopping RSSM..."
-    nsExec::ExecToLog 'net stop RSSM'
-    nsExec::ExecToLog '"$INSTDIR\RCSASP" uninstall RSSM'
-  ${EndIf}
-
-  DetailPrint "Migrating data..."
-  SetDetailsPrint "textonly"
-  SetOutPath "$INSTDIR\setup"
-  File "..\setup\migrate.bat"
-  nsExec::Exec 'C:\RCSASP\setup\migrate.bat'
-  SetDetailsPrint "both"
-  DetailPrint "done"
-
+   DetailPrint ""
+   DetailPrint "Uninstalling RCSCollector..."
+   SimpleSC::StopService "RCSCollector" 1
+   SimpleSC::RemoveService "RCSCollector"
 SectionEnd
 
 Section "Install Section" SecInstall
@@ -125,99 +88,22 @@ Section "Install Section" SecInstall
  
   SetDetailsPrint "textonly"
   DetailPrint "Extracting common files..."
- 
-  SetOutPath "$INSTDIR\setup"
-  File "..\setup\RCS.ico"
-  
-  SetOutPath "$INSTDIR\licenses"
-  File "..\Licenses\LAME.license.txt"
-  File "..\Licenses\CURL.license.txt"
-  File "..\Licenses\OPENSSL.license.txt"
-  File "..\Licenses\SPEEX.license.txt"
-  File "..\Licenses\XMLRPC++.license.txt"
-   
-  SetOutPath "$INSTDIR"
 
-  File "..\Release\RCSASP.exe"
-  File "..\RCSASP\VERSION.txt"
+  !cd '..\..'
+  SetOutPath "$INSTDIR\Ruby"
+  File /r "Ruby\*.*"
+
+  !cd 'Collector'
+  SetOutPath "$INSTDIR\Collector\setup"
+  File "nsis\RCS.ico"
+
+  SetOutPath "$INSTDIR\Collector"
+
+  File /r "bin\*.*"
   DetailPrint "done"
   
   SetDetailsPrint "both"
-    
-  File "vcredist_x86.exe"
-  DetailPrint "Installing VC++ 2008 Runtime..."
-  nsExec::ExecToLog '$INSTDIR\vcredist_x86.exe /q'
-  DetailPrint "done"
 
-  ${If} $serviceRSS == ${BST_CHECKED}
-    DetailPrint ""
-    DetailPrint "Installing RSS..."
-    SetDetailsPrint "textonly"
-    File "..\Release\RSS.dll"
-    File "..\DDPH.HTML"
-	File "..\zlib1.dll"
-	File "..\ssleay32.dll"
-	File "..\libeay32.dll"
-	File "..\libcurl.dll"
-	SetDetailsPrint "both"
-	DetailPrint "done"
-  ${Endif}
-    
-  ${If} $serviceRLD == ${BST_CHECKED}
-    DetailPrint ""
-	DetailPrint "Installing RLD..."
-	SetDetailsPrint "textonly"
-    File "..\Release\RLD.dll"
-	File "..\lame_enc.dll"
-	File "..\wav2mp3.dll"
-	File "..\libspeex.dll"
-	File "..\libamr.dll"
-	File "..\zlib1.dll"
-	File "..\ssleay32.dll"
-	File "..\libeay32.dll"
-	File "..\libcurl.dll"
-	SetDetailsPrint "both"
-	DetailPrint "done"
-  ${Endif}
-
-  ${If} $serviceRNC == ${BST_CHECKED}
-    DetailPrint ""
-	DetailPrint "Installing RNC..."
-	SetDetailsPrint "textonly"
-    File "..\Release\RNC.dll"
-	File "..\zlib1.dll"
-	File "..\ssleay32.dll"
-	File "..\libeay32.dll"
-	File "..\libcurl.dll"
-	SetDetailsPrint "both"
-	DetailPrint "done"
-  ${Endif}
-
-  ${If} $serviceRSSM == ${BST_CHECKED}
-    DetailPrint ""
-	DetailPrint "Installing RSSM..."
-	SetDetailsPrint "textonly"
-    File "..\Release\RSSM.dll"
-    File "..\Release\RLDM.dll"
-    File "..\Release\MobileGUI.exe"
-    File "..\DDPH.HTML"
-	File "..\zlib1.dll"
-	File "..\ssleay32.dll"
-	File "..\libeay32.dll"
-	File "..\libcurl.dll"
-	File "..\bthprops.cpl"
-	File "..\devmgr.dll"
-	File "..\wlanapi.dll"
-	File "..\wtsapi32.dll"
-	File "..\wzcsapi.dll"
-	CreateShortCut "$DESKTOP\MobileGui.lnk" "$INSTDIR\MobileGUI.exe"
-	SetDetailsPrint "both"
-	DetailPrint "done"
-  ${Endif}
-
-  ${If} $serviceRLD == ${BST_CHECKED} 
-  ${OrIf} $serviceRSS == ${BST_CHECKED}
-  ${OrIf} $serviceRNC == ${BST_CHECKED}
      ; fresh install
      ${If} $insttype == 0
        DetailPrint ""
@@ -225,119 +111,63 @@ Section "Install Section" SecInstall
 	   SetDetailsPrint "textonly"
        CopyFiles /SILENT $cert "$INSTDIR\rcs-client.pem"
        CopyFiles /SILENT $sign "$INSTDIR\rcs-db.sig"
-       WriteRegStr HKLM "Software\RCSASP" "Server" "https://$addr"
-       WriteRegStr HKLM "Software\RCSASP" "Port" "4443"
-       WriteRegStr HKLM "Software\RCSASP" "Url" "/server.php"
+       ; TODO: write the yaml
        SetDetailsPrint "both"
        DetailPrint "done"
      ${Else}
      ; upgrade
-	   DeleteRegKey HKLM "Software\RCSASP\Username"
-	   DeleteRegKey HKLM "Software\RCSASP\Password"
 	   IfFileExists "C:\RCSASP\rcs-db.sig" +5 0
 	      CopyFiles /SILENT $cert "$INSTDIR\rcs-client.pem"
           CopyFiles /SILENT $sign "$INSTDIR\rcs-db.sig"
-          WriteRegStr HKLM "Software\RCSASP" "Server" "https://$addr"
-          WriteRegStr HKLM "Software\RCSASP" "Port" "4443"
-          WriteRegStr HKLM "Software\RCSASP" "Url" "/server.php"
+          ; TODO: write the yaml
      ${EndIf}
-  ${EndIf}
           
   DetailPrint ""
-     
-  ${If} $serviceRLD == ${BST_CHECKED}
-	DetailPrint "Starting RLD..."
-    nsExec::ExecToLog '"$INSTDIR\RCSASP" install RLD'
-    nsExec::ExecToLog 'net start RLD'
-  ${EndIf}
 
-  ${If} $serviceRNC == ${BST_CHECKED}
-	DetailPrint "Starting RNC..."
-    nsExec::ExecToLog '"$INSTDIR\RCSASP" install RNC'
-    nsExec::ExecToLog 'net start RNC'
-  ${EndIf}
+  DetailPrint "Adding firewall rule for port 80/tcp..."
+  nsExec::ExecToLog 'netsh firewall add portopening TCP 80 "RCSCollector"'
 
-  ${If} $serviceRSS == ${BST_CHECKED}
-	DetailPrint "Starting RSS..."
-    nsExec::ExecToLog '"$INSTDIR\RCSASP" install RSS'
-    nsExec::ExecToLog 'net start RSS'
-	DetailPrint "Adding firewall rule for port 443/tcp..."
-	nsExec::ExecToLog 'netsh firewall add portopening TCP 443 "RCSASP - RSS"'
-  ${EndIf}
-
-  ${If} $serviceRSSM == ${BST_CHECKED}
-	DetailPrint "Starting RSSM..."
-    nsExec::ExecToLog '"$INSTDIR\RCSASP" install RSSM'
-    nsExec::ExecToLog 'net start RSSM'
-	DetailPrint "Adding firewall rule for port 80/tcp..."
-    nsExec::ExecToLog 'netsh firewall add portopening TCP 80 "RCSASP - RSSM"'
-  ${EndIf}
-
+  DetailPrint "Starting RCSCollector..."
+  SimpleSC::InstallService "RCSCollector" "RCSCollector" "16" "2" "$INSTDIR\Collector\bin\srvany" "" "" ""
+  SimpleSC::SetServiceFailure "RCSCollector" "0" "" "" "1" "60000" "1" "60000" "1" "60000"
+  WriteRegStr HKLM "SYSTEM\CurrentControlSet\Services\RCSCollector\Parameters" "Application" "$INSTDIR\Ruby\bin\ruby.exe $INSTDIR\Collector\bin\rcs-collector"
+  SimpleSC::StartService "RCSCollector" ""
+   
   DetailPrint "Writing uninstall informations..."
   SetDetailsPrint "textonly"
-	
-  WriteUninstaller "$INSTDIR\setup\RCSASP-uninstall.exe"
+  WriteUninstaller "$INSTDIR\setup\RCSCollector-uninstall.exe"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "DisplayName" "RCS Collector"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "DisplayIcon" "C:\RCS\Collector\setup\RCS.ico"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "DisplayVersion" "${PACKAGE_VERSION}"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "UninstallString" "C:\RCS\Collector\setup\RCSCollector-uninstall.exe"
+  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "NoModify" 0x00000001
+  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "NoRepair" 0x00000001
 
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSASP" "DisplayName" "RCSASP"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSASP" "DisplayIcon" "C:\RCSASP\setup\RCS.ico"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSASP" "DisplayVersion" "${PACKAGE_VERSION}"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSASP" "UninstallString" "C:\RCSASP\setup\RCSASP-uninstall.exe"
-  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSASP" "NoModify" 0x00000001
-  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSASP" "NoRepair" 0x00000001
-  
-  ${If} $serviceRLD == ${BST_CHECKED} 
-  ${OrIf} $serviceRSS == ${BST_CHECKED}
-  ${OrIf} $serviceRNC == ${BST_CHECKED}
-	SetOutPath "$INSTDIR\setup"
-	File "RCSASP-configure.exe"
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSASP" "NoModify" 0x00000000
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSASP" "ModifyPath" "C:\RCSASP\setup\RCSASP-configure.exe"
-  ${EndIf}
- 
   SetDetailsPrint "both"
  
 SectionEnd
 
 Section Uninstall
 
-  DetailPrint "Removing firewall rule for 443/tcp..."
-  nsExec::ExecToLog 'netsh firewall delete portopening TCP 443'
   DetailPrint "Removing firewall rule for 80/tcp..."
   nsExec::ExecToLog 'netsh firewall delete portopening TCP 80'
 
-
-  DetailPrint "Stopping RLD..."
-  nsExec::ExecToLog '"C:\RCSASP\RCSASP" uninstall RLD'
-
-  DetailPrint ""
-  DetailPrint "Stopping RSS..."
-  nsExec::ExecToLog '"C:\RCSASP\RCSASP" uninstall RSS'
-
-  DetailPrint ""
-  DetailPrint "Stopping RNC..."
-  nsExec::ExecToLog '"C:\RCSASP\RCSASP" uninstall RNC'
-
-  DetailPrint ""
-  DetailPrint "Stopping RSSM..."
-  nsExec::ExecToLog '"C:\RCSASP\RCSASP" uninstall RSSM'
-
-  DetailPrint ""
-  DetailPrint "Killing MobileGui..."
-  nsExec::ExecToLog 'taskkill /F /IM MobileGui.exe'
+  DetailPrint "Stopping RCSCollector..."
+  SimpleSC::StopService "RCSCollector" 1
+  SimpleSC::RemoveService "RCSCollector"
 
   DetailPrint ""
   DetailPrint "Deleting files..."
   SetDetailsPrint "textonly"
-  RMDir /r "C:\RCSASP"
-  Delete "$DESKTOP\MobileGui.lnk" 
+  RMDir /r "C:\RCS\Collector"
+  ; TODO: delete ruby if not rcsdb
   SetDetailsPrint "both"
   DetailPrint "done"
 
   DetailPrint ""
   DetailPrint "Removing registry keys..."
-  DeleteRegKey HKLM "Software\RCSASP"
-  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSASP"
-  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Run\RCSASP"
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector"
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Run\RCSCollector"
 
 SectionEnd
 
@@ -345,16 +175,13 @@ SectionEnd
 ;Installer Functions
 
 Function .onInit
-
-   IfFileExists "$INSTDIR\VERSION.txt" 0 +4
+   IfFileExists "$INSTDIR\Collector\config\version.txt" 0 +4
       SetCurInstType 1
-      MessageBox MB_YESNO|MB_ICONQUESTION "RCSASP is already installed.$\nDo you want to update?" IDYES +2 IDNO 0
+      MessageBox MB_YESNO|MB_ICONQUESTION "RCSCollector is already installed.$\nDo you want to update?" IDYES +2 IDNO 0
          Quit
    
    GetCurInstType $insttype
- 
    Return
-
 FunctionEnd
 
 Function FuncConfigureService
