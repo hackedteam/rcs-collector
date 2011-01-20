@@ -118,9 +118,11 @@ class Events
       # set up the heartbeat (the interval is in the config)
       EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { HeartBeat.perform }
 
-      # set up the network checks (the interval is in the config)
-      EM::PeriodicTimer.new(Config.instance.global['NC_INTERVAL']) { NetworkController.perform }
-
+      # set up the network checks (the interval is in the config, zero means disabled)
+      if Config.instance.global['NC_INTERVAL'] != 0 then
+        EM::PeriodicTimer.new(Config.instance.global['NC_INTERVAL']) { NetworkController.perform }
+      end
+      
       # timeout for the sessions (will destroy inactive sessions)
       EM::PeriodicTimer.new(60) { SessionManager.instance.timeout }
     end
