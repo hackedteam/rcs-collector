@@ -1,5 +1,4 @@
 require 'helper'
-require 'rcs-collector/sessions.rb'
 
 module RCS
 module Collector

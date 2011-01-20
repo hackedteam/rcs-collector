@@ -1,5 +1,4 @@
 require 'helper'
-require 'rcs-collector/cache.rb'
 
 module RCS
 module Collector
