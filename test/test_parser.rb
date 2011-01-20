@@ -1,5 +1,4 @@
 require 'helper'
-require 'rcs-collector/parser.rb'
 
 # fake class to hold the Mixin
 class Classy

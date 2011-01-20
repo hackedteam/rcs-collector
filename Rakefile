@@ -1,5 +1,7 @@
 require 'rubygems'
 require 'bundler'
+require 'fileutils'
+
 begin
   Bundler.setup(:default, :development)
 rescue Bundler::BundlerError => e
@@ -13,10 +15,10 @@ require 'jeweler'
 Jeweler::Tasks.new do |gem|
   # gem is a Gem::Specification... see http://docs.rubygems.org/read/chapter/20 for more options
   gem.name = "rcs-collector"
-  gem.homepage = "http://github.com/ALoR/rcs-collector"
+  gem.homepage = "http://rcs-dev/cgi-bin/gitweb.cgi?p=collector.git"
   gem.license = "MIT"
-  gem.summary = %Q{TODO: one-line summary of your gem}
-  gem.description = %Q{TODO: longer description of your gem}
+  gem.summary = %Q{The RCS Evidence Collector}
+  gem.description = %Q{This service is used to communicate with the backdoors during the synchronization phase}
   gem.email = "alor@hackingteam.it"
   gem.authors = ["ALoR"]
   # Include your dependencies below. Runtime dependencies are required when using your gem,
@@ -62,6 +64,7 @@ def execute(message)
   puts ' ok'
 end
 
+
 desc "Housekeeping for the project"
 task :clean do
   execute "Cleaning the log directory" do
@@ -84,3 +87,47 @@ task :nsis do
     #system "\"C:\\Program Files\\NSIS\\makensis.exe\" /V2 ./nsis/RCSCollector.nsi"
   end
 end
+
+desc "Remove the protected release code"
+task :unprotect do
+  execute "Deleting the protected release folder" do
+    Dir[Dir.pwd + '/lib/rcs-collector-release/*'].each do |f|
+      File.delete(f) unless File.directory?(f)
+    end
+    Dir[Dir.pwd + '/lib/rcs-collector-release/rgloader/*'].each do |f|
+      File.delete(f) unless File.directory?(f)
+    end
+    Dir.delete(Dir.pwd + '/lib/rcs-collector-release/rgloader') if File.exist?(Dir.pwd + '/lib/rcs-collector-release/rgloader')
+    Dir.delete(Dir.pwd + '/lib/rcs-collector-release') if File.exist?(Dir.pwd + '/lib/rcs-collector-release')
+  end
+end
+
+RUBYENCPATH = '/Applications/Development/RubyEncoder'
+
+desc "Create the encrypted code for release"
+task :protect do
+  Rake::Task[:unprotect].invoke
+  execute "Creating release folder" do
+    Dir.mkdir(Dir.pwd + '/lib/rcs-collector-release') if not File.directory?(Dir.pwd + '/lib/rcs-collector-release')
+  end
+  execute "Copying the rgloader" do
+    RGPATH = RUBYENCPATH + '/rgloader'
+    Dir.mkdir(Dir.pwd + '/lib/rcs-collector-release/rgloader')
+    files = Dir[RGPATH + '/*']
+    # keep only the interesting files (1.9.2 windows, macos, linux)
+    files.delete_if {|v| v.match(/rgloader\./)}
+    files.delete_if {|v| v.match(/19[\.1]/)}
+    files.delete_if {|v| v.match(/bsd/)}
+    files.each do |f|
+      FileUtils.cp(f, Dir.pwd + '/lib/rcs-collector-release/rgloader')
+    end
+  end
+  execute "Encrypting code" do
+    # we have to change the current dir, otherwise rubyencoder
+    # will recreate the lib/rcs-collector structure under rcs-collector-release
+    Dir.chdir "lib/rcs-collector/"
+    system "#{RUBYENCPATH}/bin/rubyencoder -o ../rcs-collector-release --ruby 1.9.2 *.rb"
+    Dir.chdir "../.."
+  end
+end
+

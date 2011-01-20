@@ -1,5 +1,4 @@
 require 'helper'
-require 'rcs-collector/db.rb'
 require 'singleton'
 
 module RCS
