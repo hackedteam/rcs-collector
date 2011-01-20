@@ -52,3 +52,6 @@ log
 
 # the cache
 config/cache.db
+
+# encrypted code
+lib/rcs-collector-release
