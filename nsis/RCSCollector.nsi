@@ -17,14 +17,10 @@
   Var sign
   Var certctrl
   Var cert
-  Var serviceRLDctrl
-  Var serviceRLD
-  Var serviceRSSctrl
-  Var serviceRSS
-  Var serviceRSSMctrl
-  Var serviceRSSM
-  Var serviceRNCctrl
-  Var serviceRNC
+  Var serviceCollectorctrl
+  Var serviceCollector
+  Var serviceNetworkctrl
+  Var serviceNetwork
 
   ;Name and file
   Name "RCSCollector"
@@ -77,9 +73,10 @@ Section "Update Section" SecUpdate
    SectionIn 2
 
    DetailPrint ""
-   DetailPrint "Uninstalling RCSCollector..."
+   DetailPrint "Uninstalling RCSCollector Service..."
    SimpleSC::StopService "RCSCollector" 1
    SimpleSC::RemoveService "RCSCollector"
+   DetailPrint "done"
 SectionEnd
 
 Section "Install Section" SecInstall
@@ -97,9 +94,19 @@ Section "Install Section" SecInstall
   SetOutPath "$INSTDIR\Collector\setup"
   File "nsis\RCS.ico"
 
-  SetOutPath "$INSTDIR\Collector"
-
+  SetOutPath "$INSTDIR\Collector\bin"
   File /r "bin\*.*"
+  
+  SetOutPath "$INSTDIR\Collector\lib"
+  File "lib\rcs-collector.rb"
+  
+  SetOutPath "$INSTDIR\Collector\lib\rcs-collector-release"
+  File /r "lib\rcs-collector-release\*.*"
+  
+  SetOutPath "$INSTDIR\Collector\config"
+  File "config\decoy.html"
+  File "config\trace.yaml"
+  File "config\version.txt"
   DetailPrint "done"
   
   SetDetailsPrint "both"
@@ -107,18 +114,18 @@ Section "Install Section" SecInstall
      ; fresh install
      ${If} $insttype == 0
        DetailPrint ""
-	   DetailPrint "Writing the registry..."
+	   DetailPrint "Writing the configuration..."
 	   SetDetailsPrint "textonly"
-       CopyFiles /SILENT $cert "$INSTDIR\rcs-client.pem"
-       CopyFiles /SILENT $sign "$INSTDIR\rcs-db.sig"
+       CopyFiles /SILENT $cert "$INSTDIR\Collector\config\rcs-client.pem"
+       CopyFiles /SILENT $sign "$INSTDIR\Collector\config\rcs-db.sig"
        ; TODO: write the yaml
        SetDetailsPrint "both"
        DetailPrint "done"
      ${Else}
      ; upgrade
-	   IfFileExists "C:\RCSASP\rcs-db.sig" +5 0
-	      CopyFiles /SILENT $cert "$INSTDIR\rcs-client.pem"
-          CopyFiles /SILENT $sign "$INSTDIR\rcs-db.sig"
+	   IfFileExists "$INSTDIR\Collector\config\rcs-db.sig" +5 0
+	      CopyFiles /SILENT $cert "$INSTDIR\Collector\config\rcs-client.pem"
+          CopyFiles /SILENT $sign "$INSTDIR\Collector\config\rcs-db.sig"
           ; TODO: write the yaml
      ${EndIf}
           
@@ -128,20 +135,21 @@ Section "Install Section" SecInstall
   nsExec::ExecToLog 'netsh firewall add portopening TCP 80 "RCSCollector"'
 
   DetailPrint "Starting RCSCollector..."
-  SimpleSC::InstallService "RCSCollector" "RCSCollector" "16" "2" "$INSTDIR\Collector\bin\srvany" "" "" ""
+  SimpleSC::InstallService "RCSCollector" "RCS Collector" "16" "2" "$INSTDIR\Collector\bin\srvany" "" "" ""
   SimpleSC::SetServiceFailure "RCSCollector" "0" "" "" "1" "60000" "1" "60000" "1" "60000"
   WriteRegStr HKLM "SYSTEM\CurrentControlSet\Services\RCSCollector\Parameters" "Application" "$INSTDIR\Ruby\bin\ruby.exe $INSTDIR\Collector\bin\rcs-collector"
   SimpleSC::StartService "RCSCollector" ""
    
   DetailPrint "Writing uninstall informations..."
   SetDetailsPrint "textonly"
-  WriteUninstaller "$INSTDIR\setup\RCSCollector-uninstall.exe"
+  WriteUninstaller "$INSTDIR\Collector\setup\RCSCollector-uninstall.exe"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "DisplayName" "RCS Collector"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "DisplayIcon" "C:\RCS\Collector\setup\RCS.ico"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "DisplayIcon" "$INSTDIR\Collector\setup\RCS.ico"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "DisplayVersion" "${PACKAGE_VERSION}"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "UninstallString" "C:\RCS\Collector\setup\RCSCollector-uninstall.exe"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "UninstallString" "$INSTDIR\Collector\setup\RCSCollector-uninstall.exe"
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "NoModify" 0x00000001
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "NoRepair" 0x00000001
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "InstDir" "$INSTDIR"
 
   SetDetailsPrint "both"
  
@@ -151,16 +159,21 @@ Section Uninstall
 
   DetailPrint "Removing firewall rule for 80/tcp..."
   nsExec::ExecToLog 'netsh firewall delete portopening TCP 80'
+	DetailPrint "done"
 
-  DetailPrint "Stopping RCSCollector..."
+  DetailPrint "Stopping RCSCollector Service..."
   SimpleSC::StopService "RCSCollector" 1
   SimpleSC::RemoveService "RCSCollector"
+  DetailPrint "done"
 
   DetailPrint ""
   DetailPrint "Deleting files..."
   SetDetailsPrint "textonly"
-  RMDir /r "C:\RCS\Collector"
-  ; TODO: delete ruby if not rcsdb
+  ReadRegStr $R0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "InstDir"
+  RMDir /r "$R0\Collector"
+  ; #TODO: delete ruby if not rcsdb
+  RMDir /r "$R0\Ruby"
+  RMDir /r "$R0"
   SetDetailsPrint "both"
   DetailPrint "done"
 
@@ -168,6 +181,7 @@ Section Uninstall
   DetailPrint "Removing registry keys..."
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Run\RCSCollector"
+	DetailPrint "done"
 
 SectionEnd
 
@@ -191,19 +205,13 @@ Function FuncConfigureService
   nsDialogs::Create /NOUNLOAD 1018
 
   ${NSD_CreateLabel} 0 5u 100% 10u "Select services you want to run at startup:"
-  ${NSD_CreateCheckBox} 20u 15u 200u 12u "RLD (RCS Log Decryptor)"
-  Pop $serviceRLDctrl
-  ${NSD_CreateCheckBox} 20u 30u 200u 12u "RSS (RCS Sync Server)"
-  Pop $serviceRSSctrl
-  ${NSD_CreateCheckBox} 20u 45u 200u 12u "RSSM (RCS Sync Server Mobile)"
-  Pop $serviceRSSMctrl
-  ${NSD_CreateCheckBox} 20u 60u 200u 12u "RNC (RCS Network Controller)"
-  Pop $serviceRNCctrl
+  ${NSD_CreateCheckBox} 20u 15u 200u 12u "Collector"
+  Pop $serviceCollectorctrl
+  ${NSD_CreateCheckBox} 20u 30u 200u 12u "Network Controller"
+  Pop $serviceNetworkctrl
 
-  ${NSD_Check} $serviceRLDctrl
-  ${NSD_Check} $serviceRSSctrl
-  ${NSD_Check} $serviceRSSMctrl
-  ${NSD_Check} $serviceRNCctrl
+  ${NSD_Check} $serviceCollectorctrl
+  ${NSD_Check} $serviceNetworkctrl
 
   nsDialogs::Show
 
@@ -213,10 +221,8 @@ FunctionEnd
 
 Function FuncConfigureServiceLeave
 
-  ${NSD_GetState} $serviceRLDctrl $serviceRLD
-  ${NSD_GetState} $serviceRSSctrl $serviceRSS
-  ${NSD_GetState} $serviceRSSMctrl $serviceRSSM
-  ${NSD_GetState} $serviceRNCctrl $serviceRNC
+  ${NSD_GetState} $serviceCollectorctrl $serviceCollector
+  ${NSD_GetState} $serviceNetworkctrl $serviceNetwork
 
   Return
 
@@ -224,15 +230,15 @@ FunctionEnd
 
 Function FuncConfigureConnection
    
+   ; se e' un upgrade non richiedere le credenziali
    ${If} $insttype == 1
-      IfFileExists "C:\RCSASP\rcs-db.sig" 0 +2
+      IfFileExists "$INSTDIR\Collector\config\rcs-db.sig" 0 +2
 		Abort
    ${EndIf}
    
-  ; Se non ho selezionato almeno RSS o RLD, non chiedere le credenziali di accesso al DB.
-  ${IfNot} $serviceRLD == ${BST_CHECKED} 
-  ${AndIfNot} $serviceRSS == ${BST_CHECKED}
-  ${AndIfNot} $serviceRNC == ${BST_CHECKED}
+  ; Se non ho selezionato almeno un componente, non chiedere le credenziali di accesso al DB.
+  ${IfNot} $serviceCollector == ${BST_CHECKED} 
+  ${AndIfNot} $serviceNetwork == ${BST_CHECKED}
     Abort
   ${EndIf}
 
