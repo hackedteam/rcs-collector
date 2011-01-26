@@ -48,10 +48,15 @@ pkg
 Gemfile.lock
 
 # log files
-log
+log/*
 
 # the cache
 config/cache.db
 
+# certs
+config/*.pem
+config/*.sig
+
 # encrypted code
 lib/rcs-collector-release
+
