@@ -77,15 +77,6 @@ class Config
     trace :info, "Current configuration:"
     pp @global
 
-    # values taken from command line
-    @global['DB_ADDRESS'] = options[:db_address] unless options[:db_address].nil?
-    @global['DB_PORT'] = options[:db_port] unless options[:db_port].nil?
-    @global['DB_CERT'] = options[:db_cert] unless options[:db_cert].nil?
-    @global['DB_SIGN'] = options[:db_sign] unless options[:db_sign].nil?
-    @global['LISTENING_PORT'] = options[:port] unless options[:port].nil?
-    @global['HB_INTERVAL'] = options[:hb_interval] unless options[:hb_interval].nil?
-    @global['NC_INTERVAL'] = options[:nc_interval] unless options[:nc_interval].nil?
-
     # use the default values
     if options[:defaults] then
       @global['DB_ADDRESS'] = 'rcs-server'
@@ -96,6 +87,15 @@ class Config
       @global['HB_INTERVAL'] = 30
       @global['NC_INTERVAL'] = 40
     end
+
+    # values taken from command line
+    @global['DB_ADDRESS'] = options[:db_address] unless options[:db_address].nil?
+    @global['DB_PORT'] = options[:db_port] unless options[:db_port].nil?
+    @global['DB_CERT'] = options[:db_cert] unless options[:db_cert].nil?
+    @global['DB_SIGN'] = options[:db_sign] unless options[:db_sign].nil?
+    @global['LISTENING_PORT'] = options[:port] unless options[:port].nil?
+    @global['HB_INTERVAL'] = options[:hb_interval] unless options[:hb_interval].nil?
+    @global['NC_INTERVAL'] = options[:nc_interval] unless options[:nc_interval].nil?
 
     trace :info, "Final configuration:"
     pp @global
