@@ -50,7 +50,7 @@ class Application
       trace :info, "Starting the RCS Evidences Collector #{version}..."
       
       # config file parsing
-      Config.instance.load_from_file
+      return 1 unless Config.instance.load_from_file
 
       begin
         # test the connection to the database
