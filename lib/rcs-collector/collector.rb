@@ -32,6 +32,10 @@ class Application
       #puts "Cannot find 'trace.yaml' using the default one (#{ty})"
     end
 
+    # ensure the public and log directory are present
+    Dir::mkdir(Dir.pwd + '/public') if not File.directory?(Dir.pwd + '/public')
+    Dir::mkdir(Dir.pwd + '/log') if not File.directory?(Dir.pwd + '/log')
+
     # initialize the tracing facility
     begin
       trace_init typ, ty
@@ -47,9 +51,6 @@ class Application
       
       # config file parsing
       Config.instance.load_from_file
-
-      # ensure the public directory is present
-      Dir::mkdir(Dir.pwd + '/public') if not File.directory?(Dir.pwd + '/public')
 
       begin
         # test the connection to the database
