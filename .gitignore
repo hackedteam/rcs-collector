@@ -55,3 +55,7 @@ config/cache.db
 
 # encrypted code
 lib/rcs-collector-release
+
+# certs
+config/*.pem
+config/*.sig
