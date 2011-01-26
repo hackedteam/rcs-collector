@@ -83,8 +83,7 @@ task :nsis do
   Rake::Task[:clean].invoke
   execute "Creating NSIS installer" do
     # invoke the nsis builder
-    system "\"C:\\Program Files\\NSIS\\makensisw.exe\" ./nsis/RCSCollector.nsi"
-    #system "\"C:\\Program Files\\NSIS\\makensis.exe\" /V2 ./nsis/RCSCollector.nsi"
+    system "\"C:\\Program Files\\NSIS\\makensis.exe\" /V2 ./nsis/RCSCollector.nsi"
   end
 end
 

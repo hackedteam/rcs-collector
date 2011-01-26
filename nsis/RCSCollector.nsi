@@ -32,11 +32,14 @@
   ShowInstDetails "show"
   ShowUnInstDetails "show"
   
+  !include "WordFunc.nsh"
+  
 ;--------------------------------
 ;Install types
    InstType "install"
    InstType "update"
-
+   !define SETUP_INSTALL 0
+   !define SETUP_UPDATE 1
 ;--------------------------------
 
 ;--------------------------------
@@ -77,6 +80,14 @@ Section "Update Section" SecUpdate
    SimpleSC::StopService "RCSCollector" 1
    SimpleSC::RemoveService "RCSCollector"
    DetailPrint "done"
+   
+   SetDetailsPrint "textonly"
+   DetailPrint "Removing previous version..."
+   RMDir /r "$INSTDIR\Ruby"
+   RMDir /r "$INSTDIR\Collector\lib"
+   RMDir /r "$INSTDIR\Collector\bin"
+   DetailPrint "done"
+  
 SectionEnd
 
 Section "Install Section" SecInstall
@@ -110,25 +121,31 @@ Section "Install Section" SecInstall
   DetailPrint "done"
   
   SetDetailsPrint "both"
+    
+  DetailPrint "Setting up the path..."
+  ReadRegStr $R0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
+  StrCpy $R0 "$R0;$INSTDIR\Collector\bin;$INSTDIR\Ruby\bin"
+  WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$R0"
+  DetailPrint "done" 
 
-     ; fresh install
-     ${If} $insttype == 0
-       DetailPrint ""
-	   DetailPrint "Writing the configuration..."
-	   SetDetailsPrint "textonly"
-       CopyFiles /SILENT $cert "$INSTDIR\Collector\config\rcs-client.pem"
-       CopyFiles /SILENT $sign "$INSTDIR\Collector\config\rcs-db.sig"
-       ; TODO: write the yaml
-       SetDetailsPrint "both"
-       DetailPrint "done"
-     ${Else}
-     ; upgrade
-	   IfFileExists "$INSTDIR\Collector\config\rcs-db.sig" +5 0
-	      CopyFiles /SILENT $cert "$INSTDIR\Collector\config\rcs-client.pem"
-          CopyFiles /SILENT $sign "$INSTDIR\Collector\config\rcs-db.sig"
-          ; TODO: write the yaml
-     ${EndIf}
-          
+  ; fresh install
+  ${If} $insttype == ${SETUP_INSTALL}
+    DetailPrint ""
+    DetailPrint "Writing the configuration..."
+    SetDetailsPrint "textonly"
+    CopyFiles /SILENT $cert "$INSTDIR\Collector\config\rcs-ca.pem"
+    CopyFiles /SILENT $sign "$INSTDIR\Collector\config\rcs-server.sig"
+    ; write the config yaml
+    nsExec::Exec  "$INSTDIR\Ruby\bin\ruby.exe $INSTDIR\Collector\bin\rcs-collector-config --defaults --db-address $addr"
+    SetDetailsPrint "both"
+    DetailPrint "done"
+  ${EndIf}
+    
+  ; disabel the NC if not requested      
+  ${If} $serviceNetwork != ${BST_CHECKED}
+    nsExec::Exec "$INSTDIR\Ruby\bin\ruby.exe $INSTDIR\Collector\bin\rcs-collector-config --no-network"
+  ${EndIf}
+    
   DetailPrint ""
 
   DetailPrint "Adding firewall rule for port 80/tcp..."
@@ -159,7 +176,6 @@ Section Uninstall
 
   DetailPrint "Removing firewall rule for 80/tcp..."
   nsExec::ExecToLog 'netsh firewall delete portopening TCP 80'
-	DetailPrint "done"
 
   DetailPrint "Stopping RCSCollector Service..."
   SimpleSC::StopService "RCSCollector" 1
@@ -169,11 +185,11 @@ Section Uninstall
   DetailPrint ""
   DetailPrint "Deleting files..."
   SetDetailsPrint "textonly"
-  ReadRegStr $R0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "InstDir"
-  RMDir /r "$R0\Collector"
+  ReadRegStr $INSTDIR HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector" "InstDir"
+  RMDir /r "$INSTDIR\Collector"
   ; #TODO: delete ruby if not rcsdb
-  RMDir /r "$R0\Ruby"
-  RMDir /r "$R0"
+  RMDir /r "$INSTDIR\Ruby"
+  RMDir /r "$INSTDIR"
   SetDetailsPrint "both"
   DetailPrint "done"
 
@@ -182,6 +198,35 @@ Section Uninstall
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\RCSCollector"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Run\RCSCollector"
 	DetailPrint "done"
+
+  ReadRegStr $R0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
+
+   StrCpy $R1 0
+   StrLen $R2 "$INSTDIR\"
+   ${Do}
+      IntOp $R1 $R1 + 1
+      ${WordFind} $R0 ";" "E+$R1" $R3
+      IfErrors 0 +2
+         ${Break}
+
+      StrCmp $R3 $INSTDIR 0 +2
+         ${Continue}
+
+      StrCpy $R4 $R3 $R2
+      StrCmp $R4 "$INSTDIR\" 0 +2
+         ${Continue}
+
+      StrCpy $R5 "$R5$R3;"
+   ${Loop}
+
+   ${If} $R3 == 1
+      StrCpy $R5 $R0
+   ${Else}
+      StrCpy $R5 $R5 -1
+   ${EndIf}
+
+   System::Call 'Kernel32::SetEnvironmentVariableA(t, t) i("Path", "$R5").r0'
+   WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$R5"
 
 SectionEnd
 
@@ -231,8 +276,8 @@ FunctionEnd
 Function FuncConfigureConnection
    
    ; se e' un upgrade non richiedere le credenziali
-   ${If} $insttype == 1
-      IfFileExists "$INSTDIR\Collector\config\rcs-db.sig" 0 +2
+   ${If} $insttype == ${SETUP_UPDATE}
+      IfFileExists "$INSTDIR\Collector\config\rcs-server.sig" 0 +2
 		Abort
    ${EndIf}
    
