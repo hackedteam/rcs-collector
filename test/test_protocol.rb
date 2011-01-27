@@ -97,7 +97,7 @@ class TestProtocol < Test::Unit::TestCase
   def test_ident
     # stub the fake session (pretending auth was performed)
     key = Digest::SHA1.digest 'test-key'
-    cookie = SessionManager.instance.create(0, "build_id", "instance_id", "subtype", key)
+    cookie = SessionManager.instance.create(0, "test-build", "test-instance", "test-subtype", key)
 
     # prepare the command
     message = [Commands::PROTO_ID].pack('i')
@@ -120,7 +120,7 @@ class TestProtocol < Test::Unit::TestCase
   def test_bye
     # stub the fake session (pretending auth was performed)
     key = Digest::SHA1.digest 'test-key'
-    cookie = SessionManager.instance.create(0, "build_id", "instance_id", "subtype", key)
+    cookie = SessionManager.instance.create(0, "test-build", "test-instance", "test-subtype", key)
 
     # check that the session is valid (after the bye must be invalid)
     assert_true Protocol.valid_authentication('test-peer', cookie)
@@ -147,7 +147,7 @@ class TestProtocol < Test::Unit::TestCase
   def test_commands
     # stub the fake session (pretending auth was performed)
     key = Digest::SHA1.digest 'test-key'
-    cookie = SessionManager.instance.create(0, "build_id", "instance_id", "subtype", key)
+    cookie = SessionManager.instance.create(0, "test-build", "test-instance", "test-subtype", key)
 
     # all the commands
     commands = [Commands::PROTO_CONF, Commands::PROTO_UPLOAD, Commands::PROTO_DOWNLOAD, Commands::PROTO_FILESYSTEM]

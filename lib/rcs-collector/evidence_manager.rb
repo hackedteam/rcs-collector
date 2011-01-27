@@ -16,6 +16,7 @@ module Collector
 
 class EvidenceManager
   include Singleton
+  include RCS::Tracer
 
   REPO_DIR = Dir.pwd + '/evidences'
 
@@ -31,6 +32,8 @@ class EvidenceManager
     # create the repository for this instance
     return unless create_repository session[:instance]
 
+    trace :info, "[#{session[:instance]}] Sync is in progress..."
+
     begin
       db = SQLite3::Database.open(REPO_DIR + '/' + session[:instance])
       db.execute("DELETE FROM info;")
@@ -42,27 +45,59 @@ class EvidenceManager
                                            '#{user}',
                                            '#{device}',
                                            '#{source}',
-                                           #{time},
+                                           #{time.to_i},
                                            #{SYNC_IN_PROGRESS});")
       db.close
     rescue Exception => e
-      trace :warn, "Cannot save the cache: #{e.message}"
+      trace :warn, "Cannot insert into the repository: #{e.message}"
     end
-
-    #TODO: set the SYNC_IN_PROGRESS in the offline.ini
   end
 
   def sync_timeout(session)
-    #TODO: set the SYNC_TIMEOUT
+    # sanity check
+    return unless File.exist?(REPO_DIR + '/' + session[:instance])
+
+    begin
+      db = SQLite3::Database.open(REPO_DIR + '/' + session[:instance])
+      # update only if the status in IN_PROGRESS
+      # this will prevent erroneous overwrite of the IDLE status
+      db.execute("UPDATE info SET sync_status = #{SYNC_TIMEOUTED} WHERE bid = #{session[:bid]} AND sync_status = #{SYNC_IN_PROGRESS};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot update the repository: #{e.message}"
+    end
+    trace :info, "[#{session[:instance]}] Sync has been timeouted"
   end
 
   def sync_end(session)
-    #TODO: reset the SYNC_IN_PROGRESS in the offline.ini
+    # sanity check
+    return unless File.exist?(REPO_DIR + '/' + session[:instance])
+        
+    begin
+      db = SQLite3::Database.open(REPO_DIR + '/' + session[:instance])
+      db.execute("UPDATE info SET sync_status = #{SYNC_IDLE} WHERE bid = #{session[:bid]};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot update the repository: #{e.message}"
+    end
+    trace :info, "[#{session[:instance]}] Sync ended"
   end
 
   def store(session, size, content)
     #TODO: write the evidence in the enc directory
     raise "not implemented"
+  end
+
+  def get_info(instance)
+    begin
+      db = SQLite3::Database.open(REPO_DIR + '/' + instance)
+      db.results_as_hash = true
+      ret = db.execute("SELECT * FROM info;")
+      db.close
+      return ret.first
+    rescue Exception => e
+      trace :warn, "Cannot save the repository: #{e.message}"
+    end
   end
 
   def create_repository(instance)
@@ -72,6 +107,8 @@ class EvidenceManager
     # already created
     return true if File.exist?(REPO_DIR + '/' + instance)
 
+    trace :info, "Creating repository for [#{instance}]"
+    
     # create the repository
     begin
       db = SQLite3::Database.new REPO_DIR + '/' + instance
@@ -81,10 +118,10 @@ class EvidenceManager
     end
 
     # the schema of repository
-    schema = ["CREATE TABLE info (id INT,
+    schema = ["CREATE TABLE info (bid INT,
                                   build CHAR(16),
                                   instance CHAR(40),
-                                  type CHAR(16),
+                                  subtype CHAR(16),
                                   version INT,
                                   user CHAR(256),
                                   device CHAR(256),
@@ -100,6 +137,7 @@ class EvidenceManager
         db.execute query
       rescue Exception => e
         trace :error, "Cannot execute the statement : #{e.message}"
+        db.close
         return false
       end
     end

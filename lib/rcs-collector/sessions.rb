@@ -65,7 +65,7 @@ class SessionManager
     # search for timeouted sessions
     @sessions.each_pair do |key, value|
       if Time.now - value[:time] >= delta then
-        trace :info, "Session Timeout for [#{value[:instance]}]"
+        trace :info, "Session Timeout for [#{value[:cookie]}]"
         # update the status accordingly
         EvidenceManager.instance.sync_timeout value
         # delete the entry
