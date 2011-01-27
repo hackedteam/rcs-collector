@@ -19,6 +19,10 @@ class EvidenceManager
 
   REPO_DIR = Dir.pwd + '/evidences'
 
+  SYNC_IDLE = 0
+  SYNC_IN_PROGRESS = 1
+  SYNC_TIMEOUTED = 2
+
   def sync_start(session, version, user, device, source, time)
 
     # notify the database that the sync is in progress
@@ -30,13 +34,26 @@ class EvidenceManager
     begin
       db = SQLite3::Database.open(REPO_DIR + '/' + session[:instance])
       db.execute("DELETE FROM info;")
-      db.execute("INSERT INTO signature VALUES ('#{sig}');")
+      db.execute("INSERT INTO info VALUES (#{session[:bid]},
+                                           '#{session[:build]}',
+                                           '#{session[:instance]}',
+                                           '#{session[:subtype]}',
+                                           #{version},
+                                           '#{user}',
+                                           '#{device}',
+                                           '#{source}',
+                                           #{time},
+                                           #{SYNC_IN_PROGRESS});")
       db.close
     rescue Exception => e
       trace :warn, "Cannot save the cache: #{e.message}"
     end
 
     #TODO: set the SYNC_IN_PROGRESS in the offline.ini
+  end
+
+  def sync_timeout(session)
+    #TODO: set the SYNC_TIMEOUT
   end
 
   def sync_end(session)

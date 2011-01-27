@@ -2,6 +2,9 @@
 #  Session Manager, manages all the cookies
 #
 
+# relatives
+require_relative 'evidence_manager.rb'
+
 # from RCS::Common
 require 'rcs-common/trace'
 
@@ -59,8 +62,16 @@ class SessionManager
     trace :debug, "Session Manager timeouting entries..." if @sessions.length > 0
     # save the size of the hash before deletion
     size = @sessions.length
-    # apply the filter
-    @sessions.delete_if { |key, value| Time.now - value[:time] >= delta }
+    # search for timeouted sessions
+    @sessions.each_pair do |key, value|
+      if Time.now - value[:time] >= delta then
+        trace :info, "Session Timeout for [#{value[:instance]}]"
+        # update the status accordingly
+        EvidenceManager.instance.sync_timeout value
+        # delete the entry
+        @sessions.delete key
+      end
+    end
     trace :info, "Session Manager timeouted #{size - @sessions.length} sessions" if size - @sessions.length > 0
   end
 
