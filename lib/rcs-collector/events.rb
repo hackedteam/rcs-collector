@@ -55,7 +55,7 @@ class HTTPHandler < EM::Connection
     #   @http_headers
 
     trace :info, "[#{@peer}] Incoming HTTP Connection"
-    trace :debug, "[#{@peer}] Request: [#{@http_request_method}]  #{@http_request_uri}"
+    trace :debug, "[#{@peer}] Request: [#{@http_request_method}] #{@http_request_uri}"
 
     resp = EM::DelegatedHttpResponse.new(self)
 

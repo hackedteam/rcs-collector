@@ -20,6 +20,14 @@ class Config
 
   CONF_FILE = '/config/config.yaml'
 
+  DEFAULT_CONFIG= {'DB_ADDRESS' => 'rcs-server',
+                   'DB_PORT' => 4443,
+                   'DB_CERT' => 'rcs-ca.pem',
+                   'DB_SIGN' => 'rcs-server.sig',
+                   'LISTENING_PORT' => 80,
+                   'HB_INTERVAL' => 30,
+                   'NC_INTERVAL' => 40}
+
   attr_reader :global
 
   def initialize
@@ -79,13 +87,7 @@ class Config
 
     # use the default values
     if options[:defaults] then
-      @global['DB_ADDRESS'] = 'rcs-server'
-      @global['DB_PORT'] = 4443
-      @global['DB_CERT'] = 'rcs-ca.pem'
-      @global['DB_SIGN'] = 'rcs-server.sig'
-      @global['LISTENING_PORT'] = 80
-      @global['HB_INTERVAL'] = 30
-      @global['NC_INTERVAL'] = 40
+      @global = DEFAULT_CONFIG
     end
 
     # values taken from command line
