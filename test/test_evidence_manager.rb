@@ -49,7 +49,7 @@ class TestEvidenceManager < Test::Unit::TestCase
   end
 
   def teardown
-    File.delete(EvidenceManager::REPO_DIR + '/' + @instance)
+    File.delete(EvidenceManager::REPO_DIR + '/' + @instance) if File.exist?(EvidenceManager::REPO_DIR + '/' + @instance)
   end
 
   def test_sync_start
@@ -92,10 +92,17 @@ class TestEvidenceManager < Test::Unit::TestCase
   end
 
   def test_sync_not_existent
-    File.delete(EvidenceManager::REPO_DIR + '/TEST-INSTANCE')
+    File.delete(EvidenceManager::REPO_DIR + '/' + @instance)
     EvidenceManager.instance.sync_end @session
     info = EvidenceManager.instance.get_info @session[:instance]
     assert_nil info
+  end
+
+  def test_sync_start_start
+    EvidenceManager.instance.sync_start @session, *@ident, @now
+    EvidenceManager.instance.sync_start @session, *@ident, @now
+    info = EvidenceManager.instance.get_info @session[:instance]
+    assert_equal EvidenceManager::SYNC_IN_PROGRESS, info['sync_status']
   end
 
 end

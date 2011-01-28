@@ -84,11 +84,24 @@ class EvidenceManager
   end
 
   def store(session, size, content)
-    #TODO: write the evidence in the enc directory
-    raise "not implemented"
+    # sanity check
+    raise "No repository for this instance" unless File.exist?(REPO_DIR + '/' + session[:instance])
+
+    # store the evidence
+    begin
+      db = SQLite3::Database.open(REPO_DIR + '/' + session[:instance])
+      db.execute("INSERT INTO evidences (size, content) VALUE (#{size}, ? );", SQLite3::Blob.new(content))
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot insert into the repository: #{e.message}"
+      raise "Cannot save evidence"
+    end
   end
 
   def get_info(instance)
+    # sanity check
+    return unless File.exist?(REPO_DIR + '/' + instance)
+            
     begin
       db = SQLite3::Database.open(REPO_DIR + '/' + instance)
       db.results_as_hash = true
@@ -96,16 +109,13 @@ class EvidenceManager
       db.close
       return ret.first
     rescue Exception => e
-      trace :warn, "Cannot save the repository: #{e.message}"
+      trace :warn, "Cannot read from the repository: #{e.message}"
     end
   end
 
   def create_repository(instance)
     # ensure the repository directory is present
     Dir::mkdir(REPO_DIR) if not File.directory?(REPO_DIR)
-
-    # already created
-    return true if File.exist?(REPO_DIR + '/' + instance)
 
     trace :info, "Creating repository for [#{instance}]"
     
@@ -118,7 +128,7 @@ class EvidenceManager
     end
 
     # the schema of repository
-    schema = ["CREATE TABLE info (bid INT,
+    schema = ["CREATE TABLE IF NOT EXISTS info (bid INT,
                                   build CHAR(16),
                                   instance CHAR(40),
                                   subtype CHAR(16),
@@ -128,7 +138,9 @@ class EvidenceManager
                                   source CHAR(256),
                                   sync_time INT,
                                   sync_status INT)",
-              "CREATE TABLE evidences (id INTEGER PRIMARY KEY ASC, content BLOB)"
+              "CREATE TABLE IF NOT EXISTS evidences (id INTEGER PRIMARY KEY ASC,
+                                                     size INT,
+                                                     content BLOB)"
              ]
 
     # create all the tables
