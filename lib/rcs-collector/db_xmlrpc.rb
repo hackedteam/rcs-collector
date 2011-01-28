@@ -242,6 +242,7 @@ class DB_xmlrpc
       ret.each do |elem|
         upl[elem['upload_id']] = {:filename => elem['filename'],
                                   :content => get_file(:resource => 'upload', :upload_id => elem['upload_id'])}
+        trace :debug, "File retrieved: [#{elem['filename']}] #{upl[elem['upload_id']][:content].length} bytes"
       end
 
       return upl

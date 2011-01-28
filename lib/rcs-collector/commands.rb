@@ -159,7 +159,7 @@ module Commands
 
       response += [content.length].pack('i') + content
 
-      trace :info, "[#{peer}][#{session[:cookie]}] upload sent (#{left} left)"
+      trace :info, "[#{peer}][#{session[:cookie]}] [#{upload[:filename]}][#{upload[:content].length}] sent (#{left} left)"
     end
 
     return response
