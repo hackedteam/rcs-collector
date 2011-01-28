@@ -23,7 +23,8 @@ class DB_xmlrpc
 
     # create the xml-rpc server
     @xmlrpc = XMLRPC::Client.new(@host, '/server.php', @port, nil, nil, nil, nil, true)
-    
+
+    #TODO: check for thread safety !!!
     # we need to set an attribute inside the http instance variable of @server
     # we can get a reference here and manipulate it later
     @http = @xmlrpc.instance_variable_get(:@http)

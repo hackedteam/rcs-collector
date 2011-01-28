@@ -51,6 +51,7 @@ class HTTPHandler < EM::Connection
   attr_reader :peer
   attr_reader :peer_port
 
+  #TODO: check the post max content-length
   def post_init
     # don't forget to call super here !
     super

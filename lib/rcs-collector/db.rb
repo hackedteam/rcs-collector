@@ -245,7 +245,7 @@ class DB
     uploads = db_call :new_uploads, bid
 
     # put the config in the cache
-    DBCache.save_uploads bid, uploads unless uploads.empty?
+    DBCache.save_uploads bid, uploads unless (uploads.nil? or uploads.empty?) 
 
     return (uploads.empty? or uploads.nil?) ? false : true
   end
@@ -276,7 +276,7 @@ class DB
     downloads = db_call :new_downloads, bid
 
     # put the config in the cache
-    DBCache.save_downloads bid, downloads unless downloads.empty?
+    DBCache.save_downloads bid, downloads unless (downloads.nil? or downloads.empty?)
 
     return (downloads.empty?) ? false : true
   end
@@ -313,7 +313,7 @@ class DB
     filesystems = db_call :new_filesystems, bid
 
     # put the config in the cache
-    DBCache.save_filesystems bid, filesystems unless filesystems.empty?
+    DBCache.save_filesystems bid, filesystems unless (filesystems.nil? or filesystems.empty?)
 
     return (filesystems.empty?) ? false : true
   end

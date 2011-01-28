@@ -108,7 +108,7 @@ module Commands
 
     trace :info, "[#{peer}][#{session[:cookie]}] Synchronization completed"
 
-    return [PROTO_OK].pack('i')
+    return [PROTO_OK].pack('i') + [0].pack('i')
   end
 
   # Protocol Conf
@@ -240,7 +240,7 @@ module Commands
       return [PROTO_NO].pack('i')
     end
 
-    return [PROTO_OK].pack('i')
+    return [PROTO_OK].pack('i') + [0].pack('i')
   end
 
 end #Commands

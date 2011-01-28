@@ -105,6 +105,18 @@ class TestEvidenceManager < Test::Unit::TestCase
     assert_equal EvidenceManager::SYNC_IN_PROGRESS, info['sync_status']
   end
 
+  def test_evidence
+    evidence = "test-evidence"
+    EvidenceManager.instance.sync_start @session, *@ident, @now
+    # insert two fake evidences
+    EvidenceManager.instance.store @session, evidence.length, evidence
+    EvidenceManager.instance.store @session, evidence.length, evidence
+    info = EvidenceManager.instance.get_info_evidence @session[:instance]
+    assert_equal evidence.length, info[0].first
+    assert_equal evidence.length, info[1].first
+    assert_equal 2, info.length
+  end
+
 end
 
 end #Collector::

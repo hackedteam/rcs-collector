@@ -165,7 +165,20 @@ class TestProtocol < Test::Unit::TestCase
   end
 
   def test_evidence
-    #TODO: test for evidence
+    # stub the fake session (pretending auth was performed)
+    key = Digest::SHA1.digest 'test-key'
+    cookie = SessionManager.instance.create(0, "test-build", "test-instance", "test-subtype", key)
+
+    evidence = 'test-evidence'
+    message = [Commands::PROTO_EVIDENCE].pack('i') + [evidence.length].pack('i') + evidence
+
+    enc = aes_encrypt_integrity(message, key)
+    content, type, rcookie = Protocol.commands('test-peer', cookie, enc)
+    assert_nil rcookie
+    assert_equal "application/octet-stream", type
+    assert_nothing_raised do
+      resp = aes_decrypt_integrity(content, key)
+    end
   end
 
 end
