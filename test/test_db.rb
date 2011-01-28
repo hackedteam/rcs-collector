@@ -84,7 +84,7 @@ class TestDB < Test::Unit::TestCase
     # and mock it for the tests
     DB.instance.instance_variable_set(:@db, DB_mockup.new)
     # clear the cache
-    Cache.destroy!
+    DBCache.destroy!
     # every test begins with the db connected
     DB_mockup.failure = false
     DB.instance.connect!
@@ -92,7 +92,7 @@ class TestDB < Test::Unit::TestCase
   end
 
   def teardown
-    Cache.destroy!
+    DBCache.destroy!
   end
 
   def test_connect

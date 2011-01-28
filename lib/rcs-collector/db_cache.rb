@@ -11,7 +11,7 @@ require 'sqlite3'
 module RCS
 module Collector
 
-class Cache
+class DBCache
   extend RCS::Tracer
 
   CACHE_FILE = Dir.pwd + '/config/cache.db'

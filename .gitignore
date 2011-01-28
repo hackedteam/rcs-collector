@@ -60,3 +60,5 @@ config/*.sig
 # encrypted code
 lib/rcs-collector-release
 
+# evidences
+evidences/*
