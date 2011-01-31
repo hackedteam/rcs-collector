@@ -8,6 +8,7 @@ require 'rcs-common/trace'
 # system
 require 'xmlrpc/client'
 require 'timeout'
+require 'thread'
 
 module RCS
 module Collector
@@ -24,10 +25,12 @@ class DB_xmlrpc
     # create the xml-rpc server
     @xmlrpc = XMLRPC::Client.new(@host, '/server.php', @port, nil, nil, nil, nil, true)
 
-    #TODO: check for thread safety !!!
     # we need to set an attribute inside the http instance variable of @server
     # we can get a reference here and manipulate it later
     @http = @xmlrpc.instance_variable_get(:@http)
+
+    # the mutex to avoid race conditions
+    @semaphore = Mutex.new
 
     # no SSL verify for this connection
     #@http.verify_mode = OpenSSL::SSL::VERIFY_NONE
@@ -45,9 +48,13 @@ class DB_xmlrpc
   def xmlrpc_call(*args)
     begin
       Timeout::timeout(DB_TIMEOUT) do
-        return @xmlrpc.call(*args)
+        return @semaphore.synchronize do
+          @xmlrpc.call(*args)
+        end
       end
     rescue
+      # ensure the mutex is unlocked on timeout or errors
+      @semaphore.unlock if @semaphore.locked?
       # propagate the exception to the upper layer
       raise
     end
@@ -179,12 +186,12 @@ class DB_xmlrpc
   def get_file(*resource)
 
     # prepare the http request
-    # (for performance reasons could be useful to instantiate a new one)
-    #http = Net::HTTP.new(@host, @port)
-    #http.use_ssl = true
-    #http.ca_file = @http.ca_file
-    #http.cert = @http.cert
-    #http.read_timeout = 5
+    # for threading reasons we msut instantiate a new one
+    http = Net::HTTP.new(@host, @port)
+    http.use_ssl = true
+    http.ca_file = @http.ca_file
+    http.cert = @http.cert
+    http.read_timeout = 5
 
     # the HTTP headers for the authentication
     headers = {
@@ -198,12 +205,9 @@ class DB_xmlrpc
       poststring += "#{key}=#{value}&"
     end
 
-    # use the new http object
-    #resp = http.request_post('/download.php', poststring, headers)
+    # use the new http object (to avoid race conditions with the xmlrpc object)
+    resp = http.request_post('/download.php', poststring, headers)
 
-    # use the already established http(s) connection
-    resp = @http.request_post('/download.php', poststring, headers)
-    
     return resp.body
   end
 
