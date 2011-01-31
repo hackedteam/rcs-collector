@@ -57,6 +57,9 @@ config/cache.db
 config/*.pem
 config/*.sig
 
+# config
+config/config.yaml
+
 # encrypted code
 lib/rcs-collector-release
 
