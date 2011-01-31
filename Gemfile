@@ -3,7 +3,7 @@ source "http://rubygems.org"
 # Example:
 #   gem "activesupport", ">= 2.3.5"
 gem 'eventmachine'
-gem 'eventmachine_httpserver', ">= 0.2.1"
+gem 'eventmachine_httpserver', ">= 0.2.2"
 gem 'sqlite3-ruby'
 gem 'uuidtools'
 gem 'sys-filesystem'

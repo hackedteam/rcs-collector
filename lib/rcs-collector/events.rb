@@ -17,29 +17,6 @@ require 'eventmachine'
 require 'evma_httpserver'
 require 'socket'
 
-module EventMachine
-class HttpResponse
-  # here we reopen the class to fis a bug in the gem code
-  # basically it send ... instead of the HTTPcode
-  def send_headers
-    raise "sent headers already" if @sent_headers
-    @sent_headers = true
-
-    fixup_headers
-
-    ary = []
-    # original source code
-    #ary << "HTTP/1.1 #{@status || 200} ...\r\n"
-    # modified by me
-    ary << "HTTP/1.0 #{@status || 200} OK\r\n"
-    ary += generate_header_lines(@headers)
-    ary << "\r\n"
-
-    send_data ary.join
-  end
-end #HttpResponse
-end #EventMachine::
-
 module RCS
 module Collector
 
@@ -51,10 +28,15 @@ class HTTPHandler < EM::Connection
   attr_reader :peer
   attr_reader :peer_port
 
-  #TODO: check the post max content-length
   def post_init
     # don't forget to call super here !
     super
+
+    # to speed-up the processing, we disable the CGI environment variables
+    self.no_environment_strings
+
+    # set the max content length of the POST
+    self.max_content_length = 30 * 1024 * 1024
 
     # get the peer name
     @peer_port, @peer = Socket.unpack_sockaddr_in(get_peername)
@@ -100,6 +82,7 @@ class HTTPHandler < EM::Connection
 
       # prepare the HTTP response
       resp.status = 200
+      resp.status_string = "OK"
       resp.content = content
       resp.headers['Content-Type'] = content_type
       resp.headers['Set-Cookie'] = cookie unless cookie.nil?
@@ -129,6 +112,7 @@ class Events
       # if we have epoll(), prefer it over select()
       EM.epoll
 
+      #TODO: trap the acceptor error
       # start the HTTP server
       EM::start_server("0.0.0.0", port, HTTPHandler)
       trace :info, "Listening on port #{port}..."
