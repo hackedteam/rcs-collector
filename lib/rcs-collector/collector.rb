@@ -78,9 +78,9 @@ class Application
       # enter the main loop (hopefully will never exit from it)
       Events.new.setup Config.instance.global['LISTENING_PORT']
 
-    rescue Exception => detail
-      trace :fatal, "FAILURE: " << detail.message
-      trace :fatal, "EXCEPTION: " << detail.backtrace.join("\n")
+    rescue Exception => e
+      trace :fatal, "FAILURE: " << e.message
+      trace :fatal, "EXCEPTION: [#{e.class}] " << e.backtrace.join("\n")
       return 1
     end
 

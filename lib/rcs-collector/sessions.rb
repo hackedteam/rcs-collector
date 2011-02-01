@@ -58,6 +58,7 @@ class SessionManager
     @sessions.delete(cookie)
   end
 
+  #TODO: increase this timeout
   def timeout(delta = 600)
     trace :debug, "Session Manager timeouting entries..." if @sessions.length > 0
     # save the size of the hash before deletion
