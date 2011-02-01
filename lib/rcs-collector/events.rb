@@ -86,12 +86,13 @@ class HTTPHandler < EM::Connection
       resp.content = content
       resp.headers['Content-Type'] = content_type
       resp.headers['Set-Cookie'] = cookie unless cookie.nil?
+      #TODO: investigate the keep-alive option
+      #resp.keep_connection_open = true
     end
 
     # Callback block to execute once the request is fulfilled
     callback = proc do |res|
     	resp.send_response
-      close_connection_after_writing
       trace :info, "[#{@peer}] HTTP Connection completed"
     end
 

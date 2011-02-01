@@ -58,8 +58,11 @@ class SessionManager
     @sessions.delete(cookie)
   end
 
-  #TODO: increase this timeout
-  def timeout(delta = 600)
+  # default timeout is 2 hours
+  # this timeout is calculated from the last time the cookie was
+  # checked, it will fail during a sync only if a request (i.e. log transfer)
+  # takes more than 2 hours
+  def timeout(delta = 7200)
     trace :debug, "Session Manager timeouting entries..." if @sessions.length > 0
     # save the size of the hash before deletion
     size = @sessions.length
