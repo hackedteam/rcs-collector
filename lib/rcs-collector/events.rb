@@ -77,7 +77,7 @@ class HTTPHandler < EM::Connection
         content, content_type, cookie = http_parse(@http_request_method, @http_request_uri, @http_cookie, @http_post_content)
       rescue Exception => e
         trace :error, "ERROR: " + e.message
-        #trace :fatal, "EXCEPTION: " + e.backtrace.join("\n")
+        trace :fatal, "EXCEPTION: " + e.backtrace.join("\n")
       end
 
       # prepare the HTTP response

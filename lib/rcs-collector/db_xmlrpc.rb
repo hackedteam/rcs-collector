@@ -252,7 +252,7 @@ class DB_xmlrpc
 
       return upl
     rescue Exception => e
-      trace :error, "Error calling download.get: #{e.class} #{e.message}"
+      trace :error, "Error calling upload.get: #{e.class} #{e.message}"
       propagate_error e
     end
   end
@@ -262,6 +262,34 @@ class DB_xmlrpc
       xmlrpc_call('upload.del', id)
     rescue Exception => e
       trace :error, "Error calling upload.del: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def new_upgrade(bid)
+    begin
+      ret = xmlrpc_call('upgrade.get', bid)
+
+      upg = {}
+      # parse the results and get the contents of the uploads
+      ret.each do |elem|
+        upg[elem['upgrade_id']] = {:filename => elem['filename'],
+                                  :content => get_file(:resource => 'upgrade', :upload_id => elem['upgrade_id'])}
+        trace :debug, "File retrieved: [#{elem['filename']}] #{upg[elem['upgrade_id']][:content].length} bytes"
+      end
+
+      return upg
+    rescue Exception => e
+      trace :error, "Error calling upgrade.get: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def del_upgrade(bid)
+    begin
+      xmlrpc_call('upgrade.del', bid)
+    rescue Exception => e
+      trace :error, "Error calling upgrade.del: #{e.class} #{e.message}"
       propagate_error e
     end
   end
