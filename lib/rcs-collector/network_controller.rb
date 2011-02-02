@@ -13,7 +13,7 @@ module Collector
 class NetworkController
   extend RCS::Tracer
 
-  def self.perform
+  def self.check
     #TODO: implement the real check
     trace :debug, "network: #{Time.now}"
   end
