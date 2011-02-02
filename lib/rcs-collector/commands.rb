@@ -51,6 +51,9 @@ module Commands
     # ident of the target
     user_id, device_id, source_id = message.unpascalize_ary
 
+    # if the source id cannot be determined by the client, set it to the ip address
+    source_id = peer if source_id.eql? ''
+
     trace :info, "[#{peer}][#{session[:cookie]}] Identification: #{version} '#{user_id}' '#{device_id}' '#{source_id}'"
 
     # get the time in UTC
