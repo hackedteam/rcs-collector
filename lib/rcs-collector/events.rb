@@ -122,6 +122,7 @@ class Events
         Status.my_status = Status::OK
 
         # send the first heartbeat to the db, we are alive and want to notify the db immediately
+        # subsequent heartbeats will be sent every HB_INTERVAL
         HeartBeat.perform
 
         # set up the heartbeat (the interval is in the config)
@@ -129,6 +130,9 @@ class Events
 
         # set up the network checks (the interval is in the config, zero means disabled)
         if Config.instance.global['NC_INTERVAL'] != 0 then
+          # first heartbeat
+          NetworkController.send_status
+          # subsequent checks
           EM::PeriodicTimer.new(Config.instance.global['NC_INTERVAL']) { NetworkController.check }
         end
 

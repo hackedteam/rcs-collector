@@ -14,7 +14,11 @@ class NetworkController
   extend RCS::Tracer
 
   def self.check
+    # send the status to the db
+    send_status
+
     #TODO: implement the real check
+
     trace :debug, "network: #{Time.now}"
   end
 
@@ -24,6 +28,28 @@ class NetworkController
 
     return "PUSHED", "text/html"
   end
+
+  def self.send_status
+    # report our status to the db
+    component = "RCS::NetworkController"
+    ip = ''
+
+    # always idle
+    message = "Idle..."
+
+    # report our status
+    status = Status.my_status
+    disk = Status.disk_free
+    cpu = Status.cpu_load
+    pcpu = Status.my_cpu_load
+
+    # create the stats hash
+    stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
+
+    # send the status to the db
+    DB.instance.update_status component, ip, status, message, stats
+  end
+
 end
 
 end #Collector::
