@@ -183,18 +183,20 @@ class EvidenceManager
     # we want just one instance
     if options[:instance] then
       entry = get_info(options[:instance])
-      entry[:evidences] = get_info_evidence(options[:instance])
       if entry.nil? then
         puts "\nERROR: Invalid instance"
         return 1
       end
+      entry[:evidences] = get_info_evidence(options[:instance])
       entries << entry
     else
       # take the info from all the instances
       Dir[REPO_DIR + '/*'].each do |e|
         entry = get_info(File.basename(e))
-        entry[:evidences] = get_info_evidence(File.basename(e))
-        entries << entry
+        unless entry.nil? then
+          entry[:evidences] = get_info_evidence(File.basename(e))
+          entries << entry
+        end
       end
     end
 
