@@ -351,6 +351,18 @@ class DBCache
     end
   end
 
+  def self.clear_upgrade(bid)
+    return unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      db.execute("DELETE FROM upgrade WHERE bid = #{bid};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot write the cache: #{e.message}"
+    end
+  end
+  
   ##############################################
   # DOWNLOADS
   ##############################################

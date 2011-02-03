@@ -200,6 +200,15 @@ class TestCache < Test::Unit::TestCase
     # save in the cache
     DBCache.save_upgrade(bid, upgrade)
 
+    # clear the cache
+    DBCache.clear_upgrade(bid)
+
+    # not in cache (it was deleted
+    assert_false DBCache.new_upgrade? bid
+
+    # save in the cache
+    DBCache.save_upgrade(bid, upgrade)
+
     # should be in cache
     assert_true DBCache.new_upgrade? bid
     # the bid - 1 does not exist in cache

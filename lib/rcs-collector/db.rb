@@ -268,11 +268,14 @@ class DB
   def new_upgrade?(bid)
     #TODO: remove the fake upgrade
     return true
-    # check if we have the upgrades in the cache
-    # probably and old one not yet sent
-    return true if DBCache.new_upgrade? bid
+
     # cannot reach the db, return false
     return false unless @available
+
+    # remove any pending entry in the cache
+    # the upgrade must be retrieved always from the db to avoid partial
+    # corrupted multi-file upgrade
+    DBCache.clear_upgrade bid
 
     # retrieve the upgrade from the db
     upgrade = db_call :new_upgrade, bid
