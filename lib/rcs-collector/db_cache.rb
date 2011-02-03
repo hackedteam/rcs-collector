@@ -28,6 +28,7 @@ class DBCache
               "CREATE TABLE class_keys (id CHAR(16), key CHAR(32))",
               "CREATE TABLE configs (bid INT, cid INT, config BLOB)",
               "CREATE TABLE uploads (bid INT, uid INT, filename TEXT, content BLOB)",
+              "CREATE TABLE upgrade (bid INT, uid INT, filename TEXT, content BLOB)",
               "CREATE TABLE downloads (bid INT, did INT, filename TEXT)",
               "CREATE TABLE filesystems (bid INT, fid INT, depth INT, path TEXT)"
              ]
@@ -277,6 +278,91 @@ class DBCache
     end
   end
 
+  ##############################################
+  # UPGRADE
+  ##############################################
+
+  def self.new_upgrade?(bid)
+    return false unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      ret = db.execute("SELECT uid FROM upgrade WHERE bid = #{bid};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    return (ret.empty?) ? false : true
+  end
+
+  def self.new_upgrade(bid)
+    return {}, 0 unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+
+      # take just the first one
+      # the others will be sent in later requests
+      ret = db.execute("SELECT uid, filename, content FROM upgrade " +
+                       "WHERE bid = #{bid} " +
+                       "ORDER BY uid " +
+                       "LIMIT 1")
+      count = db.execute("SELECT COUNT(*) FROM upgrade WHERE bid = #{bid};")
+
+      # how many upgrade do we have still to send after this one ?
+      left = count[0][0].to_i - 1
+
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    ret = ret.first
+    return nil, 0 if ret.nil?
+
+    return { :id => ret[0], :upgrade => {:filename => ret[1], :content => ret[2]}}, left
+  end
+
+  def self.save_upgrade(bid, upgrade)
+    # ensure the db was already created, otherwise create it
+    create! unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      upgrade.each_pair do |key, value|
+        db.execute("INSERT INTO upgrade VALUES (#{bid}, #{key}, '#{value[:filename]}', ? )", SQLite3::Blob.new(value[:content]))
+      end
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot save the cache: #{e.message}"
+    end
+  end
+
+  def self.del_upgrade(id)
+    return unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      db.execute("DELETE FROM upgrade WHERE uid = #{id};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot write the cache: #{e.message}"
+    end
+  end
+
+  def self.clear_upgrade(bid)
+    return unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite3::Database.open CACHE_FILE
+      db.execute("DELETE FROM upgrade WHERE bid = #{bid};")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot write the cache: #{e.message}"
+    end
+  end
+  
   ##############################################
   # DOWNLOADS
   ##############################################

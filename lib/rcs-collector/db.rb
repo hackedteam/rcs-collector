@@ -243,13 +243,13 @@ class DB
     # cannot reach the db, return false
     return false unless @available
 
-    # retrieve the downloads from the db
+    # retrieve the upload from the db
     uploads = db_call :new_uploads, bid
 
-    # put the config in the cache
+    # put the upload in the cache
     DBCache.save_uploads bid, uploads unless (uploads.nil? or uploads.empty?) 
 
-    return (uploads.empty? or uploads.nil?) ? false : true
+    return (uploads.nil? or uploads.empty?) ? false : true
   end
 
   def new_uploads(bid)
@@ -261,10 +261,45 @@ class DB
     # delete from the db
     db_call :del_upload, upload[:id] if @available
 
-    # delete the conf from the cache
+    # delete the upload from the cache
     DBCache.del_upload upload[:id]
 
     return upload[:upload], left
+  end
+
+  def new_upgrade?(bid)
+    # cannot reach the db, return false
+    return false unless @available
+
+    # remove any pending entry in the cache
+    # the upgrade must be retrieved always from the db to avoid partial
+    # corrupted multi-file upgrade
+    DBCache.clear_upgrade bid
+
+    # retrieve the upgrade from the db
+    upgrade = db_call :new_upgrade, bid
+
+    # put the upgrade in the cache
+    DBCache.save_upgrade bid, upgrade unless (upgrade.nil? or upgrade.empty?)
+
+    return (upgrade.nil? or upgrade.empty?) ? false : true
+  end
+
+  def new_upgrade(bid)
+    # retrieve the uploads from the cache
+    upgrade, left = DBCache.new_upgrade bid
+
+    return nil if upgrade.nil?
+
+    # delete the upgrade from the cache
+    DBCache.del_upgrade upgrade[:id]
+
+    # delete from the db only if all the file have been transmitted
+    if left == 0 then
+      db_call :del_upgrade, bid if @available
+    end
+
+    return upgrade[:upgrade], left
   end
 
   def new_downloads?(bid)
@@ -277,10 +312,10 @@ class DB
     # retrieve the downloads from the db
     downloads = db_call :new_downloads, bid
 
-    # put the config in the cache
+    # put the download in the cache
     DBCache.save_downloads bid, downloads unless (downloads.nil? or downloads.empty?)
 
-    return (downloads.empty?) ? false : true
+    return (downloads.nil? or downloads.empty?) ? false : true
   end
 
   def new_downloads(bid)
@@ -298,7 +333,7 @@ class DB
       down << value
     end
 
-    # delete the conf from the cache
+    # delete the download from the cache
     DBCache.del_downloads bid
 
     return down
@@ -311,13 +346,13 @@ class DB
     # cannot reach the db, return false
     return false unless @available
 
-    # retrieve the downloads from the db
+    # retrieve the filesystem from the db
     filesystems = db_call :new_filesystems, bid
 
-    # put the config in the cache
+    # put the filesystem in the cache
     DBCache.save_filesystems bid, filesystems unless (filesystems.nil? or filesystems.empty?)
 
-    return (filesystems.empty?) ? false : true
+    return (filesystems.nil? or filesystems.empty?) ? false : true
   end
 
   def new_filesystems(bid)
@@ -335,7 +370,7 @@ class DB
       files << value
     end
 
-    # delete the conf from the cache
+    # delete the filesystem from the cache
     DBCache.del_filesystems bid
 
     return files

