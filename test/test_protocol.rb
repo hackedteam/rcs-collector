@@ -150,7 +150,7 @@ class TestProtocol < Test::Unit::TestCase
     cookie = SessionManager.instance.create(0, "test-build", "test-instance", "test-subtype", key)
 
     # all the commands
-    commands = [Commands::PROTO_CONF, Commands::PROTO_UPLOAD, Commands::PROTO_DOWNLOAD, Commands::PROTO_FILESYSTEM]
+    commands = [Commands::PROTO_CONF, Commands::PROTO_UPLOAD, Commands::PROTO_UPGRADE, Commands::PROTO_DOWNLOAD, Commands::PROTO_FILESYSTEM]
 
     commands.each do |cmd|
       message = [cmd].pack('i')
