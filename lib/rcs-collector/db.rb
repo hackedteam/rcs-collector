@@ -91,6 +91,8 @@ class DB
     return @available
   end
 
+  # wrapper method for all the calls to the underlying layers
+  # on error, it will consider the db failed
   def db_call(method, *args)
     begin
       return @db.send method, *args
@@ -149,7 +151,7 @@ class DB
   def update_status(component, ip, status, message, stats)
     return unless @available
 
-    trace :debug, "update status: #{status} #{message} #{stats}"
+    trace :debug, "[#{component}]: #{status} #{message} #{stats}"
     db_call :update_status, component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu]
   end
 
@@ -337,6 +339,28 @@ class DB
     DBCache.del_filesystems bid
 
     return files
+  end
+
+  def proxies
+    # return empty if not available
+    return [] unless @available
+
+    # ask the db
+    ret = db_call :get_proxies
+
+    # return the results or empty on error
+    return ret || []
+  end
+
+  def anonymizers
+    # return empty if not available
+    return [] unless @available
+
+    # ask the db
+    ret = db_call :get_anonymizers
+
+    # return the results or empty on error
+    return ret || []
   end
 
 end #DB

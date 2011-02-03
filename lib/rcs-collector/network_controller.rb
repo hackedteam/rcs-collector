@@ -17,9 +17,36 @@ class NetworkController
     # send the status to the db
     send_status
 
-    #TODO: implement the real check
+    # retrieve the lists from the db
+    elements = DB.instance.proxies
+    elements += DB.instance.anonymizers
 
-    trace :debug, "network: #{Time.now}"
+    threads = []
+
+    # keep only the remote anonymizers discarding the local collectors
+    elements.delete_if {|x| x['type'] == 'LOCAL'}
+
+    # keep only the elements to be polled
+    #elements.delete_if {|x| x['poll'] == 0}
+
+    if not elements.empty? then
+      trace :info, "[NC] Checking #{elements.length} network elements..."
+    end
+
+    # contact every element
+    elements.each do |p|
+      threads << Thread.new {
+        #TODO: implement the real check
+        puts p.inspect
+      }
+    end
+
+    # wait for all the threads to finish
+    threads.each do |t|
+      t.join
+    end
+
+    trace :info, "[NC] Network elements check completed"
   end
 
   def self.push(host, content)

@@ -130,8 +130,8 @@ class Events
 
         # set up the network checks (the interval is in the config, zero means disabled)
         if Config.instance.global['NC_INTERVAL'] != 0 then
-          # first heartbeat
-          NetworkController.send_status
+          # first heartbeat and checks
+          NetworkController.check
           # subsequent checks
           EM::PeriodicTimer.new(Config.instance.global['NC_INTERVAL']) { NetworkController.check }
         end

@@ -320,6 +320,24 @@ class DB_xmlrpc
     end
   end
 
+  def get_proxies
+    begin
+      xmlrpc_call('proxy.get', 0)
+    rescue Exception => e
+      trace :error, "Error calling proxy.get: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def get_anonymizers
+    begin
+      xmlrpc_call('collector.get', 0)
+    rescue Exception => e
+      trace :error, "Error calling collector.get: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
 end #
 
 end #Collector::
