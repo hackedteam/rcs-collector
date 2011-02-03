@@ -266,9 +266,6 @@ class DB
   end
 
   def new_upgrade?(bid)
-    #TODO: remove the fake upgrade
-    return true
-
     # cannot reach the db, return false
     return false unless @available
 
