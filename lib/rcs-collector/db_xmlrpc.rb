@@ -274,7 +274,7 @@ class DB_xmlrpc
       # parse the results and get the contents of the uploads
       ret.each do |elem|
         upg[elem['upgrade_id']] = {:filename => elem['filename'],
-                                  :content => get_file(:resource => 'upgrade', :upload_id => elem['upgrade_id'])}
+                                  :content => get_file(:resource => 'upgrade', :upgrade_id => elem['upgrade_id'])}
         trace :debug, "File retrieved: [#{elem['filename']}] #{upg[elem['upgrade_id']][:content].length} bytes"
       end
 

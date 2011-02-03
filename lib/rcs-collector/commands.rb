@@ -180,8 +180,25 @@ module Commands
   def command_upgrade(peer, session, message)
     trace :info, "[#{peer}][#{session[:cookie]}] Upgrade request"
 
-    trace :info, "[#{peer}][#{session[:cookie]}] NO upgrade"
-    response = [PROTO_NO].pack('i')
+    # the upgrade list was already retrieved (if any) during the ident phase (like upload)
+    upgrade, left = DB.instance.new_upgrade session[:bid]
+
+    # send the response
+    if upgrade.nil? then
+      trace :info, "[#{peer}][#{session[:cookie]}] NO upgrade"
+      response = [PROTO_NO].pack('i')
+    else
+      response = [PROTO_OK].pack('i')
+
+      content = [left].pack('i')                      # number of upgrades still waiting in the db
+      content += upgrade[:filename].pascalize         # filename
+      content += [upgrade[:content].length].pack('i') # file size
+      content += upgrade[:content]                    # file content
+
+      response += [content.length].pack('i') + content
+
+      trace :info, "[#{peer}][#{session[:cookie]}] [#{upgrade[:filename]}][#{upgrade[:content].length}] sent (#{left} left)"
+    end
 
     return response
   end
