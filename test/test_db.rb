@@ -46,7 +46,11 @@ class DB_mockup
   def logout; end
   def backdoor_signature
     raise if @@failure
-    return "test-signature"
+    return "test-backdoor-signature"
+  end
+  def network_signature
+    raise if @@failure
+    return "test-network-signature"
   end
   def class_keys
     raise if @@failure
@@ -120,19 +124,22 @@ class TestDB < Test::Unit::TestCase
 
   def test_cache_init
     assert_true DB.instance.cache_init
-    assert_equal Digest::MD5.digest('test-signature'), DB.instance.backdoor_signature
+    assert_equal Digest::MD5.digest('test-backdoor-signature'), DB.instance.backdoor_signature
+    assert_equal 'test-network-signature', DB.instance.network_signature
     assert_equal Digest::MD5.digest('secret class key'), DB.instance.class_key_of('BUILD001')
 
     DB_mockup.failure = true
     # this will fail to reach the db 
     assert_false DB.instance.cache_init
     assert_false DB.instance.connected?
-    assert_equal Digest::MD5.digest('test-signature'), DB.instance.backdoor_signature
+    assert_equal Digest::MD5.digest('test-backdoor-signature'), DB.instance.backdoor_signature
+    assert_equal 'test-network-signature', DB.instance.network_signature
     assert_equal Digest::MD5.digest('secret class key'), DB.instance.class_key_of('BUILD001')
 
     # now the error was reported to the DB layer, so it should init correctly
     assert_true DB.instance.cache_init
-    assert_equal Digest::MD5.digest('test-signature'), DB.instance.backdoor_signature
+    assert_equal Digest::MD5.digest('test-backdoor-signature'), DB.instance.backdoor_signature
+    assert_equal 'test-network-signature', DB.instance.network_signature
     assert_equal Digest::MD5.digest('secret class key'), DB.instance.class_key_of('BUILD001')
   end
 

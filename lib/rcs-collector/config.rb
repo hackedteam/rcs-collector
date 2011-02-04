@@ -26,7 +26,7 @@ class Config
                    'DB_SIGN' => 'rcs-server.sig',
                    'LISTENING_PORT' => 80,
                    'HB_INTERVAL' => 30,
-                   'NC_INTERVAL' => 40}
+                   'NC_INTERVAL' => 30}
 
   attr_reader :global
 

