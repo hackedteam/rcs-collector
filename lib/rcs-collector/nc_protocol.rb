@@ -25,17 +25,31 @@ class NCProto
   PROTO_LOG		  = 0x000F0007	# Logs from the component
   PROTO_VERSION	= 0x000F0008	# Version information
 
-  def initialize(element, socket)
-    @element = element
+  HEADER_LENGTH = 8 # two int
+
+  COMPONENT_CONFIGURED  = 0x00  
+  COMPONENT_NEED_CONFIG = 0x01
+
+  LOG_INFO	= 0x00
+	LOG_ERROR	= 0x01
+	LOG_DEBUG	= 0x02
+
+  def initialize(socket)
     @socket = socket
   end
 
   def get_command
-
+    begin
+      # get the command
+      command = @socket.sysread(HEADER_LENGTH)
+      # decode the integer
+      return command.unpack('i').first
+    rescue EOFError
+      return nil
+    end
   end
 
   def login
-
     # login command payload
     command = DB.instance.network_signature
 
@@ -48,7 +62,7 @@ class NCProto
 
     # send and receive
     @socket.syswrite message
-    response = @socket.sysread(header.length)
+    response = @socket.sysread(HEADER_LENGTH)
 
     # check if everything is ok
     return true if response.unpack('i') == [PROTO_OK]
@@ -57,24 +71,81 @@ class NCProto
   end
 
   def version
-    trace :debug, "VERSION"
+    # the version is an array of 16 bytes
+    response = @socket.sysread(16).delete("\x00")
+
+    # send the OK
+    header = [PROTO_OK].pack('i')
+    header += [0].pack('i')
+    @socket.syswrite header
+
+    return response
   end
 
   def monitor
-    trace :debug, "MONITOR"
+    # the status (OK, KO, WARN)
+    status = @socket.sysread(16).delete("\x00")
+
+    # 3 consecutive int
+    disk, cpu, pcpu = @socket.sysread(12).unpack('iii')
+
+    # the status description
+    desc = @socket.sysread(1024).delete("\x00")
+
+    # send the OK
+    header = [PROTO_OK].pack('i')
+    header += [0].pack('i')
+    @socket.syswrite header
+
+    return [status, desc, disk, cpu, pcpu]
   end
 
-  def config
-    trace :debug, "CONFIG"
+  def config(content)
+    # the element does not need a new config
+    if content.nil? then
+      # send the NO
+      header = [PROTO_NO].pack('i')
+      header += [0].pack('i')
+      @socket.syswrite header
+      return
+    end
+
+    # retro compatibility (260 byte array for the name)
+    message = "config.zip".ljust(260, "\x00")
+    # len of the file
+    message += [content.length].pack('i')
+    # the file
+    message += content
+    
+    # send the CONF command
+    header = [PROTO_CONF].pack('i')
+    header += [message.length].pack('i')
+    @socket.syswrite header + message
+
   end
 
   def log
-    trace :debug, "LOG"
+    # convert from C "struct tm" to ruby objects
+    # tm_sec, tm_min, tm_hour, tm_mday, tm_mon, tm_year, tm_wday, tm_yday, tm_isdst
+    struct_tm = @socket.sysread(4 * 9).unpack('i*')
+    time = Time.gm(*struct_tm, 0)
+
+    # type of the log
+    type = @socket.sysread(4).unpack('i').first
+    case type
+      when LOG_INFO
+        type = 'INFO'
+      when LOG_ERROR
+        type = 'ERROR'
+      when LOG_DEBUG
+        type = 'DEBUG'
+    end
+    # the message
+    desc = @socket.sysread(1024).delete("\x00")
+
+    return [time, type, desc]
   end
 
-  def bye
-    trace :debug, "BYE"
-  end
   
 end #NCProto
 

@@ -25,7 +25,7 @@ class NetworkController
 
       # retrieve the lists from the db
       elements = DB.instance.proxies
-      elements += DB.instance.anonymizers
+      elements += DB.instance.collectors
 
       # use one thread for each element
       threads = []
@@ -56,14 +56,15 @@ class NetworkController
               status = check_element p
             end
           rescue Exception => e
+            #TODO: remove this
             trace :debug, "FAILURE: #{e.message}"
-            trace :fatal, "EXCEPTION: [#{e.class}] " << e.backtrace.join("\n")
+            trace :debug, "EXCEPTION: [#{e.class}] " << e.backtrace.join("\n")
             # report the failing reason
             report_status(p, 'KO', e.message)
           end
 
           # send the results to db
-          report_status(p, 'OK', *status) unless status.nil? or status.empty?
+          report_status(p, *status) unless status.nil? or status.empty?
           
           # make sure to destroy the thread after the check
           Thread.exit
@@ -99,8 +100,8 @@ class NetworkController
     # the exceptions will be caught from the caller
     ssl_socket.connect
 
-    # pass the control to the protocol
-    proto = NCProto.new(element, ssl_socket)
+    # create a new NC protocol
+    proto = NCProto.new(ssl_socket)
 
     # authenticate with the component
     raise 'Cannot authenticate' unless proto.login
@@ -109,19 +110,34 @@ class NetworkController
     begin
       # get a command from the component
       command = proto.get_command
-
       # parse the commands
       case command
         when NCProto::PROTO_VERSION
-          proto.version
+          ver = proto.version
+          trace :info, "[NC] #{element['address']} is version #{ver}"
+          # update the db accordingly
+          DB.instance.update_proxy_version(element['proxy_id'], ver) unless element['proxy_id'].nil?
+          DB.instance.update_collector_version(element['collector_id'], ver) unless element['collector_id'].nil?
+
         when NCProto::PROTO_MONITOR
           result = proto.monitor
+
         when NCProto::PROTO_CONF
-          proto.conf
+          content = nil
+          if element['status'] == NCProto::COMPONENT_NEED_CONFIG then
+            trace :info, "[NC] #{element['address']} has a new configuration"
+            content = DB.instance.proxy_config(element['proxy_id']) unless element['proxy_id'].nil?
+            content = DB.instance.collector_config(element['collector_id']) unless element['collector_id'].nil?
+          end
+          proto.config(content)
+
         when NCProto::PROTO_LOG
-          proto.conf
+          time, type, desc = proto.log
+          DB.instance.proxy_add_log(element['proxy_id'], time, type, desc) unless element['proxy_id'].nil?
+          DB.instance.collector_add_log(element['collector_id'], time, type, desc) unless element['collector_id'].nil?
+
         when NCProto::PROTO_BYE
-          proto.bye
+          break
       end
 
     end until command.nil?

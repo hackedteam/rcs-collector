@@ -398,15 +398,45 @@ class DB
     return ret || []
   end
 
-  def anonymizers
+  def collectors
     # return empty if not available
     return [] unless @available
 
     # ask the db
-    ret = db_call :get_anonymizers
+    ret = db_call :get_collectors
 
     # return the results or empty on error
     return ret || []
+  end
+
+  def update_proxy_version(id, version)
+    return unless @available
+    db_call :proxy_set_version, id, version
+  end
+
+  def update_collector_version(id, version)
+    return unless @available
+    db_call :collector_set_version, id, version
+  end
+
+  def proxy_config(id)
+    return unless @available
+    db_call :proxy_get_config, id
+  end
+
+  def collector_config(id)
+    return unless @available
+    db_call :collector_get_config, id
+  end
+
+  def proxy_add_log(id, time, type, desc)
+    return unless @available
+    db_call :proxy_add_log, id, time, type, desc
+  end
+
+  def collector_add_log(id, time, type, desc)
+    return unless @available
+    db_call :collector_add_log, id, time, type, desc
   end
 
 end #DB
