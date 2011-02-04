@@ -123,6 +123,16 @@ class DB_xmlrpc
     end
   end
 
+  # network signature for NC
+  def network_signature
+    begin
+      return xmlrpc_call('sign.get', "network")
+    rescue Exception => e
+      trace :error, "Error calling sign.get: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
   # used to authenticate the backdoors
   def class_keys(build_id = '')
     begin

@@ -2,6 +2,9 @@
 #  Network Controller to update the status of the components in the RCS network
 #
 
+# relatives
+require_relative 'nc_protocol.rb'
+
 # from RCS::Common
 require 'rcs-common/trace'
 
@@ -20,23 +23,23 @@ class NetworkController
     # we are called from EventMachine, create a thread and return as soon as possible
     Thread.new do
 
-
       # retrieve the lists from the db
       elements = DB.instance.proxies
       elements += DB.instance.anonymizers
 
+      # use one thread for each element
       threads = []
 
       # keep only the remote anonymizers discarding the local collectors
       elements.delete_if {|x| x['type'] == 'LOCAL'}
 
       # keep only the elements to be polled
-      #elements.delete_if {|x| x['poll'] == 0}
+      elements.delete_if {|x| x['poll'] == 0}
 
       if not elements.empty? then
-        trace :info, "[NC] Checking #{elements.length} network elements..."
+        trace :info, "[NC] Handling #{elements.length} network elements..."
         # send the status to the db
-        send_status "Checking #{elements.length} network elements..."
+        send_status "Handling #{elements.length} network elements..."
       else
         # send the status to the db
         send_status "Idle..."
@@ -45,13 +48,23 @@ class NetworkController
       # contact every element
       elements.each do |p|
         threads << Thread.new {
+          status = []
           begin
-            Timeout::timeout(Config.instance.global['NC_INTERVAL'].to_i / 2) do
-              check_element p
+            # half the interval check is a good compromise for timeout
+            # we are sure that the operations will be finished before the next check
+            Timeout::timeout(Config.instance.global['NC_INTERVAL'] / 2) do
+              status = check_element p
             end
           rescue Exception => e
-            trace :warn, "[NC] #{p['address']} #{e.message}"
+            trace :debug, "FAILURE: #{e.message}"
+            trace :fatal, "EXCEPTION: [#{e.class}] " << e.backtrace.join("\n")
+            # report the failing reason
+            report_status(p, 'KO', e.message)
           end
+
+          # send the results to db
+          report_status(p, 'OK', *status) unless status.nil? or status.empty?
+          
           # make sure to destroy the thread after the check
           Thread.exit
         }
@@ -71,22 +84,52 @@ class NetworkController
 
 
   def self.check_element(element)
-    #TODO: implement the real check
-    puts element.inspect
 
+    # socket for the communication
     socket = TCPSocket.new(element['address'], element['port'])
 
+    # ssl encryption stuff
     ssl_context = OpenSSL::SSL::SSLContext.new()
     ssl_context.cert = OpenSSL::X509::Certificate.new(File.read(Dir.pwd + "/config/" + Config.instance.global['DB_CERT']))
     #ssl_context.key = OpenSSL::PKey::RSA.new(File.open("keys/MyCompanyClient.key"))
     ssl_socket = OpenSSL::SSL::SSLSocket.new(socket, ssl_context)
     ssl_socket.sync_close = true
+
+    # connection
+    # the exceptions will be caught from the caller
     ssl_socket.connect
 
-    ssl_socket.puts("GET / HTTP/1.0")
-    #ssl_socket.puts("")
+    # pass the control to the protocol
+    proto = NCProto.new(element, ssl_socket)
 
-    ssl_socket.close
+    # authenticate with the component
+    raise 'Cannot authenticate' unless proto.login
+
+    result = []
+    begin
+      # get a command from the component
+      command = proto.get_command
+
+      # parse the commands
+      case command
+        when NCProto::PROTO_VERSION
+          proto.version
+        when NCProto::PROTO_MONITOR
+          result = proto.monitor
+        when NCProto::PROTO_CONF
+          proto.conf
+        when NCProto::PROTO_LOG
+          proto.conf
+        when NCProto::PROTO_BYE
+          proto.bye
+      end
+
+    end until command.nil?
+
+    # close the connection
+    ssl_socket.sysclose
+
+    return result
   end
 
 
@@ -97,6 +140,25 @@ class NetworkController
     return "PUSHED", "text/html"
   end
 
+
+  def self.report_status(elem, status, message, disk=0, cpu=0, pcpu=0)
+    if not elem['proxy_id'].nil? then
+      component = "RCS::IPA::" + elem['proxy']
+    end
+    if not elem['collector_id'].nil? then
+      component = "RCS::ANON::" + elem['collector']
+    end
+
+    trace :info, "[NC] [#{component}] #{elem['address']} #{status}"
+
+    # create the stats hash
+    stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
+
+    # send the status to the db
+    DB.instance.update_status component, elem['address'], status, message, stats
+  end
+
+  
   def self.send_status(message)
     # report our status to the db
     component = "RCS::NetworkController"
