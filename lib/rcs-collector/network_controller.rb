@@ -20,67 +20,60 @@ class NetworkController
   extend RCS::Tracer
 
   def self.check
-    # we are called from EventMachine, create a thread and return as soon as possible
-    Thread.new do
 
-      # retrieve the lists from the db
-      elements = DB.instance.proxies
-      elements += DB.instance.collectors
+    # retrieve the lists from the db
+    elements = DB.instance.proxies
+    elements += DB.instance.collectors
 
-      # use one thread for each element
-      threads = []
+    # use one thread for each element
+    threads = []
 
-      # keep only the remote anonymizers discarding the local collectors
-      elements.delete_if {|x| x['type'] == 'LOCAL'}
+    # keep only the remote anonymizers discarding the local collectors
+    elements.delete_if {|x| x['type'] == 'LOCAL'}
 
-      # keep only the elements to be polled
-      elements.delete_if {|x| x['poll'] == 0}
+    # keep only the elements to be polled
+    elements.delete_if {|x| x['poll'] == 0}
 
-      if not elements.empty? then
-        trace :info, "[NC] Handling #{elements.length} network elements..."
-        # send the status to the db
-        send_status "Handling #{elements.length} network elements..."
-      else
-        # send the status to the db
-        send_status "Idle..."
-      end
-
-      # contact every element
-      elements.each do |p|
-        threads << Thread.new {
-          status = []
-          begin
-            # half the interval check is a good compromise for timeout
-            # we are sure that the operations will be finished before the next check
-            Timeout::timeout(Config.instance.global['NC_INTERVAL'] / 2) do
-              status = check_element p
-            end
-          rescue Exception => e
-            #TODO: remove this
-            trace :debug, "FAILURE: #{e.message}"
-            trace :debug, "EXCEPTION: [#{e.class}] " << e.backtrace.join("\n")
-            # report the failing reason
-            report_status(p, 'KO', e.message)
-          end
-
-          # send the results to db
-          report_status(p, *status) unless status.nil? or status.empty?
-          
-          # make sure to destroy the thread after the check
-          Thread.exit
-        }
-      end
-
-      # wait for all the threads to finish
-      threads.each do |t|
-        t.join
-      end
-
-      trace :info, "[NC] Network elements check completed"
-
-      # ensure to exit
-      Thread.exit
+    if not elements.empty? then
+      trace :info, "[NC] Handling #{elements.length} network elements..."
+      # send the status to the db
+      send_status "Handling #{elements.length} network elements..."
+    else
+      # send the status to the db
+      send_status "Idle..."
     end
+
+    # contact every element
+    elements.each do |p|
+      threads << Thread.new {
+        status = []
+        begin
+          # half the interval check is a good compromise for timeout
+          # we are sure that the operations will be finished before the next check
+          Timeout::timeout(Config.instance.global['NC_INTERVAL'] / 2) do
+            status = check_element p
+          end
+        rescue Exception => e
+          trace :debug, "[NC] #{p['address']} #{e.message}"
+          #trace :debug, "EXCEPTION: [#{e.class}] " << e.backtrace.join("\n")
+          # report the failing reason
+          report_status(p, 'KO', e.message)
+        end
+
+        # send the results to db
+        report_status(p, *status) unless status.nil? or status.empty?
+
+        # make sure to destroy the thread after the check
+        Thread.exit
+      }
+    end
+
+    # wait for all the threads to finish
+    threads.each do |t|
+      t.join
+    end
+
+    trace :info, "[NC] Network elements check completed"
   end
 
 

@@ -114,6 +114,9 @@ class Events
         # if we have epoll(), prefer it over select()
         EM.epoll
 
+        # set the thread pool size
+        EM.threadpool_size = 50
+
         # we are alive and ready to party
         Status.my_status = Status::OK
 
@@ -127,7 +130,7 @@ class Events
           HeartBeat.perform
 
           # set up the heartbeat (the interval is in the config)
-          EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { HeartBeat.perform }
+          EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { EM.defer(proc{ HeartBeat.perform }) }
 
           # timeout for the sessions (will destroy inactive sessions)
           EM::PeriodicTimer.new(60) { SessionManager.instance.timeout }
@@ -136,9 +139,9 @@ class Events
         # set up the network checks (the interval is in the config)
         if Config.instance.global['NC_ENABLED'] then
           # first heartbeat and checks
-          NetworkController.check
+          EM.defer(proc{ NetworkController.check })
           # subsequent checks
-          EM::PeriodicTimer.new(Config.instance.global['NC_INTERVAL']) { NetworkController.check }
+          EM::PeriodicTimer.new(Config.instance.global['NC_INTERVAL']) { EM.defer(proc{ NetworkController.check }) }
         end
 
       end
