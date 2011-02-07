@@ -17,41 +17,36 @@ class HeartBeat
   extend RCS::Tracer
 
   def self.perform
-    # we are called from EventMachine, create a thread and return as soon as possible
-    Thread.new do
-      # if the database connection has gone
-      # try to re-login to the database again
-      DB.instance.connect! if not DB.instance.connected?
+    # if the database connection has gone
+    # try to re-login to the database again
+    DB.instance.connect! if not DB.instance.connected?
 
-      # still no luck ?  return and wait for the next iteration
-      return unless DB.instance.connected?
+    # still no luck ?  return and wait for the next iteration
+    return unless DB.instance.connected?
 
-      # report our status to the db
-      component = "RCS::Collector"
-      # used only by NC
-      ip = ''
+    # report our status to the db
+    component = "RCS::Collector"
+    # used only by NC
+    ip = ''
 
-      # retrieve how many session we have
-      # this number represents the number of backdoor that are synchronizing
-      active_sessions = SessionManager.instance.length
+    # retrieve how many session we have
+    # this number represents the number of backdoor that are synchronizing
+    active_sessions = SessionManager.instance.length
 
-      # if we are serving backdoors, report it accordingly
-      message = (active_sessions > 0) ? "Serving #{active_sessions} sessions" : "Idle..."
+    # if we are serving backdoors, report it accordingly
+    message = (active_sessions > 0) ? "Serving #{active_sessions} sessions" : "Idle..."
 
-      # report our status
-      status = Status.my_status
-      disk = Status.disk_free
-      cpu = Status.cpu_load
-      pcpu = Status.my_cpu_load
+    # report our status
+    status = Status.my_status
+    disk = Status.disk_free
+    cpu = Status.cpu_load
+    pcpu = Status.my_cpu_load
 
-      # create the stats hash
-      stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
+    # create the stats hash
+    stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
-      # send the status to the db
-      DB.instance.update_status component, ip, status, message, stats
-
-      Thread.exit
-    end
+    # send the status to the db
+    DB.instance.update_status component, ip, status, message, stats
   end
 end
 

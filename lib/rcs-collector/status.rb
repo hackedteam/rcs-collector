@@ -51,8 +51,11 @@ class Status
     if avg.is_a? Array then
       # under unix like, there are 3 values (1, 15 and 15 minutes)
       load_last_minute = avg.first
+      # default values for systems where the number is not reported (linux)
+      num_cpu = 1
+      num_cpu = CPU.num_cpu if CPU.num_cpu
       # on multi core systems we have to divide by the number of CPUs
-      percentage = (load_last_minute / CPU.num_cpu * 100).floor
+      percentage = (load_last_minute / num_cpu * 100).floor
     else
       # under windows there is only one value that is the percentage
       percentage = avg
