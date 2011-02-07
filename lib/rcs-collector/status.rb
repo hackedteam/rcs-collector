@@ -32,7 +32,10 @@ class Status
   # returns the percentage of free space
   def self.disk_free
     # check the filesystem containing the current dir
-    stat = Filesystem.stat(File.dirname(Dir.pwd))
+    path = Dir.pwd
+    # windows just want the drive letter, won't work with full path
+    path = path.slice(0..2) if RUBY_PLATFORM.downcase.include?("mingw")
+    stat = Filesystem.stat(path)
     # get the free and total blocks
     free = stat.blocks_free.to_f
     total = stat.blocks.to_f

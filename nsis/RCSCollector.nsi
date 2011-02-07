@@ -141,9 +141,13 @@ Section "Install Section" SecInstall
     DetailPrint "done"
   ${EndIf}
     
-  ; disabel the NC if not requested      
+  ; disable the NC if not requested
   ${If} $serviceNetwork != ${BST_CHECKED}
     nsExec::Exec "$INSTDIR\Ruby\bin\ruby.exe $INSTDIR\Collector\bin\rcs-collector-config --no-network"
+  ${EndIf}
+  ; disable the Collector if not requested
+  ${If} $serviceCollector != ${BST_CHECKED}
+    nsExec::Exec "$INSTDIR\Ruby\bin\ruby.exe $INSTDIR\Collector\bin\rcs-collector-config --no-collector"
   ${EndIf}
     
   DetailPrint ""
@@ -280,12 +284,6 @@ Function FuncConfigureConnection
       IfFileExists "$INSTDIR\Collector\config\rcs-server.sig" 0 +2
 		Abort
    ${EndIf}
-   
-  ; Se non ho selezionato almeno un componente, non chiedere le credenziali di accesso al DB.
-  ${IfNot} $serviceCollector == ${BST_CHECKED} 
-  ${AndIfNot} $serviceNetwork == ${BST_CHECKED}
-    Abort
-  ${EndIf}
 
   !insertmacro MUI_HEADER_TEXT "Configuration settings: RCSDB connection" "Please enter configuration settings."
 
