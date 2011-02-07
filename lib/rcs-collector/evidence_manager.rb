@@ -69,6 +69,20 @@ class EvidenceManager
     trace :info, "[#{session[:instance]}] Sync has been timeouted"
   end
 
+  def sync_timeout_all
+    begin
+      Dir[REPO_DIR + '/*'].each do |e|
+        db = SQLite3::Database.open(e)
+        # update only if the status in IN_PROGRESS
+        # this will prevent erroneous overwrite of the IDLE status
+        db.execute("UPDATE info SET sync_status = #{SYNC_TIMEOUTED} WHERE sync_status = #{SYNC_IN_PROGRESS};")
+        db.close
+      end
+    rescue Exception => e
+      trace :warn, "Cannot update the repository: #{e.message}"
+    end
+  end
+
   def sync_end(session)
     # sanity check
     return unless File.exist?(REPO_DIR + '/' + session[:instance])

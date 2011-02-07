@@ -123,6 +123,7 @@ class NetworkController
           result = proto.monitor
 
         when NCProto::PROTO_CONF
+          #TODO: check the timeout on new conf
           content = nil
           if element['status'] == NCProto::COMPONENT_NEED_CONFIG then
             trace :info, "[NC] #{element['address']} has a new configuration"

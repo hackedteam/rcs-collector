@@ -84,6 +84,21 @@ class TestEvidenceManager < Test::Unit::TestCase
     assert_equal EvidenceManager::SYNC_IDLE, info['sync_status']
   end
 
+  def test_sync_timeout_all
+    EvidenceManager.instance.sync_start @session, *@ident, @now
+    EvidenceManager.instance.sync_timeout_all
+    info = EvidenceManager.instance.get_info @session[:instance]
+    assert_equal EvidenceManager::SYNC_TIMEOUTED, info['sync_status']
+  end
+
+  def test_sync_timeout_all_idle
+    EvidenceManager.instance.sync_start @session, *@ident, @now
+    EvidenceManager.instance.sync_end @session
+    EvidenceManager.instance.sync_timeout_all
+    info = EvidenceManager.instance.get_info @session[:instance]
+    assert_equal EvidenceManager::SYNC_IDLE, info['sync_status']
+  end
+
   def test_sync_end
     EvidenceManager.instance.sync_start @session, *@ident, @now
     EvidenceManager.instance.sync_end @session

