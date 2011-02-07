@@ -192,6 +192,17 @@ class EvidenceManager
 
   def run(options)
 
+    # delete all the instance with zero evidence pending and not in progress
+    if options[:purge] then
+      Dir[REPO_DIR + '/*'].each do |e|
+        entry = get_info(File.basename(e))
+        evidences = get_info_evidence(File.basename(e))
+        # IN_PROGRESS sync must be preserved
+        # evidences must be preserved
+        File.delete(e) if entry['sync_status'] != SYNC_IN_PROGRESS and evidences.length == 0
+      end
+    end
+
     entries = []
 
     # we want just one instance
@@ -307,15 +318,16 @@ class EvidenceManager
     options = {}
 
     optparse = OptionParser.new do |opts|
-      # Set a banner, displayed at the top of the help screen.
       opts.banner = "Usage: rcs-collector-status [options] [instance]"
 
-      # Define the options, and what they do
       opts.on( '-i', '--instance INSTANCE', String, 'Show statistics only for this INSTANCE' ) do |inst|
         options[:instance] = inst
       end
 
-      # This displays the help screen
+      opts.on( '-p', '--purge', 'Purge all the instance with no pending tasks' ) do
+        options[:purge] = true
+      end
+
       opts.on( '-h', '--help', 'Display this screen' ) do
         puts opts
         return 0
