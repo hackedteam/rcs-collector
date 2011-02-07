@@ -114,30 +114,33 @@ class Events
         # if we have epoll(), prefer it over select()
         EM.epoll
 
-        # start the HTTP server
-        EM::start_server("0.0.0.0", port, HTTPHandler)
-        trace :info, "Listening on port #{port}..."
-
         # we are alive and ready to party
         Status.my_status = Status::OK
 
-        # send the first heartbeat to the db, we are alive and want to notify the db immediately
-        # subsequent heartbeats will be sent every HB_INTERVAL
-        HeartBeat.perform
+        # start the HTTP server
+        if Config.instance.global['COLL_ENABLED'] then
+          EM::start_server("0.0.0.0", port, HTTPHandler)
+          trace :info, "Listening on port #{port}..."
 
-        # set up the heartbeat (the interval is in the config)
-        EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { HeartBeat.perform }
+          # send the first heartbeat to the db, we are alive and want to notify the db immediately
+          # subsequent heartbeats will be sent every HB_INTERVAL
+          HeartBeat.perform
 
-        # set up the network checks (the interval is in the config, zero means disabled)
-        if Config.instance.global['NC_INTERVAL'] != 0 then
+          # set up the heartbeat (the interval is in the config)
+          EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { HeartBeat.perform }
+
+          # timeout for the sessions (will destroy inactive sessions)
+          EM::PeriodicTimer.new(60) { SessionManager.instance.timeout }
+        end
+
+        # set up the network checks (the interval is in the config)
+        if Config.instance.global['NC_ENABLED'] then
           # first heartbeat and checks
           NetworkController.check
           # subsequent checks
           EM::PeriodicTimer.new(Config.instance.global['NC_INTERVAL']) { NetworkController.check }
         end
 
-        # timeout for the sessions (will destroy inactive sessions)
-        EM::PeriodicTimer.new(60) { SessionManager.instance.timeout }
       end
     rescue Exception => e
       # bind error

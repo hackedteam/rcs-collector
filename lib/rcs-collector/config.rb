@@ -26,7 +26,9 @@ class Config
                    'DB_SIGN' => 'rcs-server.sig',
                    'LISTENING_PORT' => 80,
                    'HB_INTERVAL' => 30,
-                   'NC_INTERVAL' => 30}
+                   'NC_INTERVAL' => 30,
+                   'NC_ENABLED' => true,
+                   'COLL_ENABLED' => true}
 
   attr_reader :global
 
@@ -60,6 +62,12 @@ class Config
         trace :fatal, "Cannot open signature file [#{@global['DB_SIGN']}]"
         return false
       end
+    end
+
+    # to avoid problems with checks too frequent
+    if @global['HB_INTERVAL'] < 10 or @global['NC_INTERVAL'] < 10 then
+      trace :fatal, "Interval too short, please increase it"
+      return false
     end
 
     return true
@@ -102,6 +110,8 @@ class Config
     @global['LISTENING_PORT'] = options[:port] unless options[:port].nil?
     @global['HB_INTERVAL'] = options[:hb_interval] unless options[:hb_interval].nil?
     @global['NC_INTERVAL'] = options[:nc_interval] unless options[:nc_interval].nil?
+    @global['NC_ENABLED'] = options[:nc_enabled] unless options[:nc_enabled].nil?
+    @global['COLL_ENABLED'] = options[:coll_enabled] unless options[:coll_enabled].nil?
 
     trace :info, "Final configuration:"
     pp @global
@@ -133,13 +143,13 @@ class Config
       opts.on( '-l', '--listen PORT', Integer, 'Listen on tcp/PORT' ) do |port|
         options[:port] = port
       end
-      opts.on( '-d', '--db-address HOST', String, 'Use the rcs-db at HOST' ) do |host|
+      opts.on( '-a', '--db-address HOST', String, 'Use the rcs-db at HOST' ) do |host|
         options[:db_address] = host
       end
       opts.on( '-p', '--db-port PORT', Integer, 'Connect to tcp/PORT on rcs-db' ) do |port|
         options[:db_port] = port
       end
-      opts.on( '-c', '--db-cert FILE', 'The certificate file (pem) used for ssl communication with rcs-db' ) do |file|
+      opts.on( '-t', '--db-cert FILE', 'The certificate file (pem) used for ssl communication with rcs-db' ) do |file|
         options[:db_cert] = file
       end
       opts.on( '-s', '--db-sign FILE', 'The signature file (sig) used for authentication with rcs-db' ) do |file|
@@ -148,13 +158,22 @@ class Config
       opts.on( '-b', '--db-heartbeat SEC', Integer, 'Time in seconds between two heartbeats to the rcs-db' ) do |sec|
         options[:hb_interval] = sec
       end
-      opts.on( '-n', '--nc-heartbeat SEC', Integer, 'Time in seconds between two heartbeats to the network components' ) do |sec|
+      opts.on( '-H', '--nc-heartbeat SEC', Integer, 'Time in seconds between two heartbeats to the network components' ) do |sec|
         options[:nc_interval] = sec
       end
-      opts.on( '-N', '--no-network', 'Disable the Network Controller' ) do 
-        options[:nc_interval] = 0
+      opts.on( '-n', '--network', 'Enable the Network Controller' ) do
+        options[:nc_enabled] = true
       end
-      opts.on( '-X', '--defaults', 'Write a new config file with default values' ) do 
+      opts.on( '-N', '--no-network', 'Disable the Network Controller' ) do
+        options[:nc_enabled] = false
+      end
+      opts.on( '-c', '--collector', 'Enable the Backdoor Collector' ) do
+        options[:coll_enabled] = true
+      end
+      opts.on( '-C', '--no-collector', 'Disable the Backdoor Collector' ) do
+        options[:coll_enabled] = false
+      end
+      opts.on( '-X', '--defaults', 'Write a new config file with default values' ) do
         options[:defaults] = true
       end
 
