@@ -47,11 +47,12 @@ class NetworkController
     elements.each do |p|
       threads << Thread.new {
         status = []
+        logs = []
         begin
-          # half the interval check is a good compromise for timeout
+          # three quarters of the interval check is a good compromise for timeout
           # we are sure that the operations will be finished before the next check
-          Timeout::timeout(Config.instance.global['NC_INTERVAL'] / 2) do
-            status = check_element p
+          Timeout::timeout(Config.instance.global['NC_INTERVAL'] * 0.75) do
+            status, logs = check_element p
           end
         rescue Exception => e
           trace :debug, "[NC] #{p['address']} #{e.message}"
@@ -60,9 +61,17 @@ class NetworkController
           report_status(p, 'KO', e.message)
         end
 
-        # send the results to db
+        # send the status to db
         report_status(p, *status) unless status.nil? or status.empty?
 
+        trace :debug, "[NC] #{p['address']} Inserting logs..." unless logs.empty?
+
+        # send the logs to db
+        logs.each do |log|
+          DB.instance.proxy_add_log(p['proxy_id'], *log) unless p['proxy_id'].nil?
+          DB.instance.collector_add_log(p['collector_id'], *log) unless p['collector_id'].nil?
+        end
+        
         # make sure to destroy the thread after the check
         Thread.exit
       }
@@ -97,9 +106,10 @@ class NetworkController
     proto = NCProto.new(ssl_socket)
 
     # authenticate with the component
-    raise 'Cannot authenticate' unless proto.login
+    raise 'Cannot authenticate' unless proto.login(DB.instance.network_signature)
 
     result = []
+    logs = []
     begin
       # get a command from the component
       command = proto.get_command
@@ -116,19 +126,20 @@ class NetworkController
           result = proto.monitor
 
         when NCProto::PROTO_CONF
-          #TODO: check the timeout on new conf
           content = nil
           if element['status'] == NCProto::COMPONENT_NEED_CONFIG then
-            trace :info, "[NC] #{element['address']} has a new configuration"
             content = DB.instance.proxy_config(element['proxy_id']) unless element['proxy_id'].nil?
             content = DB.instance.collector_config(element['collector_id']) unless element['collector_id'].nil?
+            trace :info, "[NC] #{element['address']} has a new configuration (#{content.length} bytes)"
           end
           proto.config(content)
 
         when NCProto::PROTO_LOG
           time, type, desc = proto.log
-          DB.instance.proxy_add_log(element['proxy_id'], time, type, desc) unless element['proxy_id'].nil?
-          DB.instance.collector_add_log(element['collector_id'], time, type, desc) unless element['collector_id'].nil?
+          # we have to be fast here, we cannot insert them directly in the db
+          # since it will take too much time and we have to finishe before the timeout
+          # return the array and let the caller insert them
+          logs << [time, type, desc]
 
         when NCProto::PROTO_BYE
           break
@@ -139,15 +150,33 @@ class NetworkController
     # close the connection
     ssl_socket.sysclose
 
-    return result
+    return result, logs
   end
 
-
+  # this method can be executed only by the DB
+  # and it is used to push a config to a network element without
+  # having to wait for the next heartbeat
   def self.push(host, content)
-    #TODO: implement the real push
-    #trace :debug, "network: #{Time.now} -> #{host}"
+    # retrieve the lists from the db
+    elements = DB.instance.proxies
+    elements += DB.instance.collectors
 
-    return "PUSHED", "text/html"
+    # keep only the selected host
+    elements.delete_if {|x| x['address'] != host}
+    element = elements.first
+
+    trace :info, "[NC] PUSHING to #{element['address']}"
+
+    begin
+      # contact the element
+      status = check_element element
+      # send the results to db
+      report_status(element, *status) unless status.nil? or status.empty?
+    rescue Exception => e
+      return e.message, "text/html"
+    end
+
+    return "OK", "text/html"
   end
 
 

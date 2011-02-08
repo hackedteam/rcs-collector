@@ -422,7 +422,7 @@ class DB_xmlrpc
 
   def proxy_add_log(id, time, type, desc)
     begin
-      xmlrpc_call('proxy.addlog', id, time, type, desc)
+      xmlrpc_call('proxy.addlog', id, type, time, desc)
     rescue Exception => e
       trace :error, "Error calling proxy.addlog: #{e.class} #{e.message}"
       propagate_error e
@@ -431,7 +431,7 @@ class DB_xmlrpc
 
   def collector_add_log(id, time, type, desc)
     begin
-      xmlrpc_call('collector.addlog', id, time, type, desc)
+      xmlrpc_call('collector.addlog', id, type, time, desc)
     rescue Exception => e
       trace :error, "Error calling collector.addlog: #{e.class} #{e.message}"
       propagate_error e

