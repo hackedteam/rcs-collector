@@ -88,6 +88,7 @@ class HTTPHandler < EM::Connection
       resp.headers['Set-Cookie'] = cookie unless cookie.nil?
       #TODO: investigate the keep-alive option
       #resp.keep_connection_open = true
+      resp.headers['Connection'] = 'close'
     end
 
     # Callback block to execute once the request is fulfilled

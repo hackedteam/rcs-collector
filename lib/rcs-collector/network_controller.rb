@@ -118,6 +118,7 @@ class NetworkController
         when NCProto::PROTO_VERSION
           ver = proto.version
           trace :info, "[NC] #{element['address']} is version #{ver}"
+          #TODO: version check for incompatibility
           # update the db accordingly
           DB.instance.update_proxy_version(element['proxy_id'], ver) unless element['proxy_id'].nil?
           DB.instance.update_collector_version(element['collector_id'], ver) unless element['collector_id'].nil?
@@ -148,7 +149,7 @@ class NetworkController
     end until command.nil?
 
     # close the connection
-    ssl_socket.sysclose
+    ssl_socket.close
 
     return result, logs
   end
