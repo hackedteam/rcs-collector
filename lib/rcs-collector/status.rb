@@ -14,6 +14,8 @@ include Sys
 module RCS
 module Collector
 
+#TODO: move this class to rcs-common
+
 class Status
   extend RCS::Tracer
 
