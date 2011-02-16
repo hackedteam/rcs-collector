@@ -8,7 +8,7 @@ gem 'sqlite3-ruby'
 gem 'uuidtools'
 gem 'sys-filesystem'
 gem 'sys-cpu'
-gem 'rcs-common' ">= 0.1.1"
+gem 'rcs-common', ">= 0.1.1"
 
 # Add dependencies to develop your gem here.
 # Include everything needed to run rake, tests, features, etc.

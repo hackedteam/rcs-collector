@@ -38,7 +38,7 @@ class NCProto
       # get the command
       command = @socket.read(HEADER_LENGTH)
       # decode the integer
-      return command.unpack('i').first
+      return command.unpack('I').first
     rescue EOFError
       return nil
     end
@@ -49,8 +49,8 @@ class NCProto
     command = auth
 
     # the common header
-    header = [PROTO_LOGIN].pack('i')
-    header += [command.length].pack('i')
+    header = [PROTO_LOGIN].pack('I')
+    header += [command.length].pack('I')
 
     # the whole message
     message = header + command
@@ -60,7 +60,7 @@ class NCProto
     response = @socket.read(HEADER_LENGTH)
 
     # check if everything is ok
-    return true if response.unpack('i') == [PROTO_OK]
+    return true if response.unpack('I') == [PROTO_OK]
 
     return false
   end
@@ -70,8 +70,8 @@ class NCProto
     response = @socket.read(16).delete("\x00")
 
     # send the OK
-    header = [PROTO_OK].pack('i')
-    header += [0].pack('i')
+    header = [PROTO_OK].pack('I')
+    header += [0].pack('I')
     @socket.write header
 
     return response
@@ -82,14 +82,14 @@ class NCProto
     status = @socket.read(16).delete("\x00")
 
     # 3 consecutive int
-    disk, cpu, pcpu = @socket.read(12).unpack('iii')
+    disk, cpu, pcpu = @socket.read(12).unpack('III')
 
     # the status description
     desc = @socket.read(1024).delete("\x00")
 
     # send the OK
-    header = [PROTO_OK].pack('i')
-    header += [0].pack('i')
+    header = [PROTO_OK].pack('I')
+    header += [0].pack('I')
     @socket.write header
 
     return [status, desc, disk, cpu, pcpu]
@@ -101,30 +101,30 @@ class NCProto
       # retro compatibility (260 byte array for the name)
       message = "config.zip".ljust(260, "\x00")
       # len of the file
-      message += [content.length].pack('i')
+      message += [content.length].pack('I')
   
       # send the CONF command
-      header = [PROTO_CONF].pack('i')
-      header += [message.length].pack('i')
+      header = [PROTO_CONF].pack('I')
+      header += [message.length].pack('I')
       @socket.write header + message + content
     end
 
     # the protocol support sending of multiple files in a loop
     # since we have only one file, notify the peer that there
     # are no more configs to be sent
-    header = [PROTO_NO].pack('i')
-    header += [0].pack('i')
+    header = [PROTO_NO].pack('I')
+    header += [0].pack('I')
     @socket.write header
   end
 
   def log
     # convert from C "struct tm" to ruby objects
     # tm_sec, tm_min, tm_hour, tm_mday, tm_mon, tm_year, tm_wday, tm_yday, tm_isdst
-    struct_tm = @socket.read(4 * 9).unpack('i*')
+    struct_tm = @socket.read(4 * 9).unpack('I*')
     time = Time.gm(*struct_tm, 0)
 
     # type of the log
-    type = @socket.read(4).unpack('i').first
+    type = @socket.read(4).unpack('I').first
     case type
       when LOG_INFO
         type = 'INFO'

