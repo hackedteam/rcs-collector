@@ -18,7 +18,7 @@ class EvidenceManager
   include Singleton
   include RCS::Tracer
 
-  REPO_DIR = Dir.pwd + '/evidences'
+  REPO_DIR = Dir.pwd + '/evidence'
 
   SYNC_IDLE = 0
   SYNC_IN_PROGRESS = 1
@@ -104,7 +104,7 @@ class EvidenceManager
     # store the evidence
     begin
       db = SQLite3::Database.open(REPO_DIR + '/' + session[:instance])
-      db.execute("INSERT INTO evidences (size, content) VALUES (#{size}, ? );", SQLite3::Blob.new(content))
+      db.execute("INSERT INTO evidence (size, content) VALUES (#{size}, ? );", SQLite3::Blob.new(content))
       db.close
     rescue Exception => e
       trace :warn, "Cannot insert into the repository: #{e.message}"
@@ -136,7 +136,7 @@ class EvidenceManager
 
     begin
       db = SQLite3::Database.open(REPO_DIR + '/' + instance)
-      ret = db.execute("SELECT size FROM evidences;")
+      ret = db.execute("SELECT size FROM evidence;")
       db.close
       return ret
     rescue Exception => e
@@ -169,7 +169,7 @@ class EvidenceManager
                                   source CHAR(256),
                                   sync_time INT,
                                   sync_status INT)",
-              "CREATE TABLE IF NOT EXISTS evidences (id INTEGER PRIMARY KEY ASC,
+              "CREATE TABLE IF NOT EXISTS evidence (id INTEGER PRIMARY KEY ASC,
                                                      size INT,
                                                      content BLOB)"
              ]
@@ -196,10 +196,10 @@ class EvidenceManager
     if options[:purge] then
       Dir[REPO_DIR + '/*'].each do |e|
         entry = get_info(File.basename(e))
-        evidences = get_info_evidence(File.basename(e))
+        evidence = get_info_evidence(File.basename(e))
         # IN_PROGRESS sync must be preserved
         # evidences must be preserved
-        File.delete(e) if entry['sync_status'] != SYNC_IN_PROGRESS and evidences.length == 0
+        File.delete(e) if entry['sync_status'] != SYNC_IN_PROGRESS and evidence.length == 0
       end
     end
 
@@ -212,14 +212,14 @@ class EvidenceManager
         puts "\nERROR: Invalid instance"
         return 1
       end
-      entry[:evidences] = get_info_evidence(options[:instance])
+      entry[:evidence] = get_info_evidence(options[:instance])
       entries << entry
     else
       # take the info from all the instances
       Dir[REPO_DIR + '/*'].each do |e|
         entry = get_info(File.basename(e))
         unless entry.nil? then
-          entry[:evidences] = get_info_evidence(File.basename(e))
+          entry[:evidence] = get_info_evidence(File.basename(e))
           entries << entry
         end
       end
@@ -244,8 +244,8 @@ class EvidenceManager
       time = Time.at(e['sync_time'])
       time = time.to_s.split(' +').first
       status = status_to_s(e['sync_status'])
-      count = e[:evidences].length.to_s
-      size = size_string(e[:evidences])
+      count = e[:evidence].length.to_s
+      size = size_string(e[:evidence])
 
       puts "|#{e['instance'].center(42)}|#{e['subtype'].center(12)}| #{time} |#{status.center(13)}|#{count.rjust(5)} |#{size.rjust(11)} |"
     end
@@ -256,7 +256,7 @@ class EvidenceManager
 
     # detailed information only if one instance was specified
     if options[:instance] then
-      entry.delete(:evidences)
+      entry.delete(:evidence)
       # cleanup the duplicates
       entry.delete_if { |key, value| key.class != String }
       pp entry

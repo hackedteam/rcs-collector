@@ -64,4 +64,4 @@ config/config.yaml
 lib/rcs-collector-release
 
 # evidences
-evidences/*
+evidence/*
