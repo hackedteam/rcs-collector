@@ -4,11 +4,10 @@
 
 # relatives
 require_relative 'sessions.rb'
-require_relative 'status.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
-
+require 'rcs-common/status'
 
 module RCS
 module Collector

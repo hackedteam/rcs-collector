@@ -18,7 +18,6 @@ module Parser
   include RCS::Tracer
 
   # parse a request from a client
-  #
   def http_parse(req_method, req_uri, req_cookie, req_content)
 
     # default values
@@ -29,6 +28,7 @@ module Parser
     case req_method
       when 'GET'
         # serve the requested file
+        #TODO: differentiate on the user agent
         resp_content, resp_content_type = http_get_file req_uri
 
       when 'POST'
@@ -36,6 +36,7 @@ module Parser
         resp_content, resp_content_type, resp_cookie = Protocol.parse @peer, req_uri, req_cookie, req_content
 
       when 'PUT'
+        #TODO: allow upload of files in the public dir from db
         # send a PUSH notification to the Network Element
         # only the DB is authorized to send PUSH commands
         if @peer.eql? Config.instance.global['DB_ADDRESS'] then

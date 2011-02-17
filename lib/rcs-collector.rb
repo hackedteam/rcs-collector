@@ -11,5 +11,3 @@ elsif File.directory?(Dir.pwd + '/lib/rcs-collector')
 else
   puts "FATAL: cannot find any rcs-collector code!"
 end
-
-

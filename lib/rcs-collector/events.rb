@@ -7,10 +7,10 @@ require_relative 'heartbeat.rb'
 require_relative 'parser.rb'
 require_relative 'network_controller.rb'
 require_relative 'sessions.rb'
-require_relative 'status.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
+require 'rcs-common/status'
 
 # system
 require 'eventmachine'

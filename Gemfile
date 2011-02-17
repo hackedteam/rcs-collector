@@ -6,9 +6,7 @@ gem 'eventmachine'
 gem 'eventmachine_httpserver', ">= 0.2.2"
 gem 'sqlite3-ruby'
 gem 'uuidtools'
-gem 'sys-filesystem'
-gem 'sys-cpu'
-gem 'rcs-common', ">= 0.1.1"
+gem 'rcs-common', ">= 0.1.3"
 
 # Add dependencies to develop your gem here.
 # Include everything needed to run rake, tests, features, etc.
@@ -17,4 +15,9 @@ group :development do
   gem "jeweler", "~> 1.5.2"
   gem 'rcov'
   gem 'test-unit'
+
+  #git "git@rcs-dev:rcs-common.git", :branch => "devel" do
+  #  gem "rcs-common"
+  #end
+  #gem "rcs-common", :path => "../rcs-common"
 end
