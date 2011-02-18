@@ -2,7 +2,7 @@ source "http://rubygems.org"
 # Add dependencies required to use your gem here.
 
 gem 'eventmachine'
-git "git@github.com:alor/evma_httpserver.git", :branch => "master" do
+git "git://github.com/alor/evma_httpserver.git", :branch => "master" do
   gem 'eventmachine_httpserver', ">= 0.2.2"
 end
 gem 'sqlite3-ruby'
