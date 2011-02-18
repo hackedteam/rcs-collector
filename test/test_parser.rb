@@ -12,7 +12,7 @@ class TestParser < Test::Unit::TestCase
 
   def setup
     # ensure the directory is present
-    Dir::mkdir(Dir.pwd + '/public') if not File.directory?(Dir.pwd + '/public')
+    Dir::mkdir(Dir.pwd + RCS::Collector::PUBLIC_DIR) if not File.directory?(Dir.pwd + RCS::Collector::PUBLIC_DIR)
     @headers = ["User-Agent: Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_6; en-US)"]
   end
 
@@ -25,12 +25,12 @@ class TestParser < Test::Unit::TestCase
 
   def test_parser_get_file_in_public
     # create the file to be retrieved
-    File.open(Dir.pwd + '/public/test.cod', 'w') { |f| f.write('this is a test') }
+    File.open(Dir.pwd + RCS::Collector::PUBLIC_DIR + '/test.cod', 'w') { |f| f.write('this is a test') }
 
     c = Classy.new
     content, type = c.http_get_file(@headers, "/test.cod")
 
-    File.delete(Dir.pwd + '/public/test.cod')
+    File.delete(Dir.pwd + RCS::Collector::PUBLIC_DIR + '/test.cod')
     
     assert_equal 'this is a test', content
     assert_equal 'application/vnd.rim.cod', type
@@ -53,16 +53,52 @@ class TestParser < Test::Unit::TestCase
 
   def test_parser_get_file_with_specific_platform
     # create the file for macos
-    File.open(Dir.pwd + '/public/test.app', 'w') { |f| f.write('this is a test app') }
+    File.open(Dir.pwd + RCS::Collector::PUBLIC_DIR + '/test.app', 'w') { |f| f.write('this is a test app') }
 
     c = Classy.new
     # ask for 'test', we should receive the test.app file
     content, type = c.http_get_file(@headers, "/test")
 
-    File.delete(Dir.pwd + '/public/test.app')
+    File.delete(Dir.pwd + RCS::Collector::PUBLIC_DIR + '/test.app')
 
     assert_equal 'this is a test app', content
     assert_equal 'binary/octet-stream', type
+  end
+
+  def test_parser_put_file
+    c = Classy.new
+    test_file = '/test-put-file'
+    test_content = 'this is a test'
+
+    # this should create the file
+    ret, type = c.http_put_file(test_file, test_content)
+
+    assert_equal 'OK', ret
+    assert_equal 'text/html', type
+    assert_true File.exist?(Dir.pwd + RCS::Collector::PUBLIC_DIR + test_file)
+    assert_equal test_content, File.read(Dir.pwd + RCS::Collector::PUBLIC_DIR + test_file)
+    
+    # cleanup the test file
+    File.delete(Dir.pwd + RCS::Collector::PUBLIC_DIR + test_file)
+  end
+
+  def test_parser_put_file_with_subdir
+    c = Classy.new
+    test_dir = '/test-dir'
+    test_file = '/test-put-file'
+    test_content = 'this is a test'
+
+    # this should create the file
+    ret, type = c.http_put_file(test_dir + test_file, test_content)
+
+    assert_equal 'OK', ret
+    assert_equal 'text/html', type
+    assert_true File.exist?(Dir.pwd + RCS::Collector::PUBLIC_DIR + test_dir + test_file)
+    assert_equal test_content, File.read(Dir.pwd + RCS::Collector::PUBLIC_DIR + test_dir + test_file)
+
+    # cleanup the test file
+    File.delete(Dir.pwd + RCS::Collector::PUBLIC_DIR + test_dir + test_file)
+    Dir.delete(Dir.pwd + RCS::Collector::PUBLIC_DIR + test_dir)
   end
 
 end

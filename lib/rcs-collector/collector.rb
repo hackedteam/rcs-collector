@@ -17,6 +17,8 @@ require 'yaml'
 module RCS
 module Collector
 
+PUBLIC_DIR = '/public'
+
 class Application
   include RCS::Tracer
 
@@ -34,7 +36,7 @@ class Application
     end
 
     # ensure the public and log directory are present
-    Dir::mkdir(Dir.pwd + '/public') if not File.directory?(Dir.pwd + '/public')
+    Dir::mkdir(Dir.pwd + PUBLIC_DIR) if not File.directory?(Dir.pwd + PUBLIC_DIR)
     Dir::mkdir(Dir.pwd + '/log') if not File.directory?(Dir.pwd + '/log')
 
     # initialize the tracing facility

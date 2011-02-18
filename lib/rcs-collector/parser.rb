@@ -35,11 +35,16 @@ module Parser
         resp_content, resp_content_type, resp_cookie = Protocol.parse @peer, req_uri, req_cookie, req_content
 
       when 'PUT'
-        #TODO: allow upload of files in the public dir from db
-        # send a PUSH notification to the Network Element
-        # only the DB is authorized to send PUSH commands
+        # only the DB is authorized to send PUT commands
         if @peer.eql? Config.instance.global['DB_ADDRESS'] then
-          resp_content, resp_content_type = NetworkController.push req_uri.delete('/'), req_content
+
+          if req_uri.start_with?('/RCS-NC_') then
+            # this is a request for a network element
+            resp_content, resp_content_type = NetworkController.push req_uri.delete('/RCS-NC_'), req_content
+          else
+            # this is a request to save a file in the public dir
+            resp_content, resp_content_type = http_put_file req_uri, req_content
+          end
         else
           trace :warn, "HACK ALERT: #{@peer} is trying to send PUT [#{req_uri}] commands!!!"
         end
@@ -84,7 +89,7 @@ module Parser
     os, ext = http_get_os(headers)
 
     # search the file in the public directory
-    file_path = Dir.pwd + '/public' + uri
+    file_path = Dir.pwd + PUBLIC_DIR + uri
 
     trace :info, "[#{@peer}][#{os}] serving #{file_path}"
 
@@ -99,7 +104,7 @@ module Parser
     # if the real path starts with our public directory
     # it means that we are inside the directory and the uri
     # has not escaped from it
-    if real.start_with? Dir.pwd + '/public' then
+    if real.start_with? Dir.pwd + PUBLIC_DIR then
       # load the content of the file
       begin
         content = File.read(file_path) if File.exist?(file_path) and File.file?(file_path)
@@ -124,6 +129,7 @@ module Parser
     return content, type
   end
 
+  # returns the operating system of the requester
   def http_get_os(headers)
     # extract the user-agent
     headers.keep_if { |val| val['User-Agent:']}
@@ -142,6 +148,31 @@ module Parser
     return 'android', '.apk' if user_agent['Android;']
     
     return 'unknown', ''
+  end
+
+  # save a file in the /public directory
+  def http_put_file(uri, content)
+    begin
+      # split the path in all the subdir and the filename
+      dirs = uri.split('/').keep_if {|x| x.length > 0}
+      file = dirs.pop
+      if dirs.length == 0 then
+        File.open(Dir.pwd + PUBLIC_DIR + '/' + file, 'wb') { |f| f.write content }
+      else
+        # create all the subdirs
+        path = Dir.pwd + PUBLIC_DIR
+        dirs.each do |d|
+          path += '/' + d
+          Dir.mkdir(path)
+        end
+        # and then the file
+        File.open(path + '/' + file, 'wb') { |f| f.write content }
+      end
+    rescue Exception => e
+      return e.message, "text/html"
+    end
+
+    return 'OK', 'text/html'
   end
 
 end #Parser
