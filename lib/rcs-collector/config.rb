@@ -65,7 +65,7 @@ class Config
     end
 
     # to avoid problems with checks too frequent
-    if @global['HB_INTERVAL'] < 10 or @global['NC_INTERVAL'] < 10 then
+    if (@global['HB_INTERVAL'] and @global['HB_INTERVAL'] < 10) or (@global['NC_INTERVAL'] and @global['NC_INTERVAL'] < 10) then
       trace :fatal, "Interval too short, please increase it"
       return false
     end
