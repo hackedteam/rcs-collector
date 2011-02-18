@@ -19,6 +19,9 @@ module Collector
 class NetworkController
   extend RCS::Tracer
 
+  # the minimum requested version of a component in order to work
+  MIN_VERSION = 2011033101
+  
   def self.check
 
     # retrieve the lists from the db
@@ -118,10 +121,13 @@ class NetworkController
         when NCProto::PROTO_VERSION
           ver = proto.version
           trace :info, "[NC] #{element['address']} is version #{ver}"
-          #TODO: version check for incompatibility
+
           # update the db accordingly
           DB.instance.update_proxy_version(element['proxy_id'], ver) unless element['proxy_id'].nil?
           DB.instance.update_collector_version(element['collector_id'], ver) unless element['collector_id'].nil?
+
+          # version check for incompatibility
+          raise "Version too old, please update the component." if ver.to_i < MIN_VERSION
 
         when NCProto::PROTO_MONITOR
           result = proto.monitor
