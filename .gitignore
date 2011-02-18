@@ -65,3 +65,6 @@ lib/rcs-collector-release
 
 # evidences
 evidence/*
+
+# public
+public
