@@ -235,7 +235,7 @@ class EvidenceManager
     puts
     puts table_line
     puts '|' + 'instance'.center(42) + '|' + 'subtype'.center(12) + '|' +
-         'last sync time'.center(21) + '|' + 'status'.center(13) + '|' +
+         'last sync time UTC'.center(21) + '|' + 'status'.center(13) + '|' +
          'logs'.center(6) + '|' + 'size'.center(12) + '|'
     puts table_line
 
