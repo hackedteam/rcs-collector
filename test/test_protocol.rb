@@ -3,6 +3,12 @@ require 'rcs-common'
 require 'singleton'
 
 module RCS
+
+class EvidenceManager
+  def trace(a, b)
+  end
+end
+
 module Collector
 
 # dirty hack to fake the trace function
