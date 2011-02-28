@@ -46,7 +46,8 @@ class EvidenceManager
                                            '#{device}',
                                            '#{source}',
                                            #{time.to_i},
-                                           #{SYNC_IN_PROGRESS});")
+                                           #{SYNC_IN_PROGRESS},
+                                           '');")
       db.close
     rescue Exception => e
       trace :warn, "Cannot insert into the repository: #{e.message}"
@@ -160,18 +161,19 @@ class EvidenceManager
 
     # the schema of repository
     schema = ["CREATE TABLE IF NOT EXISTS info (bid INT,
-                                  build CHAR(16),
-                                  instance CHAR(40),
-                                  subtype CHAR(16),
-                                  version INT,
-                                  user CHAR(256),
-                                  device CHAR(256),
-                                  source CHAR(256),
-                                  sync_time INT,
-                                  sync_status INT)",
+                                                build CHAR(16),
+                                                instance CHAR(40),
+                                                subtype CHAR(16),
+                                                version INT,
+                                                user CHAR(256),
+                                                device CHAR(256),
+                                                source CHAR(256),
+                                                sync_time INT,
+                                                sync_status INT,
+                                                key CHAR(32))",
               "CREATE TABLE IF NOT EXISTS evidence (id INTEGER PRIMARY KEY ASC,
-                                                     size INT,
-                                                     content BLOB)"
+                                                    size INT,
+                                                    content BLOB)"
              ]
 
     # create all the tables
