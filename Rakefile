@@ -15,7 +15,7 @@ require 'jeweler'
 Jeweler::Tasks.new do |gem|
   # gem is a Gem::Specification... see http://docs.rubygems.org/read/chapter/20 for more options
   gem.name = "rcs-collector"
-  gem.homepage = "http://rcs-dev/cgi-bin/gitweb.cgi?p=collector.git"
+  gem.homepage = "http://rcs-dev/cgi-bin/gitweb.cgi?p=rcs-collector.git"
   gem.license = "MIT"
   gem.summary = %Q{The RCS Evidence Collector}
   gem.description = %Q{This service is used to communicate with the backdoors during the synchronization phase}

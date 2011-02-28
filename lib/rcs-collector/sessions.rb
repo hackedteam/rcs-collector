@@ -2,11 +2,9 @@
 #  Session Manager, manages all the cookies
 #
 
-# relatives
-require_relative 'evidence_manager.rb'
-
 # from RCS::Common
 require 'rcs-common/trace'
+require 'rcs-common/evidence_manager'
 
 # system
 require 'singleton'

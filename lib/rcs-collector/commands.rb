@@ -5,11 +5,11 @@
 # relatives
 require_relative 'db.rb'
 require_relative 'sessions.rb'
-require_relative 'evidence_manager.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
 require 'rcs-common/pascalize'
+require 'rcs-common/evidence_manager'
 
 # system
 
@@ -61,7 +61,10 @@ module Commands
     # get the time in UTC
     now = Time.now - Time.now.utc_offset
 
-    # notify the pusher that the sync is in progress    
+    # notify the database that the sync is in progress
+    DB.instance.sync_for session[:bid], version, user_id, device_id, source_id, now
+
+    # notify the Evidence Manager that the sync is in progress
     EvidenceManager.instance.sync_start session, version, user_id, device_id, source_id, now
 
     # response to the request
