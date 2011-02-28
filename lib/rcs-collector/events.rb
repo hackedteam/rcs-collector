@@ -40,11 +40,12 @@ class HTTPHandler < EM::Connection
 
     # get the peer name
     @peer_port, @peer = Socket.unpack_sockaddr_in(get_peername)
-    trace :debug, "Connection from #{@peer}:#{@peer_port}"
+    @network_peer = @peer
+    trace :debug, "Connection from #{@network_peer}:#{@peer_port}"
   end
 
   def unbind
-    trace :debug, "Connection closed #{@peer}:#{@peer_port}"
+    trace :debug, "Connection closed #{@network_peer}:#{@peer_port}"
   end
 
   def process_http_request

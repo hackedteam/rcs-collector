@@ -31,6 +31,8 @@ module Parser
         resp_content, resp_content_type = http_get_file http_headers, req_uri
 
       when 'POST'
+        # get the peer ip address if it was forwarded by a proxy
+        @peer = http_get_forwarded_peer(http_headers) || @peer
         # the REST protocol for synchronization
         resp_content, resp_content_type, resp_cookie = Protocol.parse @peer, req_uri, req_cookie, req_content
 
@@ -173,6 +175,20 @@ module Parser
     end
 
     return 'OK', 'text/html'
+  end
+
+  # return the content of the X-Forwarded-For header
+  def http_get_forwarded_peer(headers)
+    # extract the XFF
+    headers.keep_if { |val| val['X-Forwarded-For:']}
+    xff = headers.first
+    # remove the x-forwarded-for: part
+    xff.slice!(0..16)
+    # split the peers list
+    peers = xff.split(',')
+    trace :info, "[#{@peer}] has forwarded the connection for [#{peers.first}]"
+    # we just want the first peer that is the original one
+    return peers.first
   end
 
 end #Parser
