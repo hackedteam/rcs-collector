@@ -182,6 +182,8 @@ module Parser
     # extract the XFF
     headers.keep_if { |val| val['X-Forwarded-For:']}
     xff = headers.first
+    # no header
+    return nil if xff.nil?
     # remove the x-forwarded-for: part
     xff.slice!(0..16)
     # split the peers list
