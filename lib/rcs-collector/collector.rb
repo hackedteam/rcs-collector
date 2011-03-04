@@ -84,7 +84,7 @@ class Application
       EvidenceManager.sync_timeout_all
 
       # transfer all the previously cached evidence, if any
-      EvidenceTransfer.instance.send_cached
+      EvidenceTransfer.send_cached
 
       # enter the main loop (hopefully will never exit from it)
       Events.new.setup Config.global['LISTENING_PORT']

@@ -279,10 +279,10 @@ module Commands
     # send the evidence to the db
     begin
       # store the evidence in the db
-      EvidenceManager.instance.store_evidence session, size, message
+      id = EvidenceManager.store_evidence session, size, message
 
       # notify the transfer manager that an evidence is available
-      EvidenceTransfer.instance.notify session
+      EvidenceTransfer.notify session[:instance], id
 
       trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes)"
     rescue Exception => e
