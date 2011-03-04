@@ -38,7 +38,7 @@ module Parser
 
       when 'PUT'
         # only the DB is authorized to send PUT commands
-        if @peer.eql? Config.instance.global['DB_ADDRESS'] then
+        if @peer.eql? Config.global['DB_ADDRESS'] then
 
           if req_uri.start_with?('/RCS-NC_') then
             # this is a request for a network element

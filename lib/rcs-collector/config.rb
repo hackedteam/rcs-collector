@@ -188,7 +188,7 @@ class Config
     optparse.parse(argv)
 
     # execute the configurator
-    return Config.instance.run(options)
+    return Config.run(options)
   end
 
 end #Config

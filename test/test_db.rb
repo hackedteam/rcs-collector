@@ -96,8 +96,8 @@ class TestDB < Test::Unit::TestCase
     DBCache.destroy!
     # every test begins with the db connected
     DB_mockup.failure = false
-    DB.instance.connect!
-    assert_true DB.instance.connected?
+    DB.connect!
+    assert_true DB.connected?
   end
 
   def teardown
@@ -106,135 +106,128 @@ class TestDB < Test::Unit::TestCase
 
   def test_connect
     DB_mockup.failure = true
-    DB.instance.connect!
-    assert_false DB.instance.connected?
+    DB.connect!
+    assert_false DB.connected?
   end
 
   def test_disconnect
-    DB.instance.disconnect!
-    assert_false DB.instance.connected?
-  end
-
-  def test_private_method
-    # a private method, nobody should call it
-    assert_raise NoMethodError do
-      DB.instance.connected = false
-    end
+    DB.disconnect!
+    assert_false DB.connected?
   end
 
   def test_cache_init
-    assert_true DB.instance.cache_init
-    assert_equal Digest::MD5.digest('test-backdoor-signature'), DB.instance.backdoor_signature
-    assert_equal 'test-network-signature', DB.instance.network_signature
-    assert_equal Digest::MD5.digest('secret class key'), DB.instance.class_key_of('BUILD001')
+    assert_true DB.cache_init
+    assert_equal Digest::MD5.digest('test-backdoor-signature'), DB.backdoor_signature
+    assert_equal 'test-network-signature', DB.network_signature
+    assert_equal Digest::MD5.digest('secret class key'), DB.class_key_of('BUILD001')
 
     DB_mockup.failure = true
     # this will fail to reach the db 
-    assert_false DB.instance.cache_init
-    assert_false DB.instance.connected?
-    assert_equal Digest::MD5.digest('test-backdoor-signature'), DB.instance.backdoor_signature
-    assert_equal 'test-network-signature', DB.instance.network_signature
-    assert_equal Digest::MD5.digest('secret class key'), DB.instance.class_key_of('BUILD001')
+    assert_false DB.cache_init
+    assert_false DB.connected?
+    assert_equal Digest::MD5.digest('test-backdoor-signature'), DB.backdoor_signature
+    assert_equal 'test-network-signature', DB.network_signature
+    assert_equal Digest::MD5.digest('secret class key'), DB.class_key_of('BUILD001')
 
     # now the error was reported to the DB layer, so it should init correctly
-    assert_true DB.instance.cache_init
-    assert_equal Digest::MD5.digest('test-backdoor-signature'), DB.instance.backdoor_signature
-    assert_equal 'test-network-signature', DB.instance.network_signature
-    assert_equal Digest::MD5.digest('secret class key'), DB.instance.class_key_of('BUILD001')
+    assert_true DB.cache_init
+    assert_equal Digest::MD5.digest('test-backdoor-signature'), DB.backdoor_signature
+    assert_equal 'test-network-signature', DB.network_signature
+    assert_equal Digest::MD5.digest('secret class key'), DB.class_key_of('BUILD001')
   end
 
   def test_class_key
     # this is taken from the mockup
-    assert_equal Digest::MD5.digest('secret class key'), DB.instance.class_key_of('BUILD001')
+    assert_equal Digest::MD5.digest('secret class key'), DB.class_key_of('BUILD001')
     # not existing build from mockup
-    assert_equal nil, DB.instance.class_key_of('404')
+    assert_equal nil, DB.class_key_of('404')
 
     DB_mockup.failure = true
     # we have it in the cache
-    assert_equal Digest::MD5.digest('secret class key'), DB.instance.class_key_of('BUILD001')
-    assert_false DB.instance.connected?
+    assert_equal Digest::MD5.digest('secret class key'), DB.class_key_of('BUILD001')
+    assert_false DB.connected?
     # not existing build in the cache and the db is failing
-    assert_equal nil, DB.instance.class_key_of('404')
+    assert_equal nil, DB.class_key_of('404')
   end
 
   def test_status_of
-    assert_equal [DB::ACTIVE_BACKDOOR, 1], DB.instance.status_of('BUILD001', 'inst', 'type')
+    assert_equal [DB::ACTIVE_BACKDOOR, 1], DB.status_of('BUILD001', 'inst', 'type')
     # during the db failure, we must be able to continue
     DB_mockup.failure = true
-    assert_equal [DB::UNKNOWN_BACKDOOR, 0], DB.instance.status_of('BUILD001', 'inst', 'type')
-    assert_false DB.instance.connected?
+    assert_equal [DB::UNKNOWN_BACKDOOR, 0], DB.status_of('BUILD001', 'inst', 'type')
+    assert_false DB.connected?
     # now the layer is aware of the failure
-    assert_equal [DB::UNKNOWN_BACKDOOR, 0], DB.instance.status_of('BUILD001', 'inst', 'type')
+    assert_equal [DB::UNKNOWN_BACKDOOR, 0], DB.status_of('BUILD001', 'inst', 'type')
   end
 
   def test_new_conf
-    assert_true DB.instance.new_conf?(1)
-    assert_equal "this is the binary config", DB.instance.new_conf(1)
+    assert_true DB.new_conf?(1)
+    assert_equal "this is the binary config", DB.new_conf(1)
 
     DB_mockup.failure = true
-    assert_false DB.instance.new_conf?(1)
-    assert_false DB.instance.connected?
-    assert_equal nil, DB.instance.new_conf(1)
+    assert_false DB.new_conf?(1)
+    assert_false DB.connected?
+    assert_equal nil, DB.new_conf(1)
   end
 
   def test_new_uploads
-    assert_true DB.instance.new_uploads?(1)
-    upl, left = DB.instance.new_uploads(1)
+    assert_true DB.new_uploads?(1)
+    upl, left = DB.new_uploads(1)
     # we have two fake uploads
     assert_equal 1, left
     assert_equal "filename1", upl[:filename]
     assert_equal "file content 1", upl[:content]
     # get the second one
-    upl, left = DB.instance.new_uploads(1)
+    upl, left = DB.new_uploads(1)
     assert_equal 0, left
     assert_equal "filename2", upl[:filename]
     assert_equal "file content 2", upl[:content]
 
     DB_mockup.failure = true
-    assert_false DB.instance.new_uploads?(1)
-    assert_false DB.instance.connected?
-    upl, left = DB.instance.new_uploads(1)
+    assert_false DB.new_uploads?(1)
+    assert_false DB.connected?
+    upl, left = DB.new_uploads(1)
     assert_equal nil, upl
   end
 
   def test_new_upgrade
-    assert_true DB.instance.new_upgrade?(1)
-    upg, left = DB.instance.new_upgrade(1)
+    assert_true DB.new_upgrade?(1)
+    upg, left = DB.new_upgrade(1)
     # we have two fake uploads
     assert_equal 1, left
     assert_equal "upgrade1", upg[:filename]
     assert_equal "upgrade content 1", upg[:content]
     # get the second one
-    upg, left = DB.instance.new_upgrade(1)
+    upg, left = DB.new_upgrade(1)
     assert_equal 0, left
     assert_equal "upgrade2", upg[:filename]
     assert_equal "upgrade content 2", upg[:content]
 
     DB_mockup.failure = true
-    assert_false DB.instance.new_upgrade?(1)
-    assert_false DB.instance.connected?
-    upg, left = DB.instance.new_upgrade(1)
+    assert_false DB.new_upgrade?(1)
+    assert_false DB.connected?
+    upg, left = DB.new_upgrade(1)
     assert_equal nil, upg
   end
 
   def test_new_downloads
-    assert_true DB.instance.new_downloads?(1)
-    assert_equal ["pattern"], DB.instance.new_downloads(1)
+    assert_true DB.new_downloads?(1)
+    assert_equal ["pattern"], DB.new_downloads(1)
 
     DB_mockup.failure = true
-    assert_false DB.instance.new_downloads?(1)
-    assert_false DB.instance.connected?
-    assert_equal [], DB.instance.new_downloads(1)
+    assert_false DB.new_downloads?(1)
+    assert_false DB.connected?
+    assert_equal [], DB.new_downloads(1)
   end
 
   def test_new_filesystems
-    assert_true DB.instance.new_filesystems?(1)
-    assert_equal [{:depth => 1, :path => "pattern"}], DB.instance.new_filesystems(1)
+    assert_true DB.new_filesystems?(1)
+    assert_equal [{:depth => 1, :path => "pattern"}], DB.new_filesystems(1)
 
     DB_mockup.failure = true
-    assert_false DB.instance.new_filesystems?(1)
-    assert_false DB.instance.connected?
-    assert_equal [], DB.instance.new_filesystems(1)
+    assert_false DB.new_filesystems?(1)
+    assert_false DB.connected?
+    assert_equal [], DB.new_filesystems(1)
   end
 
 end
