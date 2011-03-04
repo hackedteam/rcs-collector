@@ -4,9 +4,9 @@
 
 # from RCS::Common
 require 'rcs-common/trace'
+require 'rcs-common/flatsingleton'
 
 # system
-require 'singleton'
 require 'yaml'
 require 'pp'
 require 'optparse'
@@ -16,6 +16,7 @@ module Collector
 
 class Config
   include Singleton
+  extend FlatSingleton
   include Tracer
 
   CONF_FILE = '/config/config.yaml'

