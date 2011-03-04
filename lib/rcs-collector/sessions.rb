@@ -65,11 +65,14 @@ class SessionManager
     # save the size of the hash before deletion
     size = @sessions.length
     # search for timeouted sessions
-    @sessions.each_pair do |key, value|
-      if Time.now - value[:time] >= delta then
-        trace :info, "Session Timeout for [#{value[:cookie]}]"
+    @sessions.each_pair do |key, sess|
+      if Time.now - sess[:time] >= delta then
+        trace :info, "Session Timeout for [#{sess[:cookie]}]"
+        
         # update the status accordingly
-        EvidenceManager.instance.sync_timeout value
+        DB.instance.sync_timeout sess
+        EvidenceManager.instance.sync_timeout sess
+
         # delete the entry
         @sessions.delete key
       end

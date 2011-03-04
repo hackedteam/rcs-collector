@@ -54,7 +54,7 @@ class DB
     @class_keys = {}
     
     # the current db layer to be used is the XML-RPC protocol
-    # this will be replaced by DB_rest or DB_rabbitmq
+    # this will be replaced by DB_rest
     @db = DB_xmlrpc.new @host
 
     return @available
@@ -208,12 +208,26 @@ class DB
     return (status.nil?) ? [DB::UNKNOWN_BACKDOOR, 0] : [status, bid]
   end
 
-  def sync_for(bid, version, user, device, source, time)
+  def sync_start(bid, version, user, device, source, time)
     # database is down, continue
     return unless @available
 
     # tell the db that the backdoor has synchronized
-    db_call :sync_for, bid, version, user, device, source, time
+    db_call :sync_start, bid, version, user, device, source, time
+  end
+
+  def sync_timeout(bid)
+    # database is down, continue
+    return unless @available
+
+    #TODO: implement me in rest
+  end
+
+  def sync_end(bid)
+    # database is down, continue
+    return unless @available
+
+    #TODO: implement me in rest
   end
 
   def new_conf?(bid)

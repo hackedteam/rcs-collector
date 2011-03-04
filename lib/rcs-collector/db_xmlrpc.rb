@@ -183,7 +183,7 @@ class DB_xmlrpc
   end
 
   # the sync date is sent to the database here
-  def sync_for(bid, version, user, device, source, time)
+  def sync_start(bid, version, user, device, source, time)
     begin
       xmlrpc_call('backdoor.sync', bid, source, user, device, version, time)
     rescue Exception => e
