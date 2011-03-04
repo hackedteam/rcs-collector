@@ -123,7 +123,7 @@ class Events
         Status.my_status = Status::OK
 
         # start the HTTP server
-        if Config.instance.global['COLL_ENABLED'] then
+        if Config.global['COLL_ENABLED'] then
           EM::start_server("0.0.0.0", port, HTTPHandler)
           trace :info, "Listening on port #{port}..."
 
@@ -132,25 +132,25 @@ class Events
           HeartBeat.perform
 
           # set up the heartbeat (the interval is in the config)
-          EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { EM.defer(proc{ HeartBeat.perform }) }
+          EM::PeriodicTimer.new(Config.global['HB_INTERVAL']) { EM.defer(proc{ HeartBeat.perform }) }
 
           # timeout for the sessions (will destroy inactive sessions)
-          EM::PeriodicTimer.new(60) { SessionManager.instance.timeout }
+          EM::PeriodicTimer.new(60) { SessionManager.timeout }
         end
 
         # set up the network checks (the interval is in the config)
-        if Config.instance.global['NC_ENABLED'] then
+        if Config.global['NC_ENABLED'] then
           # first heartbeat and checks
           EM.defer(proc{ NetworkController.check })
           # subsequent checks
-          EM::PeriodicTimer.new(Config.instance.global['NC_INTERVAL']) { EM.defer(proc{ NetworkController.check }) }
+          EM::PeriodicTimer.new(Config.global['NC_INTERVAL']) { EM.defer(proc{ NetworkController.check }) }
         end
 
       end
     rescue Exception => e
       # bind error
       if e.message.eql? 'no acceptor' then
-        trace :fatal, "Cannot bind port #{Config.instance.global['LISTENING_PORT']}"
+        trace :fatal, "Cannot bind port #{Config.global['LISTENING_PORT']}"
         return 1
       end
       raise

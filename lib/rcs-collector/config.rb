@@ -4,9 +4,9 @@
 
 # from RCS::Common
 require 'rcs-common/trace'
+require 'rcs-common/flatsingleton'
 
 # system
-require 'singleton'
 require 'yaml'
 require 'pp'
 require 'optparse'
@@ -16,6 +16,7 @@ module Collector
 
 class Config
   include Singleton
+  extend FlatSingleton
   include Tracer
 
   CONF_FILE = '/config/config.yaml'
@@ -187,7 +188,7 @@ class Config
     optparse.parse(argv)
 
     # execute the configurator
-    return Config.instance.run(options)
+    return Config.run(options)
   end
 
 end #Config

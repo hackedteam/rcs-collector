@@ -9,10 +9,10 @@ require_relative 'db_cache.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
+require 'rcs-common/flatsingleton'
 
 # system
 require 'digest/md5'
-require 'singleton'
 require 'uuidtools'
 
 module RCS
@@ -20,6 +20,7 @@ module Collector
 
 class DB
   include Singleton
+  extend FlatSingleton
   include RCS::Tracer
 
   ACTIVE_BACKDOOR = 0
@@ -34,14 +35,14 @@ class DB
 
   def initialize
     # database address
-    @host = Config.instance.global['DB_ADDRESS'].to_s + ":" + Config.instance.global['DB_PORT'].to_s
+    @host = Config.global['DB_ADDRESS'].to_s + ":" + Config.global['DB_PORT'].to_s
 
     # the username is an unique identifier for each machine.
     # we use the MD5 of the MAC address
     #TODO: remove the RSS retro-compatibility
     @username = Digest::MD5.hexdigest(UUIDTools::UUID.mac_address.to_s) + "RSS"
     # the password is a signature taken from a file
-    @password = File.read(Dir.pwd + "/config/" + Config.instance.global['DB_SIGN'])
+    @password = File.read(Dir.pwd + "/config/" + Config.global['DB_SIGN'])
 
     # status of the db connection
     @available = false

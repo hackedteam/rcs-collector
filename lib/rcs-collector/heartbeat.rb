@@ -18,10 +18,10 @@ class HeartBeat
   def self.perform
     # if the database connection has gone
     # try to re-login to the database again
-    DB.instance.connect! if not DB.instance.connected?
+    DB.connect! if not DB.connected?
 
     # still no luck ?  return and wait for the next iteration
-    return unless DB.instance.connected?
+    return unless DB.connected?
 
     # report our status to the db
     component = "RCS::Collector"
@@ -30,7 +30,7 @@ class HeartBeat
 
     # retrieve how many session we have
     # this number represents the number of backdoor that are synchronizing
-    active_sessions = SessionManager.instance.length
+    active_sessions = SessionManager.length
 
     # if we are serving backdoors, report it accordingly
     message = (active_sessions > 0) ? "Serving #{active_sessions} sessions" : "Idle..."
@@ -45,7 +45,7 @@ class HeartBeat
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.instance.update_status component, ip, status, message, stats
+    DB.update_status component, ip, status, message, stats
   end
 end
 

@@ -5,9 +5,9 @@
 # from RCS::Common
 require 'rcs-common/trace'
 require 'rcs-common/evidence_manager'
+require 'rcs-common/flatsingleton'
 
 # system
-require 'singleton'
 require 'uuidtools'
 
 module RCS
@@ -15,6 +15,7 @@ module Collector
 
 class SessionManager
   include Singleton
+  extend FlatSingleton
   include RCS::Tracer
 
   def initialize
@@ -70,8 +71,8 @@ class SessionManager
         trace :info, "Session Timeout for [#{sess[:cookie]}]"
         
         # update the status accordingly
-        DB.instance.sync_timeout sess
-        EvidenceManager.instance.sync_timeout sess
+        DB.sync_timeout sess
+        EvidenceManager.sync_timeout sess
 
         # delete the entry
         @sessions.delete key

