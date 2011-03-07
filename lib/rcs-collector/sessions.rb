@@ -62,7 +62,7 @@ class SessionManager
   # checked, it will fail during a sync only if a request (i.e. log transfer)
   # takes more than 2 hours
   def timeout(delta = 7200)
-    trace :debug, "Session Manager timeouting entries..." if @sessions.length > 0
+    trace :debug, "Session Manager timing out entries..." if @sessions.length > 0
     # save the size of the hash before deletion
     size = @sessions.length
     # search for timeouted sessions
@@ -71,14 +71,14 @@ class SessionManager
         trace :info, "Session Timeout for [#{sess[:cookie]}]"
         
         # update the status accordingly
-        DB.sync_timeout sess
+        DB.sync_timeout sess[:bid]
         EvidenceManager.sync_timeout sess
 
         # delete the entry
         @sessions.delete key
       end
     end
-    trace :info, "Session Manager timeouted #{size - @sessions.length} sessions" if size - @sessions.length > 0
+    trace :info, "Session Manager timed out #{size - @sessions.length} sessions" if size - @sessions.length > 0
   end
 
   def length
