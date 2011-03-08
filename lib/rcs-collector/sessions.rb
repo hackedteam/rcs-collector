@@ -65,13 +65,13 @@ class SessionManager
     trace :debug, "Session Manager timing out entries..." if @sessions.length > 0
     # save the size of the hash before deletion
     size = @sessions.length
-    # search for timeouted sessions
+    # search for timed out sessions
     @sessions.each_pair do |key, sess|
       if Time.now - sess[:time] >= delta then
         trace :info, "Session Timeout for [#{sess[:cookie]}]"
         
         # update the status accordingly
-        DB.sync_timeout sess[:bid]
+        DB.sync_timeout sess
         EvidenceManager.sync_timeout sess
 
         # delete the entry

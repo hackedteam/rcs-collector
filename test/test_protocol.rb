@@ -14,7 +14,7 @@ module Collector
 class EvidenceTransfer
   def trace(a, b)
   end
-  def notify(s)
+  def queue(s)
     # do nothing during the test
   end
 end
@@ -35,7 +35,7 @@ class Config
   include Singleton
   def initialize
     @global = {'DB_ADDRESS' => 'test',
-               'DB_PORT' => '0',
+               'DB_PORT' => 80,
                'DB_SIGN' => 'rcs-server.sig',
                'DB_CERT' => 'rcs-ca.pem'}
   end
@@ -49,6 +49,10 @@ end
 
 # fake xmlrpc class used during the DB initialize
 class DB_xmlrpc
+  def trace(a, b)
+  end
+end
+class DB_rest
   def trace(a, b)
   end
 end

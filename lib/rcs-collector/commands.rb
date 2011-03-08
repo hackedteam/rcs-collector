@@ -63,7 +63,7 @@ module Commands
     now = Time.now - Time.now.utc_offset
 
     # notify the database that the sync is in progress
-    DB.sync_start session[:bid], version, user_id, device_id, source_id, now
+    DB.sync_start session, version, user_id, device_id, source_id, now
 
     # notify the Evidence Manager that the sync is in progress
     EvidenceManager.sync_start session, version, user_id, device_id, source_id, now
