@@ -282,7 +282,7 @@ module Commands
       id = EvidenceManager.store_evidence session, size, message
 
       # notify the transfer manager that an evidence is available
-      EvidenceTransfer.notify session[:instance], id
+      EvidenceTransfer.queue session[:instance], id
 
       trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes)"
     rescue Exception => e

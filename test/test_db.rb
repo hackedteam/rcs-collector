@@ -102,6 +102,7 @@ class DB_mockup_rest
 
   # mockup methods
   def login(user, pass); return (@@failure) ? false : true; end
+  def logout; end
 end
 
 class TestDB < Test::Unit::TestCase

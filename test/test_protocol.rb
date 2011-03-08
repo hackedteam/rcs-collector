@@ -14,7 +14,7 @@ module Collector
 class EvidenceTransfer
   def trace(a, b)
   end
-  def queue(s)
+  def queue(s, i)
     # do nothing during the test
   end
 end
