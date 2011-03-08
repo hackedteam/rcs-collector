@@ -11,6 +11,14 @@ end
 
 module Collector
 
+class EvidenceTransfer
+  def trace(a, b)
+  end
+  def queue(s)
+    # do nothing during the test
+  end
+end
+
 # dirty hack to fake the trace function
 # re-open the class and override the method
 class SessionManager
@@ -27,7 +35,7 @@ class Config
   include Singleton
   def initialize
     @global = {'DB_ADDRESS' => 'test',
-               'DB_PORT' => '0',
+               'DB_PORT' => 80,
                'DB_SIGN' => 'rcs-server.sig',
                'DB_CERT' => 'rcs-ca.pem'}
   end
@@ -41,6 +49,10 @@ end
 
 # fake xmlrpc class used during the DB initialize
 class DB_xmlrpc
+  def trace(a, b)
+  end
+end
+class DB_rest
   def trace(a, b)
   end
 end
@@ -184,6 +196,8 @@ class TestProtocol < Test::Unit::TestCase
     assert_equal "application/octet-stream", type
     assert_nothing_raised do
       resp = aes_decrypt_integrity(content, key)
+      command = resp.unpack('I').first
+      assert_equal Commands::PROTO_OK, command
     end
   end
 

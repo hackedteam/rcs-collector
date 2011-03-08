@@ -33,7 +33,8 @@ class DB_xmlrpc
     @semaphore = Mutex.new
 
     # no SSL verify for this connection
-    #@http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    #TODO: XXX remove this, we have to verify the SSL
+    @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
     # CA certificate to check if the server ssl certificate is valid
     @http.ca_file = Dir.pwd + "/config/" + Config.global['DB_CERT']
