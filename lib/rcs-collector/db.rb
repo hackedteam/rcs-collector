@@ -228,7 +228,7 @@ class DB
     return unless @available
 
     # tell the db that the backdoor has synchronized
-    db_call :sync_start, session['bid'], version, user, device, source, time
+    db_call :sync_start, session[:bid], version, user, device, source, time
     db_rest_call :sync_start, session, version, user, device, source, time
   end
 

@@ -68,12 +68,18 @@ class EvidenceTransfer
               # get the info from the instance
               info = EvidenceManager.instance_info instance
 
+              # make sure that the symbols are present
+              # we are doing this hack since we are passing information taken from the store
+              # and passing them as they were a session
+              info[:bid] = info['bid']
+              info[:instance] = info['instance']
+
               # update the status in the db
               DB.sync_start info, info['version'], info['user'], info['device'], info['source'], info['sync_time']
 
               # transfer all the evidence
               while (id = @evidences[instance].shift)
-                self.transfer instance, id
+                self.transfer instance, id, @evidences[instance].count
               end
 
               # the sync is ended
@@ -90,10 +96,10 @@ class EvidenceTransfer
     end
   end
 
-  def transfer(instance, id)
+  def transfer(instance, id, left)
     evidence = EvidenceManager.get_evidence(id, instance)
 
-    trace :debug, "Transferring [#{instance}] #{evidence.size.to_s_bytes}"
+    trace :info, "Transferring [#{instance}] #{evidence.size.to_s_bytes} - #{left} left to send"
 
     DB.send_evidence instance, evidence
 
