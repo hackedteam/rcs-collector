@@ -200,6 +200,8 @@ class DB_xmlrpc
     # for threading reasons we msut instantiate a new one
     http = Net::HTTP.new(@host, @port)
     http.use_ssl = true
+    #TODO: XXX remove this, we have to verify the SSL
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
     http.ca_file = @http.ca_file
     http.cert = @http.cert
     http.read_timeout = 5
