@@ -96,7 +96,7 @@ class NetworkController
 
     # ssl encryption stuff
     ssl_context = OpenSSL::SSL::SSLContext.new()
-    ssl_context.cert = OpenSSL::X509::Certificate.new(File.read(Dir.pwd + "/config/" + Config.global['DB_CERT']))
+    ssl_context.cert = OpenSSL::X509::Certificate.new(File.read(Config.file('DB_CERT')))
     #ssl_context.key = OpenSSL::PKey::RSA.new(File.open("keys/MyCompanyClient.key"))
     ssl_socket = OpenSSL::SSL::SSLSocket.new(socket, ssl_context)
     ssl_socket.sync_close = true

@@ -44,7 +44,7 @@ class DB
     #TODO: remove the RSS retro-compatibility
     @username = Digest::MD5.hexdigest(UUIDTools::UUID.mac_address.to_s) + "RSS"
     # the password is a signature taken from a file
-    @password = File.read(Dir.pwd + "/config/" + Config.global['DB_SIGN'])
+    @password = File.read(Config.file('DB_SIGN'))
 
     # status of the db connection
     @available = false

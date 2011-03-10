@@ -33,10 +33,10 @@ class DB_rest
     @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
     # CA certificate to check if the server ssl certificate is valid
-    @http.ca_file = Dir.pwd + "/config/" + Config.global['DB_CERT']
+    @http.ca_file = Config.file('DB_CERT')
 
     # our client certificate to send to the server
-    @http.cert = OpenSSL::X509::Certificate.new(File.read(Dir.pwd + "/config/" + Config.global['DB_CERT']))
+    @http.cert = OpenSSL::X509::Certificate.new(File.read(Config.file('DB_CERT')))
 
     trace :debug, "Using REST to communicate with #{@host}:#{@port}"
   end

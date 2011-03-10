@@ -19,7 +19,8 @@ class Config
   extend FlatSingleton
   include Tracer
 
-  CONF_FILE = '/config/config.yaml'
+  CONF_DIR = 'config'
+  CONF_FILE = 'config.yaml'
 
   DEFAULT_CONFIG= {'DB_ADDRESS' => 'rcs-server',
                    'DB_PORT' => 4443,
@@ -39,7 +40,7 @@ class Config
 
   def load_from_file
     trace :info, "Loading configuration file..."
-    conf_file = Dir.pwd + CONF_FILE
+    conf_file = File.join Dir.pwd, CONF_DIR, CONF_FILE
 
     # load the config in the @global hash
     begin
@@ -74,8 +75,11 @@ class Config
     return true
   end
 
+  def file(name)
+    return File.join Dir.pwd, CONF_DIR, @global[name]
+  end
+
   def safe_to_file
-    trace :info, "Writing configuration file..."
     conf_file = Dir.pwd + CONF_FILE
 
     # Write the @global into a yaml file
@@ -95,6 +99,7 @@ class Config
     # load the current config
     load_from_file
 
+    trace :info, ""
     trace :info, "Current configuration:"
     pp @global
 
@@ -114,6 +119,7 @@ class Config
     @global['NC_ENABLED'] = options[:nc_enabled] unless options[:nc_enabled].nil?
     @global['COLL_ENABLED'] = options[:coll_enabled] unless options[:coll_enabled].nil?
 
+    trace :info, ""
     trace :info, "Final configuration:"
     pp @global
 
