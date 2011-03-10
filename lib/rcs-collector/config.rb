@@ -53,14 +53,14 @@ class Config
     end
 
     if not @global['DB_CERT'].nil? then
-      if not File.exist?(Dir.pwd + "/config/" + @global['DB_CERT']) then
+      if not File.exist?(Config.file('DB_CERT')) then
         trace :fatal, "Cannot open certificate file [#{@global['DB_CERT']}]"
         return false
       end
     end
 
     if not @global['DB_SIGN'].nil? then
-      if not File.exist?(Dir.pwd + "/config/" + @global['DB_SIGN']) then
+      if not File.exist?(Config.file('DB_SIGN')) then
         trace :fatal, "Cannot open signature file [#{@global['DB_SIGN']}]"
         return false
       end
