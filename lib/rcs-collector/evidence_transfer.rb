@@ -61,7 +61,8 @@ class EvidenceTransfer
       # for each instance get the ids we have and send them
       instances.each do |instance|
         # one thread per instance
-        Thread.new do
+        threads = []
+        threads << Thread.new do
           begin
             # only perform the job if we have something to transfer
             if not @evidences[instance].empty? then
@@ -92,6 +93,8 @@ class EvidenceTransfer
             Thread.exit
           end
         end
+        # wait for all the threads to die
+        threads.each { |t| t.join }
       end
     end
   end
@@ -101,9 +104,15 @@ class EvidenceTransfer
 
     trace :info, "Transferring [#{instance}] #{evidence.size.to_s_bytes} - #{left} left to send"
 
-    DB.send_evidence instance, evidence
+    # send and delete the evidence
+    ret, error = DB.send_evidence(instance, evidence)
 
-    EvidenceManager.del_evidence(id, instance)
+    if ret then
+      EvidenceManager.del_evidence(id, instance)
+    else
+      trace :error, "Evidence NOT transferred: #{error}"
+    end
+    
   end
 
 end

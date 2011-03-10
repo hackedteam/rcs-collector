@@ -138,7 +138,13 @@ class DB_rest
 
   def send_evidence(instance, evidence)
     begin
-      return rest_call('POST', "/evidence/#{instance}", evidence)
+      ret = rest_call('POST', "/evidence/#{instance}", evidence)
+      
+      if ret.kind_of? Net::HTTPSuccess then
+        return true
+      end
+
+      return false, ret.body
     rescue Exception => e
       trace :error, "Error calling send_evidence: #{e.class} #{e.message}"
       propagate_error e
