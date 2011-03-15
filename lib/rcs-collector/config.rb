@@ -80,7 +80,7 @@ class Config
   end
 
   def safe_to_file
-    conf_file = Dir.pwd + CONF_FILE
+    conf_file = File.join Dir.pwd, CONF_DIR, CONF_FILE
 
     # Write the @global into a yaml file
     begin
