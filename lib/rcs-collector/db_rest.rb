@@ -151,6 +151,16 @@ class DB_rest
     end
   end
 
+  def status_update(component, remoteip, status, message, disk, cpu, pcpu)
+    begin
+      content = {:component => component, :ip => remoteip, :status => status, :message => message, :disk => disk, :cpu => cpu, :pcpu => pcpu}
+      return rest_call('POST', '/status', content.to_json)
+    rescue Exception => e
+      trace :error, "Error calling status_update: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
 end #
 
 end #Collector::
