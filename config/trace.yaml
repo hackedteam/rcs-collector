@@ -1,7 +1,6 @@
 #
 # Available name trace:
-#	:cookie - the cookie of the current session 
-#	:peer   - the peer of the sync
+
 
 log4r_config:
   pre_config:
@@ -17,7 +16,7 @@ log4r_config:
       trace     : 'false'      
       outputters:
         - stderr
-   
+        - logfile
 
   outputters:
     - type     : StderrOutputter
@@ -29,4 +28,13 @@ log4r_config:
         pattern     : '%d [%l]: %x %m'
         type        : PatternFormatter
 
-        
+    - type        : DateFileOutputter
+      name        : logfile
+      level       : INFO
+      date_pattern: '%Y-%m-%d'
+      trunc       : 'false'
+      dirname     : "#{HOME}/log"
+      formatter   :
+        date_pattern: '%Y-%m-%d %H:%M:%S'
+        pattern     : '%d [%l]: %x %m'
+        type        : PatternFormatter

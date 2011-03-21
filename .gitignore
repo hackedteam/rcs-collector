@@ -39,8 +39,32 @@ pkg
 #.\#*
 #
 # For vim:
-#*.swp
+*.swp
 
+# RubyMine
 .idea
 
+# bundler
 Gemfile.lock
+
+# log files
+log/*
+
+# the cache
+config/cache.db
+
+# certs
+config/*.pem
+config/*.sig
+
+# config
+config/config.yaml
+
+# encrypted code
+lib/rcs-collector-release
+
+# evidences
+evidence/*
+
+# public
+public

