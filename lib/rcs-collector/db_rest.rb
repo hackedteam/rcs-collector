@@ -42,7 +42,7 @@ class DB_rest
   end
 
   # generic method invocation
-  def rest_call(method, uri, content, headers = {})
+  def rest_call(method, uri, content = nil, headers = {})
     begin
       Timeout::timeout(DB_TIMEOUT) do
         return @semaphore.synchronize do
@@ -53,6 +53,8 @@ class DB_rest
             when 'POST'
               # perform the post
               @http.request_post(uri, content, full_headers)
+            when 'GET'
+              @http.request_get(uri, full_headers)
           end
         end
       end
