@@ -125,11 +125,11 @@ class DB
     # if the db is available, clear the cache and populate it again
     if @available then
       # get the global signature (per customer) for all the backdoors
-      bck_sig = db_call :backdoor_signature
+      bck_sig = db_rest_call :backdoor_signature
       @backdoor_signature = Digest::MD5.digest bck_sig unless bck_sig.nil?
 
       # get the network signature to communicate with the network elements
-      net_sig = db_call :network_signature
+      net_sig = db_rest_call :network_signature
       @network_signature = net_sig unless net_sig.nil?
 
       # get the classkey of every backdoor
@@ -178,7 +178,6 @@ class DB
     return unless @available
 
     trace :debug, "[#{component}]: #{status} #{message} #{stats}"
-    db_call :update_status, component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu]
     db_rest_call :status_update, component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu]
   end
 

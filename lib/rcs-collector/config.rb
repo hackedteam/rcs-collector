@@ -23,7 +23,7 @@ class Config
   CONF_FILE = 'config.yaml'
 
   DEFAULT_CONFIG= {'DB_ADDRESS' => 'rcs-server',
-                   'DB_PORT' => 4443,
+                   'DB_PORT' => 4444,
                    'DB_CERT' => 'rcs-ca.pem',
                    'DB_SIGN' => 'rcs-server.sig',
                    'LISTENING_PORT' => 80,
