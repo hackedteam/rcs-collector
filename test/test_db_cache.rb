@@ -168,7 +168,7 @@ class TestCache < Test::Unit::TestCase
     assert_equal content1, upload1[:upload][:content]
 
     # delete the entry
-    DBCache.del_upload upload1[:id]
+    DBCache.del_upload bid, upload1[:id]
 
     # retrieve the second upload
     upload2, left = DBCache.new_upload bid
@@ -181,7 +181,7 @@ class TestCache < Test::Unit::TestCase
     assert_equal content2, upload2[:upload][:content]
 
     # delete the entry
-    DBCache.del_upload upload2[:id]
+    DBCache.del_upload bid, upload2[:id]
 
     # no more uploads
     assert_false DBCache.new_uploads? bid

@@ -114,6 +114,16 @@ class DB_mockup_rest
     raise if @@failure
     return {'BUILD001' => 'secret class key', 'BUILD002' => "another secret"}
   end
+  def backdoor_status(build_id, instance_id, subtype)
+    raise if @@failure
+    # return status, bid
+    return DB::ACTIVE_BACKDOOR, 1
+  end
+  def new_uploads(bid)
+    raise if @@failure
+    return { 1 => {:filename => 'filename1', :content => "file content 1"},
+             2 => {:filename => 'filename2', :content => "file content 2"}}
+  end
 end
 
 class TestDB < Test::Unit::TestCase
@@ -176,6 +186,7 @@ class TestDB < Test::Unit::TestCase
     assert_equal nil, DB.class_key_of('404')
 
     DB_mockup_xmlrpc.failure = true
+    DB_mockup_rest.failure = true
     # we have it in the cache
     assert_equal Digest::MD5.digest('secret class key'), DB.class_key_of('BUILD001')
     assert_false DB.connected?
@@ -187,6 +198,7 @@ class TestDB < Test::Unit::TestCase
     assert_equal [DB::ACTIVE_BACKDOOR, 1], DB.backdoor_status('BUILD001', 'inst', 'type')
     # during the db failure, we must be able to continue
     DB_mockup_xmlrpc.failure = true
+    DB_mockup_rest.failure = true
     assert_equal [DB::UNKNOWN_BACKDOOR, 0], DB.backdoor_status('BUILD001', 'inst', 'type')
     assert_false DB.connected?
     # now the layer is aware of the failure
@@ -198,6 +210,7 @@ class TestDB < Test::Unit::TestCase
     assert_equal "this is the binary config", DB.new_conf(1)
 
     DB_mockup_xmlrpc.failure = true
+    DB_mockup_rest.failure = true
     assert_false DB.new_conf?(1)
     assert_false DB.connected?
     assert_equal nil, DB.new_conf(1)
@@ -217,6 +230,7 @@ class TestDB < Test::Unit::TestCase
     assert_equal "file content 2", upl[:content]
 
     DB_mockup_xmlrpc.failure = true
+    DB_mockup_rest.failure = true
     assert_false DB.new_uploads?(1)
     assert_false DB.connected?
     upl, left = DB.new_uploads(1)
@@ -237,6 +251,7 @@ class TestDB < Test::Unit::TestCase
     assert_equal "upgrade content 2", upg[:content]
 
     DB_mockup_xmlrpc.failure = true
+    DB_mockup_rest.failure = true
     assert_false DB.new_upgrade?(1)
     assert_false DB.connected?
     upg, left = DB.new_upgrade(1)
@@ -248,6 +263,7 @@ class TestDB < Test::Unit::TestCase
     assert_equal ["pattern"], DB.new_downloads(1)
 
     DB_mockup_xmlrpc.failure = true
+    DB_mockup_rest.failure = true
     assert_false DB.new_downloads?(1)
     assert_false DB.connected?
     assert_equal [], DB.new_downloads(1)
@@ -258,6 +274,7 @@ class TestDB < Test::Unit::TestCase
     assert_equal [{:depth => 1, :path => "pattern"}], DB.new_filesystems(1)
 
     DB_mockup_xmlrpc.failure = true
+    DB_mockup_rest.failure = true
     assert_false DB.new_filesystems?(1)
     assert_false DB.connected?
     assert_equal [], DB.new_filesystems(1)
