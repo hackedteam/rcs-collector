@@ -377,12 +377,12 @@ class DBCache
     end
   end
 
-  def self.del_upgrade(id)
+  def self.del_upgrade(bid, id)
     return unless File.exist?(CACHE_FILE)
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("DELETE FROM upgrade WHERE uid = #{id};")
+      db.execute("DELETE FROM upgrade WHERE bid = #{bid} AND uid = #{id};")
       db.close
     rescue Exception => e
       trace :warn, "Cannot write the cache: #{e.message}"

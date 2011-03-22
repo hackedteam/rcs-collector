@@ -237,7 +237,7 @@ class TestCache < Test::Unit::TestCase
     assert_equal content1, upgrade1[:upgrade][:content]
 
     # delete the entry
-    DBCache.del_upgrade upgrade1[:id]
+    DBCache.del_upgrade bid, upgrade1[:id]
 
     # retrieve the second upgrade
     upgrade2, left = DBCache.new_upgrade bid
@@ -250,7 +250,7 @@ class TestCache < Test::Unit::TestCase
     assert_equal content2, upgrade2[:upgrade][:content]
 
     # delete the entry
-    DBCache.del_upgrade upgrade2[:id]
+    DBCache.del_upgrade bid, upgrade2[:id]
 
     # no more uploads
     assert_false DBCache.new_upgrade? bid

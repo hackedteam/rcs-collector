@@ -323,7 +323,7 @@ class DB
     DBCache.clear_upgrade bid
 
     # retrieve the upgrade from the db
-    upgrade = db_call :new_upgrade, bid
+    upgrade = db_rest_call :new_upgrades, bid
 
     # put the upgrade in the cache
     DBCache.save_upgrade bid, upgrade unless (upgrade.nil? or upgrade.empty?)
@@ -338,11 +338,11 @@ class DB
     return nil if upgrade.nil?
 
     # delete the upgrade from the cache
-    DBCache.del_upgrade upgrade[:id]
+    DBCache.del_upgrade bid, upgrade[:id]
 
     # delete from the db only if all the file have been transmitted
     if left == 0 then
-      db_call :del_upgrade, bid if @available
+      db_rest_call :del_upgrade, bid if @available
     end
 
     return upgrade[:upgrade], left

@@ -105,54 +105,6 @@ class DB_xmlrpc
     end
   end
 
-  def update_status(component, remoteip, status, message, disk, cpu, pcpu)
-    begin
-      xmlrpc_call('monitor.set', component, remoteip, status, message, disk, cpu, pcpu)
-    rescue Exception => e
-      trace :error, "Error calling monitor.set: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  # per customer signature
-  def backdoor_signature
-    begin
-      return xmlrpc_call('sign.get', "backdoor")
-    rescue Exception => e
-      trace :error, "Error calling sign.get: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  # network signature for NC
-  def network_signature
-    begin
-      return xmlrpc_call('sign.get', "network")
-    rescue Exception => e
-      trace :error, "Error calling sign.get: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  # used to authenticate the backdoors
-  def class_keys(build_id = '')
-    begin
-      list = xmlrpc_call('backdoor.getclasskey', build_id)
-      # if we are are requesting a specific build_id, return only the key
-      return list[0]['classkey'] if build_id.length > 0
-
-      # otherwise return all the results by converting
-      # the response into an hash indexed by 'build'
-      class_keys = {}
-      list.each do |elem|
-        class_keys[elem['build']] = elem['classkey']
-      end
-      return class_keys
-    rescue Exception => e
-      trace :error, "Error calling backdoor.getclasskey: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
 
   # backdoor identify
   def backdoor_status(build_id, instance_id, subtype)
@@ -183,15 +135,6 @@ class DB_xmlrpc
     end
   end
 
-  # the sync date is sent to the database here
-  def sync_start(bid, version, user, device, source, time)
-    begin
-      xmlrpc_call('backdoor.sync', bid, source, user, device, version, time)
-    rescue Exception => e
-      trace :error, "Error calling backdoor.sync: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
 
   # generic function to retrieve a large file from the db
   def get_file(*resource)
@@ -251,61 +194,6 @@ class DB_xmlrpc
     end
   end
 
-  def new_uploads(bid)
-    begin
-      ret = xmlrpc_call('upload.get', bid)
-
-      upl = {}
-      # parse the results and get the contents of the uploads
-      ret.each do |elem|
-        upl[elem['upload_id']] = {:filename => elem['filename'],
-                                  :content => get_file(:resource => 'upload', :upload_id => elem['upload_id'])}
-        trace :debug, "File retrieved: [#{elem['filename']}] #{upl[elem['upload_id']][:content].length} bytes"
-      end
-
-      return upl
-    rescue Exception => e
-      trace :error, "Error calling upload.get: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  def del_upload(id)
-    begin
-      xmlrpc_call('upload.del', id)
-    rescue Exception => e
-      trace :error, "Error calling upload.del: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  def new_upgrade(bid)
-    begin
-      ret = xmlrpc_call('upgrade.get', bid)
-
-      upg = {}
-      # parse the results and get the contents of the uploads
-      ret.each do |elem|
-        upg[elem['upgrade_id']] = {:filename => elem['filename'],
-                                  :content => get_file(:resource => 'upgrade', :upgrade_id => elem['upgrade_id'])}
-        trace :debug, "File retrieved: [#{elem['filename']}] #{upg[elem['upgrade_id']][:content].length} bytes"
-      end
-
-      return upg
-    rescue Exception => e
-      trace :error, "Error calling upgrade.get: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  def del_upgrade(bid)
-    begin
-      xmlrpc_call('upgrade.del', bid)
-    rescue Exception => e
-      trace :error, "Error calling upgrade.del: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
 
   # retrieve the download list from db (if any)
   def new_downloads(bid)
