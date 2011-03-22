@@ -59,10 +59,6 @@ class DB_mockup_xmlrpc
     return 1, "this is the binary config"
   end
 
-  def new_filesystems(bid)
-    raise if @@failure
-    return { 1 => {:depth => 1, :path => 'pattern'}}
-  end
 end
 
 class DB_mockup_rest
@@ -108,6 +104,10 @@ class DB_mockup_rest
   def new_downloads(bid)
     raise if @@failure
     return { 1 => 'pattern'}
+  end
+  def new_filesystems(bid)
+    raise if @@failure
+    return { 1 => {:depth => 1, :path => 'pattern'}}
   end
 end
 

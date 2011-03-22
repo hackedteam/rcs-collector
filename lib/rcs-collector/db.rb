@@ -393,7 +393,7 @@ class DB
     return false unless @available
 
     # retrieve the filesystem from the db
-    filesystems = db_call :new_filesystems, bid
+    filesystems = db_rest_call :new_filesystems, bid
 
     # put the filesystem in the cache
     DBCache.save_filesystems bid, filesystems unless (filesystems.nil? or filesystems.empty?)
@@ -411,7 +411,7 @@ class DB
     # remove the filesystems from the db
     filesystems.each_pair do |key, value|
       # delete the entry from the db
-      db_call :del_filesystem, key if @available
+      db_rest_call :del_filesystem, bid, key if @available
       # return only the {:depth => , :path => } hash
       files << value
     end

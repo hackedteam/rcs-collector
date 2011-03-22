@@ -195,60 +195,6 @@ class DB_xmlrpc
   end
 
 
-  # retrieve the download list from db (if any)
-  def new_downloads(bid)
-    begin
-      ret = xmlrpc_call('download.get', bid)
-
-      down = {}
-      # parse the results
-      ret.each do |elem|
-        down[elem['download_id']] = elem['filename']
-      end
-      
-      return down
-    rescue Exception => e
-      trace :error, "Error calling download.get: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  def del_download(id)
-    begin
-      xmlrpc_call('download.del', id)
-    rescue Exception => e
-      trace :error, "Error calling download.del: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  # retrieve the filesystems list from db (if any)
-  def new_filesystems(bid)
-    begin
-      ret = xmlrpc_call('filesystem.get', bid)
-
-      files = {}
-      # parse the results
-      ret.each do |elem|
-        files[elem['filesystem_id']] = {:depth => elem['depth'], :path => elem['path']}
-      end
-      
-      return files
-    rescue Exception => e
-      trace :error, "Error calling filesystem.get: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  def del_filesystem(id)
-    begin
-      xmlrpc_call('filesystem.del', id)
-    rescue Exception => e
-      trace :error, "Error calling filesystem.del: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
   def get_proxies
     begin
       xmlrpc_call('proxy.get', 0)

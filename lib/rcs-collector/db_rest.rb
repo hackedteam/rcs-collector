@@ -300,7 +300,7 @@ class DB_rest
 
       down = {}
       # parse the results
-     JSON.parse(ret.body).each do |elem|
+      JSON.parse(ret.body).each do |elem|
         down[elem['download_id']] = elem['filename']
       end
       
@@ -317,6 +317,34 @@ class DB_rest
       return rest_call('DELETE', "/backdoor/download/#{request.to_json}")
     rescue Exception => e
       trace :error, "Error calling del_download: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  # retrieve the filesystem list from db (if any)
+  def new_filesystems(bid)
+    begin
+      ret = rest_call('GET', "/backdoor/filesystems/#{bid}")
+
+      files = {}
+      # parse the results
+      JSON.parse(ret.body).each do |elem|
+        files[elem['filesystem_id']] = {:depth => elem['depth'], :path => elem['path']}
+      end
+      
+      return files
+    rescue Exception => e
+      trace :error, "Error calling new_filesystems: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def del_filesystem(bid, id)
+    begin
+      request = {:backdoor_id => bid, :filesystem_id => id}
+      return rest_call('DELETE', "/backdoor/filesystem/#{request.to_json}")
+    rescue Exception => e
+      trace :error, "Error calling del_filesystem: #{e.class} #{e.message}"
       propagate_error e
     end
   end
