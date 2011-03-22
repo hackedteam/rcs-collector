@@ -186,6 +186,49 @@ class DB_rest
     end
   end
 
+  # used to authenticate the backdoors
+  def class_keys(build = '')
+    begin
+      if build != '' then
+        ret = rest_call('GET', "/backdoor/class_keys/#{build}")
+      else
+        ret = rest_call('GET', '/backdoor/class_keys')
+      end
+      return JSON.parse(ret.body)
+    rescue Exception => e
+      trace :error, "Error calling class_keys: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  # backdoor identify
+  def backdoor_status(build_id, instance_id, subtype)
+    begin
+      request = {:build_id => build_id, :instance_id => instance_id, :subtype => subtype}
+      ret = rest_call('GET', '/backdoor/status/' + request.to_json)
+
+      status = JSON.parse(ret.body)
+
+      return DB::NO_SUCH_BACKDOOR, 0 if status.empty?
+
+      bid = status['backdoor_id']
+      if status['deleted'] == 1 then
+        return DB::DELETED_BACKDOOR, bid
+      end
+      case status['status']
+        when 'OPEN'
+          return DB::ACTIVE_BACKDOOR, bid
+        when 'QUEUED'
+          return DB::QUEUED_BACKDOOR, bid
+        when 'CLOSED'
+          return DB::CLOSED_BACKDOOR, bid
+      end
+    rescue Exception => e
+      trace :error, "Error calling backdoor_status: #{e.class} #{e.message}"
+      return DB::UNKNOWN_BACKDOOR, 0
+    end
+  end
+
 end #
 
 end #Collector::

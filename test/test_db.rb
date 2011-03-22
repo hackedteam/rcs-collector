@@ -8,7 +8,6 @@ module Collector
 # re-open the class and override the method
 class DB
   def trace(a, b)
-    puts b
   end
 end
 
@@ -60,7 +59,7 @@ class DB_mockup_xmlrpc
     raise if @@failure
     return {'BUILD001' => 'secret class key', 'BUILD002' => "another secret"}
   end
-  def status_of(build_id, instance_id, subtype)
+  def backdoor_status(build_id, instance_id, subtype)
     raise if @@failure
     # return status, bid
     return DB::ACTIVE_BACKDOOR, 1
@@ -103,6 +102,18 @@ class DB_mockup_rest
   # mockup methods
   def login(user, pass); return (@@failure) ? false : true; end
   def logout; end
+  def backdoor_signature
+    raise if @@failure
+    return "test-backdoor-signature"
+  end
+  def network_signature
+    raise if @@failure
+    return "test-network-signature"
+  end
+  def class_keys
+    raise if @@failure
+    return {'BUILD001' => 'secret class key', 'BUILD002' => "another secret"}
+  end
 end
 
 class TestDB < Test::Unit::TestCase
@@ -143,6 +154,7 @@ class TestDB < Test::Unit::TestCase
     assert_equal Digest::MD5.digest('secret class key'), DB.class_key_of('BUILD001')
 
     DB_mockup_xmlrpc.failure = true
+    DB_mockup_rest.failure = true
     # this will fail to reach the db 
     assert_false DB.cache_init
     assert_false DB.connected?
@@ -171,14 +183,14 @@ class TestDB < Test::Unit::TestCase
     assert_equal nil, DB.class_key_of('404')
   end
 
-  def test_status_of
-    assert_equal [DB::ACTIVE_BACKDOOR, 1], DB.status_of('BUILD001', 'inst', 'type')
+  def test_backdoor_status
+    assert_equal [DB::ACTIVE_BACKDOOR, 1], DB.backdoor_status('BUILD001', 'inst', 'type')
     # during the db failure, we must be able to continue
     DB_mockup_xmlrpc.failure = true
-    assert_equal [DB::UNKNOWN_BACKDOOR, 0], DB.status_of('BUILD001', 'inst', 'type')
+    assert_equal [DB::UNKNOWN_BACKDOOR, 0], DB.backdoor_status('BUILD001', 'inst', 'type')
     assert_false DB.connected?
     # now the layer is aware of the failure
-    assert_equal [DB::UNKNOWN_BACKDOOR, 0], DB.status_of('BUILD001', 'inst', 'type')
+    assert_equal [DB::UNKNOWN_BACKDOOR, 0], DB.backdoor_status('BUILD001', 'inst', 'type')
   end
 
   def test_new_conf

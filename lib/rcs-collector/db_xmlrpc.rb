@@ -155,7 +155,7 @@ class DB_xmlrpc
   end
 
   # backdoor identify
-  def status_of(build_id, instance_id, subtype)
+  def backdoor_status(build_id, instance_id, subtype)
     begin
       ret = xmlrpc_call('backdoor.identify', build_id, instance_id, subtype)
       bid = ret['backdoor_id']

