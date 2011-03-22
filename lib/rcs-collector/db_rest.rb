@@ -283,12 +283,40 @@ class DB_rest
     end
   end
 
-  def del_upgrade(bid, id)
+  def del_upgrade(bid)
     begin
-      request = {:backdoor_id => bid, :upgrade_id => id}
+      request = {:backdoor_id => bid}
       return rest_call('DELETE', "/backdoor/upgrade/#{request.to_json}")
     rescue Exception => e
       trace :error, "Error calling del_upgrade: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  # retrieve the download list from db (if any)
+  def new_downloads(bid)
+    begin
+      ret = rest_call('GET', "/backdoor/downloads/#{bid}")
+
+      down = {}
+      # parse the results
+     JSON.parse(ret.body).each do |elem|
+        down[elem['download_id']] = elem['filename']
+      end
+      
+      return down
+    rescue Exception => e
+      trace :error, "Error calling new_downloads: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def del_download(bid, id)
+    begin
+      request = {:backdoor_id => bid, :download_id => id}
+      return rest_call('DELETE', "/backdoor/download/#{request.to_json}")
+    rescue Exception => e
+      trace :error, "Error calling del_download: #{e.class} #{e.message}"
       propagate_error e
     end
   end

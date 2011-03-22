@@ -356,7 +356,7 @@ class DB
     return false unless @available
 
     # retrieve the downloads from the db
-    downloads = db_call :new_downloads, bid
+    downloads = db_rest_call :new_downloads, bid
 
     # put the download in the cache
     DBCache.save_downloads bid, downloads unless (downloads.nil? or downloads.empty?)
@@ -374,7 +374,7 @@ class DB
     # remove the downloads from the db
     downloads.each_pair do |key, value|
       # delete the entry from the db
-      db_call :del_download, key if @available
+      db_rest_call :del_download, bid, key if @available
       # return only the filename
       down << value
     end
