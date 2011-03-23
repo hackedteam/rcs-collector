@@ -4,9 +4,7 @@
 
 # from RCS::Common
 require 'rcs-common/trace'
-
-# system
-require 'sqlite3'
+require 'rcs-common/sqlite3'
 
 module RCS
 module Collector
@@ -296,6 +294,7 @@ class DBCache
     begin
       db = SQLite3::Database.open CACHE_FILE
       uploads.each_pair do |key, value|
+        SQLite3::Database.safe_escape value[:filename]
         db.execute("INSERT INTO uploads VALUES (#{bid}, #{key}, '#{value[:filename]}', ? )", SQLite3::Blob.new(value[:content]))
       end
       db.close
@@ -445,6 +444,7 @@ class DBCache
     begin
       db = SQLite3::Database.open CACHE_FILE
       downloads.each_pair do |key, value|
+        SQLite3::Database.safe_escape value
         db.execute("INSERT INTO downloads VALUES (#{bid}, #{key}, '#{value}' )")
       end
       db.close
@@ -509,6 +509,7 @@ class DBCache
     begin
       db = SQLite3::Database.open CACHE_FILE
       filesystems.each_pair do |key, value|
+        SQLite3::Database.safe_escape value[:path]
         db.execute("INSERT INTO filesystems VALUES (#{bid}, #{key}, #{value[:depth]}, '#{value[:path]}' )")
       end
       db.close
