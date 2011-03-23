@@ -133,6 +133,7 @@ class TestDB < Test::Unit::TestCase
 
   def test_connect
     DB_mockup_xmlrpc.failure = true
+    DB_mockup_rest.failure = true
     DB.connect!
     assert_false DB.connected?
   end
@@ -148,7 +149,6 @@ class TestDB < Test::Unit::TestCase
     assert_equal 'test-network-signature', DB.network_signature
     assert_equal Digest::MD5.digest('secret class key'), DB.class_key_of('BUILD001')
 
-    DB_mockup_xmlrpc.failure = true
     DB_mockup_rest.failure = true
     # this will fail to reach the db 
     assert_false DB.cache_init
@@ -170,7 +170,6 @@ class TestDB < Test::Unit::TestCase
     # not existing build from mockup
     assert_equal nil, DB.class_key_of('404')
 
-    DB_mockup_xmlrpc.failure = true
     DB_mockup_rest.failure = true
     # we have it in the cache
     assert_equal Digest::MD5.digest('secret class key'), DB.class_key_of('BUILD001')
@@ -214,7 +213,6 @@ class TestDB < Test::Unit::TestCase
     assert_equal "filename2", upl[:filename]
     assert_equal "file content 2", upl[:content]
 
-    DB_mockup_xmlrpc.failure = true
     DB_mockup_rest.failure = true
     assert_false DB.new_uploads?(1)
     assert_false DB.connected?
@@ -235,7 +233,6 @@ class TestDB < Test::Unit::TestCase
     assert_equal "upgrade2", upg[:filename]
     assert_equal "upgrade content 2", upg[:content]
 
-    DB_mockup_xmlrpc.failure = true
     DB_mockup_rest.failure = true
     assert_false DB.new_upgrade?(1)
     assert_false DB.connected?
@@ -247,7 +244,6 @@ class TestDB < Test::Unit::TestCase
     assert_true DB.new_downloads?(1)
     assert_equal ["pattern"], DB.new_downloads(1)
 
-    DB_mockup_xmlrpc.failure = true
     DB_mockup_rest.failure = true
     assert_false DB.new_downloads?(1)
     assert_false DB.connected?
@@ -258,7 +254,6 @@ class TestDB < Test::Unit::TestCase
     assert_true DB.new_filesystems?(1)
     assert_equal [{:depth => 1, :path => "pattern"}], DB.new_filesystems(1)
 
-    DB_mockup_xmlrpc.failure = true
     DB_mockup_rest.failure = true
     assert_false DB.new_filesystems?(1)
     assert_false DB.connected?

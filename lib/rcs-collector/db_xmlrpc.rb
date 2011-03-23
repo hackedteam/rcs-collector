@@ -195,42 +195,6 @@ class DB_xmlrpc
   end
 
 
-  def get_proxies
-    begin
-      xmlrpc_call('proxy.get', 0)
-    rescue Exception => e
-      trace :error, "Error calling proxy.get: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  def get_collectors
-    begin
-      xmlrpc_call('collector.get', 0)
-    rescue Exception => e
-      trace :error, "Error calling collector.get: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  def proxy_set_version(id, version)
-    begin
-      xmlrpc_call('proxy.setversion', id, version)
-    rescue Exception => e
-      trace :error, "Error calling proxy.setversion: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  def collector_set_version(id, version)
-    begin
-      xmlrpc_call('collector.setversion', id, version)
-    rescue Exception => e
-      trace :error, "Error calling collector.setversion: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
   def proxy_get_config(id)
     begin
       # retrieve the file from the db
@@ -257,23 +221,6 @@ class DB_xmlrpc
     end
   end
 
-  def proxy_add_log(id, time, type, desc)
-    begin
-      xmlrpc_call('proxy.addlog', id, type, time, desc)
-    rescue Exception => e
-      trace :error, "Error calling proxy.addlog: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  def collector_add_log(id, time, type, desc)
-    begin
-      xmlrpc_call('collector.addlog', id, type, time, desc)
-    rescue Exception => e
-      trace :error, "Error calling collector.addlog: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
 
 end #
 
