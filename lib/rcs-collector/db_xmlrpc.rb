@@ -105,6 +105,14 @@ class DB_xmlrpc
     end
   end
 
+  def status_update(component, remoteip, status, message, disk, cpu, pcpu)
+    begin
+      xmlrpc_call('monitor.set', component, remoteip, status, message, disk, cpu, pcpu)
+    rescue Exception => e
+      trace :error, "Error calling monitor.set: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
 
   # backdoor identify
   def backdoor_status(build_id, instance_id, subtype)
