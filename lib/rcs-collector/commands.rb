@@ -60,7 +60,7 @@ module Commands
     trace :info, "[#{peer}][#{session[:cookie]}] Identification: #{version} '#{user_id}' '#{device_id}' '#{source_id}'"
 
     # get the time in UTC
-    now = Time.now - Time.now.utc_offset
+    now = Time.now #- Time.now.utc_offset
 
     # notify the database that the sync is in progress
     DB.sync_start session, version, user_id, device_id, source_id, now
