@@ -231,7 +231,29 @@ class DB_rest
     end
   end
 
+  def new_conf(bid)
+    begin
+      ret = rest_call('GET', "/backdoor/config/#{bid}")
 
+      if ret.kind_of? Net::HTTPNotFound then
+        return 0
+      end
+
+      return ret.body
+    rescue Exception => e
+      trace :error, "Error calling new_conf: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def conf_sent(bid)
+    begin
+      return rest_call('PUT', "/backdoor/config/#{bid}")
+    rescue Exception => e
+      trace :error, "Error calling conf_sent: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
 
   def new_uploads(bid)
     begin
