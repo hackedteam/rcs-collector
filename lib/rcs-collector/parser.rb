@@ -109,13 +109,13 @@ module Parser
     if real.start_with? Dir.pwd + PUBLIC_DIR then
       # load the content of the file
       begin
-        content = File.read(file_path) if File.exist?(file_path) and File.file?(file_path)
+        content = File.open(file_path, 'rb') {|f| f.read} if File.exist?(file_path) and File.file?(file_path)
         # if the file was not found, search for the platform specific one
         # by appending the extension
         if content.nil? then
           file_path += ext
           trace :info, "[#{@peer}][#{os}] trying #{file_path}"
-          content = File.read(file_path) if File.exist?(file_path) and File.file?(file_path)
+          content = File.open(file_path, 'rb') {|f| f.read} if File.exist?(file_path) and File.file?(file_path)
         end
         type = MimeType.get(file_path)
       rescue
