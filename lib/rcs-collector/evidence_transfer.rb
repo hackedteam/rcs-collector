@@ -74,6 +74,8 @@ class EvidenceTransfer
               # and passing them as they were a session
               info[:bid] = info['bid']
               info[:instance] = info['instance']
+              info[:build] = info['build']
+              info[:subtype] = info['subtype']
 
               # update the status in the db
               DB.sync_start info, info['version'], info['user'], info['device'], info['source'], info['sync_time']
