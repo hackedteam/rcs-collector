@@ -9,6 +9,7 @@ require 'rcs-common/trace'
 require 'rcs-common/evidence_manager'
 require 'rcs-common/flatsingleton'
 require 'rcs-common/fixnum'
+require 'rcs-common/symbolize'
 
 # from system
 require 'thread'
@@ -72,13 +73,10 @@ class EvidenceTransfer
               # make sure that the symbols are present
               # we are doing this hack since we are passing information taken from the store
               # and passing them as they were a session
-              info[:bid] = info['bid']
-              info[:instance] = info['instance']
-              info[:build] = info['build']
-              info[:subtype] = info['subtype']
+              sess = info.symbolize
 
               # update the status in the db
-              DB.sync_start info, info['version'], info['user'], info['device'], info['source'], info['sync_time']
+              DB.sync_start sess, info['version'], info['user'], info['device'], info['source'], info['sync_time']
 
               # transfer all the evidence
               while (id = @evidences[instance].shift)
@@ -86,7 +84,7 @@ class EvidenceTransfer
               end
 
               # the sync is ended
-              DB.sync_end info
+              DB.sync_end sess
             end
           rescue Exception => e
             trace :error, "Error processing evidences: #{e.message}"
