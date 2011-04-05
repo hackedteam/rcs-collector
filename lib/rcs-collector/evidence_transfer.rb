@@ -84,6 +84,7 @@ class EvidenceTransfer
                 # ask the database the bid of the backdoor
                 status, bid = DB.backdoor_status(sess[:build], sess[:instance], sess[:subtype])
                 sess[:bid] = bid
+                raise "Backdoor_id cannot be ZERO" if bid == 0
               end
               
               # update the status in the db
