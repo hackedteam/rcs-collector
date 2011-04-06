@@ -64,6 +64,10 @@ class HTTPHandler < EM::Connection
     trace :info, "[#{@peer}] Incoming HTTP Connection"
     trace :debug, "[#{@peer}] Request: [#{@http_request_method}] #{@http_request_uri}"
 
+    # remove the name of the cookie.
+    # the session manager will handle only the value of the cookie
+    @http_cookie.gsub!(/ID=/, '') if @http_cookie
+
     resp = EM::DelegatedHttpResponse.new(self)
 
     # Block which fulfills the request
@@ -86,7 +90,8 @@ class HTTPHandler < EM::Connection
       resp.status_string = Net::HTTPResponse::CODE_TO_OBJ["#{resp.status}"].name.gsub(/Net::HTTP/, '')
       resp.content = content
       resp.headers['Content-Type'] = content_type
-      resp.headers['Set-Cookie'] = cookie unless cookie.nil?
+      # insert a name for the cookie to be RFC compliant
+      resp.headers['Set-Cookie'] = "ID=" + cookie unless cookie.nil?
       #TODO: investigate the keep-alive option
       #resp.keep_connection_open = true
       resp.headers['Connection'] = 'close'
