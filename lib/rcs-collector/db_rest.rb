@@ -115,7 +115,7 @@ class DB_rest
                  :device => device,
                  :source => source,
                  :sync_time => time}
-      
+
       rest_call('POST', '/evidence/start', content.to_json)
     rescue
     end
