@@ -32,6 +32,9 @@ class HTTPHandler < EM::Connection
     # don't forget to call super here !
     super
 
+    # timeout on the socket
+    set_comm_inactivity_timeout 30
+
     # to speed-up the processing, we disable the CGI environment variables
     self.no_environment_strings
 
@@ -93,10 +96,14 @@ class HTTPHandler < EM::Connection
       # insert a name for the cookie to be RFC compliant
       resp.headers['Set-Cookie'] = "ID=" + cookie unless cookie.nil?
 
-      # keep the connection open to allow multiple requests on the same connection
-      # this will increase the speed of sync since it decrease the latency on the net
-      resp.keep_connection_open true
-      resp.headers['Connection'] = 'Keep-Alive'
+      if @http_headers.split("\x00").index {|h| h['Connection: keep-alive'] || h['Connection: Keep-Alive']} then
+        # keep the connection open to allow multiple requests on the same connection
+        # this will increase the speed of sync since it decrease the latency on the net
+        resp.keep_connection_open true
+        resp.headers['Connection'] = 'keep-alive'
+      else
+        resp.headers['Connection'] = 'close'
+      end
 
     end
 
