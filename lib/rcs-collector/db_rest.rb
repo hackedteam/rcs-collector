@@ -37,7 +37,7 @@ class DB_rest
 
     # our client certificate to send to the server
     @http.cert = OpenSSL::X509::Certificate.new(File.read(Config.file('DB_CERT')))
-
+    
     trace :debug, "Using REST to communicate with #{@host}:#{@port}"
   end
 
@@ -47,7 +47,7 @@ class DB_rest
       Timeout::timeout(DB_TIMEOUT) do
         return @semaphore.synchronize do
           # the HTTP headers for the authentication
-          full_headers = {'Cookie' => @cookie }
+          full_headers = {'Cookie' => @cookie, 'Connection' => 'Keep-Alive' }
           full_headers.merge! headers if headers.is_a? Hash
           case method
             when 'POST'
@@ -81,6 +81,10 @@ class DB_rest
   # returns a boolean
   def login(user, pass)
     begin
+      # start the http session (needed for keep-alive)
+      # see this: http://redmine.ruby-lang.org/issues/4522
+      @http.start unless @http.started?
+      
       # send the authentication data
       account = {:user => user, :pass => pass}
       resp = @http.request_post('/auth/login', account.to_json, nil)

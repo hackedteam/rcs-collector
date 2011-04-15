@@ -92,9 +92,12 @@ class HTTPHandler < EM::Connection
       resp.headers['Content-Type'] = content_type
       # insert a name for the cookie to be RFC compliant
       resp.headers['Set-Cookie'] = "ID=" + cookie unless cookie.nil?
-      #TODO: investigate the keep-alive option
-      #resp.keep_connection_open = true
-      resp.headers['Connection'] = 'close'
+
+      # keep the connection open to allow multiple requests on the same connection
+      # this will increase the speed of sync since it decrease the latency on the net
+      resp.keep_connection_open true
+      resp.headers['Connection'] = 'Keep-Alive'
+
     end
 
     # Callback block to execute once the request is fulfilled
@@ -155,7 +158,7 @@ class Events
     rescue Exception => e
       # bind error
       if e.message.eql? 'no acceptor' then
-        trace :fatal, "Cannot bind port #{Config.global['LISTENING_PORT']}"
+        trace :fatal, "Cannot bind port #{port}"
         return 1
       end
       raise
