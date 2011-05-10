@@ -67,9 +67,20 @@ class HTTPHandler < EM::Connection
     trace :info, "[#{@peer}] Incoming HTTP Connection"
     trace :debug, "[#{@peer}] Request: [#{@http_request_method}] #{@http_request_uri}"
 
-    # remove the name of the cookie.
-    # the session manager will handle only the value of the cookie
-    @http_cookie.gsub!(/ID=/, '') if @http_cookie
+    # cookie parsing
+    # we extract the session cookie from the cookies, proxies or browsers can
+    # add cookies that has nothing to do with our session
+
+    # this will match our GUID session cookie
+    re = '.*?(ID=)([A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12})'
+
+    # match on the cookies and return the parsed GUID (the third match of the regexp)
+    if @http_cookie then
+      m = Regexp.new(re, Regexp::IGNORECASE).match(@http_cookie)
+      @http_cookie = m[2] unless m.nil?
+    end
+
+    trace :debug, @http_cookie
 
     resp = EM::DelegatedHttpResponse.new(self)
 
@@ -94,7 +105,7 @@ class HTTPHandler < EM::Connection
       resp.content = content
       resp.headers['Content-Type'] = content_type
       # insert a name for the cookie to be RFC compliant
-      resp.headers['Set-Cookie'] = "ID=" + cookie unless cookie.nil?
+      resp.headers['Set-Cookie'] = "ID=" + cookie + "; path=/;" unless cookie.nil?
 
       if @http_headers.split("\x00").index {|h| h['Connection: keep-alive'] || h['Connection: Keep-Alive']} then
         # keep the connection open to allow multiple requests on the same connection
