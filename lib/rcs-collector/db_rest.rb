@@ -91,7 +91,7 @@ class DB_rest
       # remember the session cookie
       @cookie = resp['Set-Cookie'] unless resp['Set-Cookie'].nil?
       # check that the response is valid JSON
-      return JSON.parse(resp.body)['user']['name'] == user
+      return JSON.parse(resp.body).class == Hash
     rescue Exception => e
       trace :error, "Error logging in: #{e.class} #{e.message}"
       return false
