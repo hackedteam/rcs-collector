@@ -194,7 +194,7 @@ class DB
     key = db_rest_call :class_keys, build_id
 
     # save the class key in the cache (memory and permanent)
-    if not key.nil? then
+    if not key.nil? and not key.empty? then
       @class_keys[build_id] = key
 
       # store it in the permanent cache

