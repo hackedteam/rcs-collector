@@ -162,7 +162,7 @@ class DB_rest
 
   def status_update(component, remoteip, status, message, disk, cpu, pcpu)
     begin
-      content = {:component => component, :ip => remoteip, :status => status, :message => message, :disk => disk, :cpu => cpu, :pcpu => pcpu}
+      content = {:name => component, :address => remoteip, :status => status, :info => message, :disk => disk, :cpu => cpu, :pcpu => pcpu}
       return rest_call('POST', '/status', content.to_json)
     rescue Exception => e
       trace :error, "Error calling status_update: #{e.class} #{e.message}"
@@ -173,7 +173,7 @@ class DB_rest
   def backdoor_signature
     begin
       ret = rest_call('GET', '/signature/backdoor')
-      sign = JSON.parse(ret.body)['sign']
+      sign = JSON.parse(ret.body)['value']
       return sign
     rescue Exception => e
       trace :error, "Error calling backdoor_signature: #{e.class} #{e.message}"
@@ -184,7 +184,7 @@ class DB_rest
   def network_signature
     begin
       ret = rest_call('GET', '/signature/network')
-      sign = JSON.parse(ret.body)['sign']
+      sign = JSON.parse(ret.body)['value']
       return sign
     rescue Exception => e
       trace :error, "Error calling network_signature: #{e.class} #{e.message}"

@@ -178,7 +178,7 @@ class DB
 
     trace :debug, "[#{component}]: #{status} #{message} #{stats}"
     db_rest_call :status_update, component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu]
-    # this is needed to keep the xml-rpc connection alive
+    # TODO: remove.  this is needed to keep the xml-rpc connection alive
     db_call :status_update, component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu]
   end
 
