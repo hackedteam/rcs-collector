@@ -262,23 +262,21 @@ class DB
 
     # retrieve the config from the db
     config = db_rest_call :new_conf, bid
-    cid, config = db_call :new_conf, bid
 
     # put the config in the cache
-    DBCache.save_conf bid, cid, config unless config.nil?
+    DBCache.save_conf bid, config unless config.nil?
 
     return (config.nil?) ? false : true
   end
 
   def new_conf(bid)
     # retrieve the config from the cache
-    cid, config = DBCache.new_conf bid
+    config = DBCache.new_conf bid
 
     return nil if config.nil?
 
     # set the status to "sent" in the db
     db_rest_call :conf_sent, bid if @available
-    db_call :conf_sent, cid if @available
 
     # delete the conf from the cache
     DBCache.del_conf bid

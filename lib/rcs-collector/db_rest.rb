@@ -240,7 +240,7 @@ class DB_rest
       ret = rest_call('GET', "/backdoor/config/#{bid}")
 
       if ret.kind_of? Net::HTTPNotFound then
-        return 0
+        return nil
       end
 
       return ret.body
