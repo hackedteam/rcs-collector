@@ -396,7 +396,14 @@ class DB_rest
 
   def proxy_config(id)
     begin
-      return rest_call('GET', "/proxy/config/#{id}").body
+      puts "PROXY CONFIG..."
+      ret = rest_call('GET', "/proxy/config/#{id}")
+
+      if ret.kind_of? Net::HTTPNotFound then
+        return nil
+      end
+
+      return ret.body
     rescue Exception => e
       trace :error, "Error calling proxy_config: #{e.class} #{e.message}"
       propagate_error e
@@ -434,7 +441,13 @@ class DB_rest
 
   def collector_config(id)
     begin
-      return rest_call('GET', "/collector/config/#{id}").body
+     ret = rest_call('GET', "/collector/config/#{id}")
+
+      if ret.kind_of? Net::HTTPNotFound then
+        return nil
+      end
+
+      return ret.body
     rescue Exception => e
       trace :error, "Error calling collector_config: #{e.class} #{e.message}"
       propagate_error e

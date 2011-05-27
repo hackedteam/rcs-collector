@@ -104,14 +104,6 @@ class DB_xmlrpc
     end
   end
 
-  def status_update(component, remoteip, status, message, disk, cpu, pcpu)
-    begin
-      xmlrpc_call('monitor.set', component, remoteip, status, message, disk, cpu, pcpu)
-    rescue Exception => e
-      trace :error, "Error calling monitor.set: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
 
   # backdoor identify
   def backdoor_status(build_id, instance_id, subtype)
@@ -196,33 +188,6 @@ class DB_xmlrpc
       xmlrpc_call('config.setsent', cid)
     rescue Exception => e
       trace :error, "Error calling config.setsent: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-
-  def proxy_get_config(id)
-    begin
-      # retrieve the file from the db
-      config = get_file :resource => 'proxy', :proxy_id => id
-      # set the config as sent
-      xmlrpc_call('proxy.setstatus', id, 0)
-      return config
-    rescue Exception => e
-      trace :error, "Error calling proxy get config: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  def collector_get_config(id)
-    begin
-      # retrieve the file from the db
-      config = get_file :resource => 'collector', :collector_id => id
-      # set the config as sent
-      xmlrpc_call('collector.setstatus', id, 0)
-      return config
-    rescue Exception => e
-      trace :error, "Error calling collector get config: #{e.class} #{e.message}"
       propagate_error e
     end
   end

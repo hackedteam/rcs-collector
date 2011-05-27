@@ -456,12 +456,12 @@ class DB
 
   def proxy_config(id)
     return unless @available
-    db_call :proxy_get_config, id
+    db_rest_call :proxy_config, id
   end
 
   def collector_config(id)
     return unless @available
-    db_call :collector_get_config, id
+    db_rest_call :collector_config, id
   end
 
   def proxy_add_log(id, time, type, desc)

@@ -134,10 +134,10 @@ class NetworkController
 
         when NCProto::PROTO_CONF
           content = nil
-          if element['status'] == NCProto::COMPONENT_NEED_CONFIG then
+          if element['configured'] == false then
             content = DB.proxy_config(element['_id']) if element['type'].nil?
             content = DB.collector_config(element['_id']) unless element['type'].nil?
-            trace :info, "[NC] #{element['address']} has a new configuration (#{content.length} bytes)"
+            trace :info, "[NC] #{element['address']} has a new configuration (#{content.length} bytes)" unless content.nil?
           end
           proto.config(content)
 
