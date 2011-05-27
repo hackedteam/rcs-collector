@@ -32,10 +32,10 @@ class NetworkController
     threads = []
 
     # keep only the remote anonymizers discarding the local collectors
-    elements.delete_if {|x| x['type'] == 'LOCAL'}
+    elements.delete_if {|x| x['type'] == 'local'}
 
     # keep only the elements to be polled
-    elements.delete_if {|x| x['poll'] == 0}
+    elements.delete_if {|x| x['poll'] == false}
 
     if not elements.empty? then
       trace :info, "[NC] Handling #{elements.length} network elements..."
@@ -61,7 +61,7 @@ class NetworkController
           trace :debug, "[NC] #{p['address']} #{e.message}"
           #trace :debug, "EXCEPTION: [#{e.class}] " << e.backtrace.join("\n")
           # report the failing reason
-          report_status(p, 'KO', e.message)
+          report_status(p, 'ERROR', e.message)
         end
 
         # send the status to db
@@ -71,8 +71,8 @@ class NetworkController
 
         # send the logs to db
         logs.each do |log|
-          DB.proxy_add_log(p['proxy_id'], *log) unless p['proxy_id'].nil?
-          DB.collector_add_log(p['collector_id'], *log) unless p['collector_id'].nil?
+          DB.proxy_add_log(p['_id'], *log) if p['type'].nil?
+          DB.collector_add_log(p['_id'], *log) unless p['type'].nil?
         end
         
         # make sure to destroy the thread after the check
@@ -123,8 +123,8 @@ class NetworkController
           trace :info, "[NC] #{element['address']} is version #{ver}"
 
           # update the db accordingly
-          DB.update_proxy_version(element['proxy_id'], ver) unless element['proxy_id'].nil?
-          DB.update_collector_version(element['collector_id'], ver) unless element['collector_id'].nil?
+          DB.update_proxy_version(element['_id'], ver) if element['type'].nil?
+          DB.update_collector_version(element['_id'], ver) unless element['type'].nil?
 
           # version check for incompatibility
           raise "Version too old, please update the component." if ver.to_i < MIN_VERSION
@@ -135,8 +135,8 @@ class NetworkController
         when NCProto::PROTO_CONF
           content = nil
           if element['status'] == NCProto::COMPONENT_NEED_CONFIG then
-            content = DB.proxy_config(element['proxy_id']) unless element['proxy_id'].nil?
-            content = DB.collector_config(element['collector_id']) unless element['collector_id'].nil?
+            content = DB.proxy_config(element['_id']) if element['type'].nil?
+            content = DB.collector_config(element['_id']) unless element['type'].nil?
             trace :info, "[NC] #{element['address']} has a new configuration (#{content.length} bytes)"
           end
           proto.config(content)
@@ -144,7 +144,7 @@ class NetworkController
         when NCProto::PROTO_LOG
           time, type, desc = proto.log
           # we have to be fast here, we cannot insert them directly in the db
-          # since it will take too much time and we have to finishe before the timeout
+          # since it will take too much time and we have to finish before the timeout
           # return the array and let the caller insert them
           logs << [time, type, desc]
 
@@ -188,8 +188,8 @@ class NetworkController
 
 
   def self.report_status(elem, status, message, disk=0, cpu=0, pcpu=0)
-    if not elem['proxy_id'].nil? then
-      component = "RCS::IPA::" + elem['proxy']
+    if not elem['_id'].nil? then
+      component = "RCS::IPA::" + elem['name']
     end
     if not elem['collector_id'].nil? then
       component = "RCS::ANON::" + elem['collector']

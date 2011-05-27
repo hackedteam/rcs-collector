@@ -387,7 +387,7 @@ class DB_rest
 
   def proxy_set_version(id, version)
     begin
-      rest_call('POST', "/proxy/version", {:proxy_id => id, :version => version}.to_json)
+      rest_call('POST', "/proxy/version", {:_id => id, :version => version}.to_json)
     rescue Exception => e
       trace :error, "Error calling proxy_set_version: #{e.class} #{e.message}"
       propagate_error e
@@ -405,7 +405,7 @@ class DB_rest
 
   def proxy_add_log(id, time, type, desc)
     begin
-      log = {:proxy_id => id, :type => type, :time => time, :desc => desc}
+      log = {:_id => id, :type => type, :time => time, :desc => desc}
       rest_call('POST', "/proxy/log", log.to_json)
     rescue Exception => e
       trace :error, "Error calling proxy_add_log: #{e.class} #{e.message}"
@@ -425,7 +425,7 @@ class DB_rest
 
   def collector_set_version(id, version)
     begin
-      rest_call('POST', "/collector/version", {:collector_id => id, :version => version}.to_json)
+      rest_call('POST', "/collector/version", {:_id => id, :version => version}.to_json)
     rescue Exception => e
       trace :error, "Error calling collector_set_version: #{e.class} #{e.message}"
       propagate_error e
@@ -443,7 +443,7 @@ class DB_rest
 
   def collector_add_log(id, time, type, desc)
     begin
-      log = {:collector_id => id, :type => type, :time => time, :desc => desc}
+      log = {:_id => id, :type => type, :time => time, :desc => desc}
       rest_call('POST', "/collector/log", log.to_json)
     rescue Exception => e
       trace :error, "Error calling collector_add_log: #{e.class} #{e.message}"
