@@ -396,7 +396,6 @@ class DB_rest
 
   def proxy_config(id)
     begin
-      puts "PROXY CONFIG..."
       ret = rest_call('GET', "/proxy/config/#{id}")
 
       if ret.kind_of? Net::HTTPNotFound then
