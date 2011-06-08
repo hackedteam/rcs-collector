@@ -51,10 +51,11 @@ class DB_rest
           full_headers.merge! headers if headers.is_a? Hash
           case method
             when 'POST'
-              # perform the post
               @http.request_post(uri, content, full_headers)
             when 'GET'
               @http.request_get(uri, full_headers)
+            #when 'PUT'
+            #  @http.request_put(uri, full_headers)
             when 'DELETE'
               @http.delete(uri, full_headers)
           end
@@ -252,7 +253,7 @@ class DB_rest
 
   def conf_sent(bid)
     begin
-      return rest_call('PUT', "/backdoor/config/#{bid}")
+      return rest_call('DELETE', "/backdoor/config/#{bid}")
     rescue Exception => e
       trace :error, "Error calling conf_sent: #{e.class} #{e.message}"
       propagate_error e

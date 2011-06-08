@@ -134,65 +134,6 @@ class DB_xmlrpc
     end
   end
 
-
-  # generic function to retrieve a large file from the db
-  def get_file(*resource)
-
-    # prepare the http request
-    # for threading reasons we msut instantiate a new one
-    http = Net::HTTP.new(@host, @port)
-    http.use_ssl = true
-    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-    http.ca_file = @http.ca_file
-    http.cert = @http.cert
-    http.read_timeout = 5
-
-    # the HTTP headers for the authentication
-    headers = {
-      'Cookie' => @xmlrpc.cookie,
-      'Content-Type' => 'application/x-www-form-urlencoded',
-    }
-
-    # prepare the post request
-    poststring = ""
-    resource.first.each_pair do |key, value|
-      poststring += "#{key}=#{value}&"
-    end
-
-    # use the new http object (to avoid race conditions with the xmlrpc object)
-    resp = http.request_post('/download.php', poststring, headers)
-
-    return resp.body
-  end
-
-  # retrieve the new config for a backdoor (if any)
-  def new_conf(bid)
-    begin
-      ret = xmlrpc_call('config.getnew', bid)
-      cid = ret['config_id']
-
-      return 0 if cid == 0
-
-      # retrieve the file from the db
-      config = get_file :resource => 'config', :config_id => cid
-
-      return cid, config
-    rescue Exception => e
-      trace :error, "Error calling config.getnew: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  def conf_sent(cid)
-    begin
-      xmlrpc_call('config.setsent', cid)
-    rescue Exception => e
-      trace :error, "Error calling config.setsent: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-
 end #
 
 end #Collector::
