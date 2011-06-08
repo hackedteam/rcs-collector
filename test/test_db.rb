@@ -51,7 +51,7 @@ class DB_mockup_rest
     raise if @@failure
     return "test-network-signature"
   end
-  def class_keys
+  def factory_keys
     raise if @@failure
     return {'BUILD001' => 'secret class key', 'BUILD002' => "another secret"}
   end
@@ -121,7 +121,7 @@ class TestDB < Test::Unit::TestCase
     assert_true DB.instance.cache_init
     assert_equal Digest::MD5.digest('test-backdoor-signature'), DB.instance.backdoor_signature
     assert_equal 'test-network-signature', DB.instance.network_signature
-    assert_equal Digest::MD5.digest('secret class key'), DB.instance.class_key_of('BUILD001')
+    assert_equal Digest::MD5.digest('secret class key'), DB.instance.factory_key_of('BUILD001')
 
     DB_mockup_rest.failure = true
     # this will fail to reach the db 
@@ -129,27 +129,27 @@ class TestDB < Test::Unit::TestCase
     assert_false DB.instance.connected?
     assert_equal Digest::MD5.digest('test-backdoor-signature'), DB.instance.backdoor_signature
     assert_equal 'test-network-signature', DB.instance.network_signature
-    assert_equal Digest::MD5.digest('secret class key'), DB.instance.class_key_of('BUILD001')
+    assert_equal Digest::MD5.digest('secret class key'), DB.instance.factory_key_of('BUILD001')
 
     # now the error was reported to the DB layer, so it should init correctly
     assert_true DB.instance.cache_init
     assert_equal Digest::MD5.digest('test-backdoor-signature'), DB.instance.backdoor_signature
     assert_equal 'test-network-signature', DB.instance.network_signature
-    assert_equal Digest::MD5.digest('secret class key'), DB.instance.class_key_of('BUILD001')
+    assert_equal Digest::MD5.digest('secret class key'), DB.instance.factory_key_of('BUILD001')
   end
 
-  def test_class_key
+  def test_factory_key
     # this is taken from the mockup
-    assert_equal Digest::MD5.digest('secret class key'), DB.instance.class_key_of('BUILD001')
+    assert_equal Digest::MD5.digest('secret class key'), DB.instance.factory_key_of('BUILD001')
     # not existing build from mockup
-    assert_equal nil, DB.instance.class_key_of('404')
+    assert_equal nil, DB.instance.factory_key_of('404')
 
     DB_mockup_rest.failure = true
     # we have it in the cache
-    assert_equal Digest::MD5.digest('secret class key'), DB.instance.class_key_of('BUILD001')
+    assert_equal Digest::MD5.digest('secret class key'), DB.instance.factory_key_of('BUILD001')
     assert_false DB.instance.connected?
     # not existing build in the cache and the db is failing
-    assert_equal nil, DB.instance.class_key_of('404')
+    assert_equal nil, DB.instance.factory_key_of('404')
   end
 
   def test_backdoor_status

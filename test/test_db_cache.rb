@@ -81,14 +81,14 @@ class TestCache < Test::Unit::TestCase
     assert_equal 0, DBCache.length
   end
 
-  def test_class_keys
+  def test_factory_keys
     entries = {'BUILD001' => 'secret class key', 'BUILD002' => "another secret"}
     entry = {'BUILD003' => 'top secret'}
 
     # since the cache is not initialized,
     # the call should create it and store the value
-    DBCache.add_class_keys entries
-    DBCache.add_class_keys entry
+    DBCache.add_factory_keys entries
+    DBCache.add_factory_keys entry
 
     # check if the file was created
     assert_true File.exist?(Dir.pwd + "/config/cache.db")
@@ -97,9 +97,9 @@ class TestCache < Test::Unit::TestCase
     assert_equal 3, DBCache.length
 
     # check the correct values
-    assert_equal "top secret", DBCache.class_keys['BUILD003']
-    assert_equal "another secret", DBCache.class_keys['BUILD002']
-    assert_equal "secret class key", DBCache.class_keys['BUILD001']
+    assert_equal "top secret", DBCache.factory_keys['BUILD003']
+    assert_equal "another secret", DBCache.factory_keys['BUILD002']
+    assert_equal "secret class key", DBCache.factory_keys['BUILD001']
   end
 
   def test_config
