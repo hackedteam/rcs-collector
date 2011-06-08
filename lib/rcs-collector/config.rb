@@ -4,7 +4,6 @@
 
 # from RCS::Common
 require 'rcs-common/trace'
-require 'rcs-common/flatsingleton'
 
 # system
 require 'yaml'
@@ -16,7 +15,6 @@ module Collector
 
 class Config
   include Singleton
-  extend FlatSingleton
   include Tracer
 
   CONF_DIR = 'config'
@@ -53,14 +51,14 @@ class Config
     end
 
     if not @global['DB_CERT'].nil? then
-      if not File.exist?(Config.file('DB_CERT')) then
+      if not File.exist?(Config.instance.file('DB_CERT')) then
         trace :fatal, "Cannot open certificate file [#{@global['DB_CERT']}]"
         return false
       end
     end
 
     if not @global['DB_SIGN'].nil? then
-      if not File.exist?(Config.file('DB_SIGN')) then
+      if not File.exist?(Config.instance.file('DB_SIGN')) then
         trace :fatal, "Cannot open signature file [#{@global['DB_SIGN']}]"
         return false
       end
@@ -194,7 +192,7 @@ class Config
     optparse.parse(argv)
 
     # execute the configurator
-    return Config.run(options)
+    return Config.instance.run(options)
   end
 
 end #Config

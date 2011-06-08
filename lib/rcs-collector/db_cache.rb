@@ -202,7 +202,7 @@ class DBCache
   end
 
   def self.new_conf(bid)
-    return 0, nil unless File.exist?(CACHE_FILE)
+    return nil unless File.exist?(CACHE_FILE)
 
     begin
       db = SQLite3::Database.open CACHE_FILE
@@ -213,7 +213,8 @@ class DBCache
     end
 
     # return only the config content
-    return ret.first.first
+    return ret.first.first unless ret.nil? or ret.first.nil?
+    return nil
   end
 
   def self.save_conf(bid, config)

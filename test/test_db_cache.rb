@@ -105,7 +105,6 @@ class TestCache < Test::Unit::TestCase
   def test_config
     # random ids
     bid = SecureRandom.random_number(1024)
-    cid = SecureRandom.random_number(1024)
     # random binary bytes for the config
     config = SecureRandom.random_bytes(1024)
     
@@ -113,7 +112,7 @@ class TestCache < Test::Unit::TestCase
     assert_false DBCache.new_conf? bid
 
     # save a config in the cache
-    DBCache.save_conf(bid, cid, config)
+    DBCache.save_conf(bid, config)
 
     # should be in cache
     assert_true DBCache.new_conf? bid
@@ -121,9 +120,8 @@ class TestCache < Test::Unit::TestCase
     assert_false DBCache.new_conf? bid - 1
 
     # retrieve the config
-    ccid, cconfig = DBCache.new_conf bid
+    cconfig = DBCache.new_conf bid
 
-    assert_equal cid, ccid
     assert_equal config, cconfig
     
     # delete the config

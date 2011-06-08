@@ -4,13 +4,11 @@
 
 # relatives
 require_relative 'config.rb'
-require_relative 'db_xmlrpc.rb'
 require_relative 'db_rest.rb'
 require_relative 'db_cache.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
-require 'rcs-common/flatsingleton'
 
 # system
 require 'digest/md5'
@@ -21,7 +19,6 @@ module Collector
 
 class DB
   include Singleton
-  extend FlatSingleton
   include RCS::Tracer
 
   ACTIVE_BACKDOOR = 0
@@ -36,14 +33,13 @@ class DB
 
   def initialize
     # database address
-    @host = Config.global['DB_ADDRESS'].to_s + ":" + Config.global['DB_PORT'].to_s
-    @host_xmlrpc = Config.global['DB_ADDRESS'].to_s + ":" + (Config.global['DB_PORT'] - 1).to_s
+    @host = Config.instance.global['DB_ADDRESS'].to_s + ":" + Config.instance.global['DB_PORT'].to_s
 
     # the username is an unique identifier for each machine.
     # we use the MD5 of the MAC address
     @username = Digest::MD5.hexdigest(UUIDTools::UUID.mac_address.to_s)
     # the password is a signature taken from a file
-    @password = File.read(Config.file('DB_SIGN'))
+    @password = File.read(Config.instance.file('DB_SIGN'))
 
     # status of the db connection
     @available = false
@@ -55,9 +51,7 @@ class DB
     # class keys
     @class_keys = {}
     
-    # the current db layer to be used is the XML-RPC protocol
-    # this will be replaced by DB_rest
-    @db = DB_xmlrpc.new @host_xmlrpc
+    # the current db layer REST
     @db_rest = DB_rest.new @host
     
     return @available
@@ -66,7 +60,7 @@ class DB
   def connect!
     trace :info, "Checking the DB connection [#{@host}]..."
     # during the transition we log in to both xml-rpc and rest interfaces
-    if @db.login(@username + "RSS", @password) and @db_rest.login(@username, @password) then
+    if @db_rest.login(@username, @password) then
       @available = true
       trace :info, "Connected to [#{@host}]"
     else
@@ -77,7 +71,6 @@ class DB
   end
 
   def disconnect!
-    @db.logout
     @db_rest.logout
     @available = false
     trace :info, "Disconnected from [#{@host}]"
@@ -102,15 +95,6 @@ class DB
 
   # wrapper method for all the calls to the underlying layers
   # on error, it will consider the db failed
-  def db_call(method, *args)
-    begin
-      return @db.send method, *args
-    rescue
-      self.connected = false
-      return nil
-    end
-  end
-
   def db_rest_call(method, *args)
     begin
       return @db_rest.send method, *args
@@ -216,9 +200,8 @@ class DB
     trace :debug, "Asking the status of [#{build_id}] to the db"
 
     # ask the database the status of the backdoor
-    #status, bid = db_rest_call :backdoor_status, build_id, instance_id, subtype
-    status, bid = db_call :backdoor_status, build_id, instance_id, subtype
-
+    status, bid = db_rest_call :backdoor_status, build_id, instance_id, subtype
+    
     # if status is nil, the db down. btw we must not fail, fake the reply
     return (status.nil?) ? [DB::UNKNOWN_BACKDOOR, 0] : [status, bid]
   end

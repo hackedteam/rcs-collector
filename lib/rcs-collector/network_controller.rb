@@ -25,8 +25,8 @@ class NetworkController
   def self.check
 
     # retrieve the lists from the db
-    elements = DB.proxies
-    elements += DB.collectors
+    elements = DB.instance.proxies
+    elements += DB.instance.collectors
 
     # use one thread for each element
     threads = []
@@ -54,7 +54,7 @@ class NetworkController
         begin
           # three quarters of the interval check is a good compromise for timeout
           # we are sure that the operations will be finished before the next check
-          Timeout::timeout(Config.global['NC_INTERVAL'] * 0.75) do
+          Timeout::timeout(Config.instance.global['NC_INTERVAL'] * 0.75) do
             status, logs = check_element p
           end
         rescue Exception => e
@@ -71,8 +71,8 @@ class NetworkController
 
         # send the logs to db
         logs.each do |log|
-          DB.proxy_add_log(p['_id'], *log) if p['type'].nil?
-          DB.collector_add_log(p['_id'], *log) unless p['type'].nil?
+          DB.instance.proxy_add_log(p['_id'], *log) if p['type'].nil?
+          DB.instance.collector_add_log(p['_id'], *log) unless p['type'].nil?
         end
         
         # make sure to destroy the thread after the check
@@ -96,7 +96,7 @@ class NetworkController
 
     # ssl encryption stuff
     ssl_context = OpenSSL::SSL::SSLContext.new()
-    ssl_context.cert = OpenSSL::X509::Certificate.new(File.read(Config.file('DB_CERT')))
+    ssl_context.cert = OpenSSL::X509::Certificate.new(File.read(Config.instance.file('DB_CERT')))
     #ssl_context.key = OpenSSL::PKey::RSA.new(File.open("keys/MyCompanyClient.key"))
     ssl_socket = OpenSSL::SSL::SSLSocket.new(socket, ssl_context)
     ssl_socket.sync_close = true
@@ -109,7 +109,7 @@ class NetworkController
     proto = NCProto.new(ssl_socket)
 
     # authenticate with the component
-    raise 'Cannot authenticate' unless proto.login(DB.network_signature)
+    raise 'Cannot authenticate' unless proto.login(DB.instance.network_signature)
 
     result = []
     logs = []
@@ -123,8 +123,8 @@ class NetworkController
           trace :info, "[NC] #{element['address']} is version #{ver}"
 
           # update the db accordingly
-          DB.update_proxy_version(element['_id'], ver) if element['type'].nil?
-          DB.update_collector_version(element['_id'], ver) unless element['type'].nil?
+          DB.instance.update_proxy_version(element['_id'], ver) if element['type'].nil?
+          DB.instance.update_collector_version(element['_id'], ver) unless element['type'].nil?
 
           # version check for incompatibility
           raise "Version too old, please update the component." if ver.to_i < MIN_VERSION
@@ -135,8 +135,8 @@ class NetworkController
         when NCProto::PROTO_CONF
           content = nil
           if element['configured'] == false then
-            content = DB.proxy_config(element['_id']) if element['type'].nil?
-            content = DB.collector_config(element['_id']) unless element['type'].nil?
+            content = DB.instance.proxy_config(element['_id']) if element['type'].nil?
+            content = DB.instance.collector_config(element['_id']) unless element['type'].nil?
             trace :info, "[NC] #{element['address']} has a new configuration (#{content.length} bytes)" unless content.nil?
           end
           proto.config(content)
@@ -165,8 +165,8 @@ class NetworkController
   # having to wait for the next heartbeat
   def self.push(host, content)
     # retrieve the lists from the db
-    elements = DB.proxies
-    elements += DB.collectors
+    elements = DB.instance.proxies
+    elements += DB.instance.collectors
 
     # keep only the selected host
     elements.delete_if {|x| x['address'] != host}
@@ -201,7 +201,7 @@ class NetworkController
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.update_status component, elem['address'], status, message, stats
+    DB.instance.update_status component, elem['address'], status, message, stats
   end
 
   
@@ -220,7 +220,7 @@ class NetworkController
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.update_status component, ip, status, message, stats
+    DB.instance.update_status component, ip, status, message, stats
   end
 
 end
