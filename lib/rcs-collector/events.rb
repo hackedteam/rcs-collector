@@ -10,7 +10,7 @@ require_relative 'sessions.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
-require 'rcs-common/status'
+require 'rcs-common/systemstatus'
 
 # system
 require 'eventmachine'
@@ -146,7 +146,7 @@ class Events
         EM.threadpool_size = 50
 
         # we are alive and ready to party
-        Status.my_status = Status::OK
+        SystemStatus.my_status = SystemStatus::OK
 
         # start the HTTP server
         if Config.instance.global['COLL_ENABLED'] then
