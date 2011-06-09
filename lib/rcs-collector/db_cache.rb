@@ -26,10 +26,10 @@ class DBCache
               "CREATE TABLE network_signature (signature CHAR(32))",
               "CREATE TABLE factory_keys (id CHAR(16), key CHAR(32))",
               "CREATE TABLE configs (bid CHAR(32), config BLOB)",
-              "CREATE TABLE uploads (bid CHAR(32), uid INT, filename TEXT, content BLOB)",
-              "CREATE TABLE upgrade (bid CHAR(32), uid INT, filename TEXT, content BLOB)",
-              "CREATE TABLE downloads (bid CHAR(32), did INT, filename TEXT)",
-              "CREATE TABLE filesystems (bid CHAR(32), fid INT, depth INT, path TEXT)"
+              "CREATE TABLE uploads (bid CHAR(32), uid CHAR(32), filename TEXT, content BLOB)",
+              "CREATE TABLE upgrade (bid CHAR(32), uid CHAR(32), filename TEXT, content BLOB)",
+              "CREATE TABLE downloads (bid CHAR(32), did CHAR(32), filename TEXT)",
+              "CREATE TABLE filesystems (bid CHAR(32), fid CHAR(32), depth INT, path TEXT)"
              ]
 
     # create all the tables
@@ -296,7 +296,7 @@ class DBCache
       db = SQLite3::Database.open CACHE_FILE
       uploads.each_pair do |key, value|
         SQLite3::Database.safe_escape value[:filename]
-        db.execute("INSERT INTO uploads VALUES ('#{bid}', #{key}, '#{value[:filename]}', ? )", SQLite3::Blob.new(value[:content]))
+        db.execute("INSERT INTO uploads VALUES ('#{bid}', '#{key}', '#{value[:filename]}', ? )", SQLite3::Blob.new(value[:content]))
       end
       db.close
     rescue Exception => e
@@ -309,7 +309,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("DELETE FROM uploads WHERE bid = '#{bid}' AND uid = #{id};")
+      db.execute("DELETE FROM uploads WHERE bid = '#{bid}' AND uid = '#{id}';")
       db.close
     rescue Exception => e
       trace :warn, "Cannot write the cache: #{e.message}"
@@ -369,7 +369,7 @@ class DBCache
     begin
       db = SQLite3::Database.open CACHE_FILE
       upgrade.each_pair do |key, value|
-        db.execute("INSERT INTO upgrade VALUES ('#{bid}', #{key}, '#{value[:filename]}', ? )", SQLite3::Blob.new(value[:content]))
+        db.execute("INSERT INTO upgrade VALUES ('#{bid}', '#{key}', '#{value[:filename]}', ? )", SQLite3::Blob.new(value[:content]))
       end
       db.close
     rescue Exception => e
@@ -382,7 +382,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("DELETE FROM upgrade WHERE bid = '#{bid}' AND uid = #{id};")
+      db.execute("DELETE FROM upgrade WHERE bid = '#{bid}' AND uid = '#{id}';")
       db.close
     rescue Exception => e
       trace :warn, "Cannot write the cache: #{e.message}"
@@ -446,7 +446,7 @@ class DBCache
       db = SQLite3::Database.open CACHE_FILE
       downloads.each_pair do |key, value|
         SQLite3::Database.safe_escape value
-        db.execute("INSERT INTO downloads VALUES ('#{bid}', #{key}, '#{value}' )")
+        db.execute("INSERT INTO downloads VALUES ('#{bid}', '#{key}', '#{value}' )")
       end
       db.close
     rescue Exception => e
@@ -511,7 +511,7 @@ class DBCache
       db = SQLite3::Database.open CACHE_FILE
       filesystems.each_pair do |key, value|
         SQLite3::Database.safe_escape value[:path]
-        db.execute("INSERT INTO filesystems VALUES ('#{bid}', #{key}, #{value[:depth]}, '#{value[:path]}' )")
+        db.execute("INSERT INTO filesystems VALUES ('#{bid}', '#{key}', #{value[:depth]}, '#{value[:path]}' )")
       end
       db.close
     rescue Exception => e
