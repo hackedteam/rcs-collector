@@ -80,7 +80,7 @@ class HTTPHandler < EM::Connection
       @http_cookie = m[2] unless m.nil?
     end
 
-    trace :debug, @http_cookie
+    #trace :debug, "cookie: #{@http_cookie}"
 
     resp = EM::DelegatedHttpResponse.new(self)
 

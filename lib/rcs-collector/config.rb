@@ -9,6 +9,7 @@ require 'rcs-common/trace'
 require 'yaml'
 require 'pp'
 require 'optparse'
+require 'net/http'
 
 module RCS
 module Collector
@@ -109,13 +110,21 @@ class Config
     # values taken from command line
     @global['DB_ADDRESS'] = options[:db_address] unless options[:db_address].nil?
     @global['DB_PORT'] = options[:db_port] unless options[:db_port].nil?
-    @global['DB_CERT'] = options[:db_cert] unless options[:db_cert].nil?
-    @global['DB_SIGN'] = options[:db_sign] unless options[:db_sign].nil?
     @global['LISTENING_PORT'] = options[:port] unless options[:port].nil?
     @global['HB_INTERVAL'] = options[:hb_interval] unless options[:hb_interval].nil?
     @global['NC_INTERVAL'] = options[:nc_interval] unless options[:nc_interval].nil?
     @global['NC_ENABLED'] = options[:nc_enabled] unless options[:nc_enabled].nil?
     @global['COLL_ENABLED'] = options[:coll_enabled] unless options[:coll_enabled].nil?
+
+    if options[:db_sign]
+      sig = get_from_server options[:user], options[:pass], 'server'
+      File.open(Config.instance.file('DB_SIGN'), 'wb') {|f| f.write sig}
+    end
+
+    if options[:db_cert]
+      sig = get_from_server options[:user], options[:pass], 'cert'
+      File.open(Config.instance.file('DB_CERT'), 'wb') {|f| f.write sig}
+    end
 
     trace :info, ""
     trace :info, "Final configuration:"
@@ -125,6 +134,30 @@ class Config
     safe_to_file
 
     return 0
+  end
+
+  def get_from_server(user, pass, resource)
+    begin
+      http = Net::HTTP.new(@global['DB_ADDRESS'], 4444)
+      http.use_ssl = true
+      http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+      # login
+      account = {:user => user, :pass => pass }
+      resp = http.request_post('/auth/login', account.to_json, nil)
+      cookie = resp['Set-Cookie'] unless resp['Set-Cookie'].nil?
+
+      # get the signature or the cert
+      res = http.request_get("/signature/#{resource}", {'Cookie' => cookie})
+      sig = JSON.parse(res.body)
+
+      # logout
+      http.request_post('/auth/logout', nil, {'Cookie' => cookie})
+      return sig['value']
+    rescue Exception => e
+      trace :fatal, "ERROR: auto-retrieve of component failed: #{e.message}"
+    end
+    return nil
   end
 
   # executed from rcs-collector-config
@@ -154,11 +187,14 @@ class Config
       opts.on( '-p', '--db-port PORT', Integer, 'Connect to tcp/PORT on rcs-db' ) do |port|
         options[:db_port] = port
       end
-      opts.on( '-t', '--db-cert FILE', 'The certificate file (pem) used for ssl communication with rcs-db' ) do |file|
-        options[:db_cert] = file
+      opts.on( '-t', '--db-cert', 'Retrieve the certificate file (pem) used from db (requires --user-pass)' ) do
+        options[:db_cert] = true
       end
-      opts.on( '-s', '--db-sign FILE', 'The signature file (sig) used for authentication with rcs-db' ) do |file|
-        options[:db_sign] = file
+      opts.on( '-s', '--db-sign', 'Retrieve the signature file (sig) from db (requires --user-pass)' ) do
+        options[:db_sign] = true
+      end
+      opts.on( '-u', '--user-pass USER:PASS', 'The account used to connect the first time' ) do |account|
+        options[:user], options[:pass] = account.split(':')
       end
       opts.on( '-b', '--db-heartbeat SEC', Integer, 'Time in seconds between two heartbeats to the rcs-db' ) do |sec|
         options[:hb_interval] = sec
@@ -190,6 +226,13 @@ class Config
     end
 
     optparse.parse(argv)
+
+    if options[:db_sign]
+      if options[:user].nil? or options[:pass].nil?
+        puts "ERROR: You must specify --user-pass"
+        return 1
+      end
+    end
 
     # execute the configurator
     return Config.instance.run(options)
