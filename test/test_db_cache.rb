@@ -131,9 +131,9 @@ class TestCache < Test::Unit::TestCase
 
   def test_upload
     # random ids
-    bid = SecureRandom.random_number(1024)
-    u1 = SecureRandom.random_number(1024)
-    u2 = u1 + SecureRandom.random_number(1024) # ensure it is greater
+    bid = SecureRandom.random_number(1024).to_s
+    u1 = "1"
+    u2 = "2" # ensure it is greater
     # random string for the filenames
     filename1 = SecureRandom.base64(100)
     filename2 = SecureRandom.base64(100)
@@ -152,8 +152,8 @@ class TestCache < Test::Unit::TestCase
 
     # should be in cache
     assert_true DBCache.new_uploads? bid
-    # the bid - 1 does not exist in cache
-    assert_false DBCache.new_uploads? bid - 1
+    # the bid should not exist in cache
+    assert_false DBCache.new_uploads? "non existing bid"
 
     # retrieve the first upload
     upload1, left = DBCache.new_upload bid
@@ -191,15 +191,15 @@ class TestCache < Test::Unit::TestCase
 
   def test_upgrade
     # random ids
-    bid = SecureRandom.random_number(1024)
-    u1 = SecureRandom.random_number(1024)
-    u2 = u1 + SecureRandom.random_number(1024) # ensure it is greater
+    bid = SecureRandom.random_number(1024).to_s
+    u1 = "1"
+    u2 = "2" # ensure it is greater
     # random string for the filenames
-    filename1 = SecureRandom.base64(100)
-    filename2 = SecureRandom.base64(100)
+    filename1 = SecureRandom.base64(50)
+    filename2 = SecureRandom.base64(50)
     # random content for the files
-    content1 = SecureRandom.random_bytes(1024)
-    content2 = SecureRandom.random_bytes(1024)
+    content1 = SecureRandom.random_bytes(50)
+    content2 = SecureRandom.random_bytes(50)
 
     # not yet in cache
     assert_false DBCache.new_upgrade? bid
@@ -221,8 +221,8 @@ class TestCache < Test::Unit::TestCase
 
     # should be in cache
     assert_true DBCache.new_upgrade? bid
-    # the bid - 1 does not exist in cache
-    assert_false DBCache.new_upgrade? bid - 1
+    # the bid should not exist in cache
+    assert_false DBCache.new_upgrade? "non existing bid"
 
     # retrieve the first upgrade
     upgrade1, left = DBCache.new_upgrade bid
@@ -260,9 +260,9 @@ class TestCache < Test::Unit::TestCase
 
   def test_download
     # random ids
-    bid = SecureRandom.random_number(1024)
-    d1 = SecureRandom.random_number(1024)
-    d2 = SecureRandom.random_number(1024)
+    bid = SecureRandom.random_number(1024).to_s
+    d1 = "1"
+    d2 = "2"
     # random string for the filename
     filename1 = SecureRandom.base64(100)
     filename2 = SecureRandom.base64(100)
@@ -277,8 +277,8 @@ class TestCache < Test::Unit::TestCase
 
     # should be in cache
     assert_true DBCache.new_downloads? bid
-    # the bid - 1 does not exist in cache
-    assert_false DBCache.new_downloads? bid - 1
+    # the bid should not exist in cache
+    assert_false DBCache.new_downloads? "non existing bid"
 
     # retrieve the entries
     cdown = DBCache.new_downloads bid
@@ -297,9 +297,9 @@ class TestCache < Test::Unit::TestCase
 
   def test_filesystem
     # random ids
-    bid = SecureRandom.random_number(1024)
-    f1 = SecureRandom.random_number(1024)
-    f2 = SecureRandom.random_number(1024)
+    bid = SecureRandom.random_number(1024).to_s
+    f1 = "1"
+    f2 = "2"
     # random string for the paths
     path1 = SecureRandom.base64(100)
     path2 = SecureRandom.base64(100)
@@ -315,8 +315,8 @@ class TestCache < Test::Unit::TestCase
 
     # should be in cache
     assert_true DBCache.new_filesystems? bid
-    # the bid - 1 does not exist in cache
-    assert_false DBCache.new_filesystems? bid - 1
+    # the bid should not exist in cache
+    assert_false DBCache.new_filesystems? "non existing bid"
 
     # retrieve the entries
     cfiles = DBCache.new_filesystems bid
