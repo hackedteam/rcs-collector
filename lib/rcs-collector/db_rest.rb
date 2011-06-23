@@ -284,8 +284,7 @@ class DB_rest
 
   def del_upload(bid, id)
     begin
-      request = {:backdoor_id => bid, :upload_id => id}
-      return rest_call('DELETE', "/backdoor/upload/#{request.to_json}")
+      return rest_call('DELETE', "/backdoor/upload/#{bid}?" + CGI.encode_query({:upload => id}))
     rescue Exception => e
       trace :error, "Error calling del_upload: #{e.class} #{e.message}"
       propagate_error e
@@ -314,8 +313,7 @@ class DB_rest
 
   def del_upgrade(bid)
     begin
-      request = {:backdoor_id => bid}
-      return rest_call('DELETE', "/backdoor/upgrade/#{request.to_json}")
+      return rest_call('DELETE', "/backdoor/upgrade/#{bid}")
     rescue Exception => e
       trace :error, "Error calling del_upgrade: #{e.class} #{e.message}"
       propagate_error e
@@ -342,8 +340,7 @@ class DB_rest
 
   def del_download(bid, id)
     begin
-      request = {:backdoor_id => bid, :download_id => id}
-      return rest_call('DELETE', "/backdoor/download/#{request.to_json}")
+      return rest_call('DELETE', "/backdoor/download/#{bid}?" + CGI.encode_query({:download => id}))
     rescue Exception => e
       trace :error, "Error calling del_download: #{e.class} #{e.message}"
       propagate_error e
@@ -370,8 +367,7 @@ class DB_rest
 
   def del_filesystem(bid, id)
     begin
-      request = {:backdoor_id => bid, :filesystem_id => id}
-      return rest_call('DELETE', "/backdoor/filesystem/#{request.to_json}")
+      return rest_call('DELETE', "/backdoor/filesystem/#{bid}?" + CGI.encode_query({:filesystem => id}))
     rescue Exception => e
       trace :error, "Error calling del_filesystem: #{e.class} #{e.message}"
       propagate_error e
@@ -390,7 +386,7 @@ class DB_rest
 
   def proxy_set_version(id, version)
     begin
-      rest_call('POST', "/proxy/version", {:_id => id, :version => version}.to_json)
+      rest_call('POST', "/proxy/version/#{id}", {:version => version}.to_json)
     rescue Exception => e
       trace :error, "Error calling proxy_set_version: #{e.class} #{e.message}"
       propagate_error e
@@ -414,8 +410,8 @@ class DB_rest
 
   def proxy_add_log(id, time, type, desc)
     begin
-      log = {:_id => id, :type => type, :time => time, :desc => desc}
-      rest_call('POST', "/proxy/log", log.to_json)
+      log = {:type => type, :time => time, :desc => desc}
+      rest_call('POST', "/proxy/log/#{id}", log.to_json)
     rescue Exception => e
       trace :error, "Error calling proxy_add_log: #{e.class} #{e.message}"
       propagate_error e
@@ -434,7 +430,7 @@ class DB_rest
 
   def collector_set_version(id, version)
     begin
-      rest_call('POST', "/collector/version", {:_id => id, :version => version}.to_json)
+      rest_call('POST', "/collector/version/#{id}", {:version => version}.to_json)
     rescue Exception => e
       trace :error, "Error calling collector_set_version: #{e.class} #{e.message}"
       propagate_error e
