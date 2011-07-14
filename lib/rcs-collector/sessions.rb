@@ -20,7 +20,7 @@ class SessionManager
     @sessions = {}
   end
 
-  def create(bid, build, instance, subtype, k)
+  def create(bid, ident, instance, subtype, k)
 
     # create a new random cookie
     #cookie = SecureRandom.random_bytes(8).unpack('H*').first
@@ -28,7 +28,7 @@ class SessionManager
 
     # store the sessions
     @sessions[cookie] = {:bid => bid,
-                         :build => build,
+                         :ident => ident,
                          :instance => instance,
                          :subtype => subtype,
                          :key => k,

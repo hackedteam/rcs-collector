@@ -80,7 +80,7 @@ class EvidenceTransfer
               # when the DB was DOWN. we have to ask again to the db the real bid of the instance
               if sess[:bid] == 0 then
                 # ask the database the bid of the backdoor
-                status, bid = DB.instance.backdoor_status(sess[:build], sess[:instance], sess[:subtype])
+                status, bid = DB.instance.backdoor_status(sess[:ident], sess[:instance], sess[:subtype])
                 sess[:bid] = bid
                 raise "Backdoor_id cannot be ZERO" if bid == 0
               end

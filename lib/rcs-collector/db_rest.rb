@@ -114,7 +114,7 @@ class DB_rest
   def sync_start(session, version, user, device, source, time)
     begin
       content = {:bid => session[:bid],
-                 :build => session[:build],
+                 :ident => session[:ident],
                  :instance => session[:instance],
                  :subtype => session[:subtype],
                  :version => version,
@@ -196,10 +196,10 @@ class DB_rest
   end
 
   # used to authenticate the backdoors
-  def factory_keys(build = '')
+  def factory_keys(ident = '')
     begin
-      if build != '' then
-        ret = rest_call('GET', "/backdoor/factory_keys/#{build}")
+      if ident != '' then
+        ret = rest_call('GET', "/backdoor/factory_keys/#{ident}")
       else
         ret = rest_call('GET', '/backdoor/factory_keys')
       end
@@ -213,7 +213,7 @@ class DB_rest
   # backdoor identify
   def backdoor_status(build_id, instance_id, subtype)
     begin
-      request = {:build => build_id, :instance => instance_id, :subtype => subtype}
+      request = {:ident => build_id, :instance => instance_id, :subtype => subtype}
       ret = rest_call('GET', '/backdoor/status/?' + CGI.encode_query(request))
       
       return DB::NO_SUCH_BACKDOOR, 0 if ret.kind_of? Net::HTTPNotFound
