@@ -141,6 +141,11 @@ class NetworkController
           end
           proto.config(content)
 
+        when NCProto::PROTO_UPGRADE
+          content = nil
+          trace :info, "[NC] #{element['address']} has a new upgrade (#{content.length} bytes)" unless content.nil?
+          proto.upgrade(content)
+
         when NCProto::PROTO_LOG
           time, type, desc = proto.log
           # we have to be fast here, we cannot insert them directly in the db

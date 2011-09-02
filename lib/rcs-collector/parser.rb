@@ -40,6 +40,8 @@ module Parser
         # only the DB is authorized to send PUT commands
         if @peer.eql? Config.instance.global['DB_ADDRESS'] then
 
+          #TODO: time request from server
+          
           if req_uri.start_with?('/RCS-NC_') then
             # this is a request for a network element
             resp_content, resp_content_type = NetworkController.push req_uri.delete('/RCS-NC_'), req_content
