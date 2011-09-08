@@ -187,13 +187,13 @@ class Config
       opts.on( '-p', '--db-port PORT', Integer, 'Connect to tcp/PORT on rcs-db' ) do |port|
         options[:db_port] = port
       end
-      opts.on( '-t', '--db-cert', 'Retrieve the certificate file (pem) used from db (requires --user-pass)' ) do
+      opts.on( '-t', '--db-cert', 'Retrieve the certificate file (pem) used from rcs-db (requires --user-pass)' ) do
         options[:db_cert] = true
       end
-      opts.on( '-s', '--db-sign', 'Retrieve the signature file (sig) from db (requires --user-pass)' ) do
+      opts.on( '-s', '--db-sign', 'Retrieve the signature file (sig) from rcs-db (requires --user-pass)' ) do
         options[:db_sign] = true
       end
-      opts.on( '-u', '--user-pass USER:PASS', 'The account used to connect the first time' ) do |account|
+      opts.on( '-u', '--user-pass USER:PASS', 'The account used to connect to rcs-db' ) do |account|
         options[:user], options[:pass] = account.split(':')
       end
       opts.on( '-b', '--db-heartbeat SEC', Integer, 'Time in seconds between two heartbeats to the rcs-db' ) do |sec|
