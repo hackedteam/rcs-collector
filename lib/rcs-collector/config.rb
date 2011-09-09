@@ -181,10 +181,10 @@ class Config
       opts.on( '-l', '--listen PORT', Integer, 'Listen on tcp/PORT' ) do |port|
         options[:port] = port
       end
-      opts.on( '-a', '--db-address HOST', String, 'Use the rcs-db at HOST' ) do |host|
+      opts.on( '-d', '--db-address HOSTNAME', 'Use the rcs-db at HOSTNAME' ) do |host|
         options[:db_address] = host
       end
-      opts.on( '-p', '--db-port PORT', Integer, 'Connect to tcp/PORT on rcs-db' ) do |port|
+      opts.on( '-P', '--db-port PORT', Integer, 'Connect to tcp/PORT on rcs-db' ) do |port|
         options[:db_port] = port
       end
       opts.on( '-t', '--db-cert', 'Retrieve the certificate file (pem) used from rcs-db (requires --user-pass)' ) do
@@ -193,8 +193,11 @@ class Config
       opts.on( '-s', '--db-sign', 'Retrieve the signature file (sig) from rcs-db (requires --user-pass)' ) do
         options[:db_sign] = true
       end
-      opts.on( '-u', '--user-pass USER:PASS', 'The account used to connect to rcs-db' ) do |account|
-        options[:user], options[:pass] = account.split(':')
+      opts.on( '-u', '--user USERNAME', 'rcs-db username' ) do |user|
+        options[:user] = user
+      end
+      opts.on( '-p', '--password PASSWORD', 'rcs-db password' ) do |password|
+        options[:pass] = password
       end
       opts.on( '-b', '--db-heartbeat SEC', Integer, 'Time in seconds between two heartbeats to the rcs-db' ) do |sec|
         options[:hb_interval] = sec
