@@ -138,7 +138,7 @@ class Config
 
   def get_from_server(user, pass, resource)
     begin
-      http = Net::HTTP.new(@global['DB_ADDRESS'], 4444)
+      http = Net::HTTP.new(@global['DB_ADDRESS'], @global['DB_PORT'])
       http.use_ssl = true
       http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
