@@ -145,8 +145,13 @@ class Config
       # login
       account = {:user => user, :pass => pass }
       resp = http.request_post('/auth/login', account.to_json, nil)
-      cookie = resp['Set-Cookie'] unless resp['Set-Cookie'].nil?
-
+      unless resp['Set-Cookie'].nil?
+        cookie = resp['Set-Cookie']
+      else
+        puts "Invalid authentication"
+        return nil
+      end
+      
       # get the signature or the cert
       res = http.request_get("/signature/#{resource}", {'Cookie' => cookie})
       sig = JSON.parse(res.body)
