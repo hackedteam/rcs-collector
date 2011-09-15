@@ -60,16 +60,6 @@ task :clean do
   end
 end
 
-desc "Create the NSIS installer for windows"
-task :nsis do
-  puts "Housekeeping..."
-  Rake::Task[:clean].invoke
-  execute "Creating NSIS installer" do
-    # invoke the nsis builder
-    system "\"C:\\Program Files (x86)\\NSIS\\makensis.exe\" /V2 ./nsis/RCSCollector.nsi"
-  end
-end
-
 desc "Remove the protected release code"
 task :unprotect do
   execute "Deleting the protected release folder" do
