@@ -21,14 +21,14 @@ class DB
   include Singleton
   include RCS::Tracer
 
-  ACTIVE_BACKDOOR = 0
-  DELETED_BACKDOOR = 1
-  CLOSED_BACKDOOR = 2
-  QUEUED_BACKDOOR = 3
-  NO_SUCH_BACKDOOR = 4
-  UNKNOWN_BACKDOOR = 5
+  ACTIVE_AGENT = 0
+  DELETED_AGENT = 1
+  CLOSED_AGENT = 2
+  QUEUED_AGENT = 3
+  NO_SUCH_AGENT = 4
+  UNKNOWN_AGENT = 5
   
-  attr_reader :backdoor_signature
+  attr_reader :agent_signature
   attr_reader :network_signature
 
   def initialize
@@ -44,8 +44,8 @@ class DB
     # status of the db connection
     @available = false
 
-    # global (per customer) backdoor signature
-    @backdoor_signature = nil
+    # global (per customer) agent signature
+    @agent_signature = nil
     # signature for the network elements
     @network_signature = nil
     # class keys
@@ -107,15 +107,15 @@ class DB
   def cache_init
     # if the db is available, clear the cache and populate it again
     if @available then
-      # get the global signature (per customer) for all the backdoors
-      bck_sig = db_rest_call :backdoor_signature
-      @backdoor_signature = Digest::MD5.digest bck_sig unless bck_sig.nil?
+      # get the global signature (per customer) for all the agents
+      bck_sig = db_rest_call :agent_signature
+      @agent_signature = Digest::MD5.digest bck_sig unless bck_sig.nil?
 
       # get the network signature to communicate with the network elements
       net_sig = db_rest_call :network_signature
       @network_signature = net_sig unless net_sig.nil?
 
-      # get the classkey of every backdoor
+      # get the factory key of every agent
       keys = db_rest_call :factory_keys
       @factory_keys = keys unless keys.nil?
 
@@ -128,8 +128,8 @@ class DB
 
       trace :info, "Populating the DB cache..."
       # save in the permanent cache
-      DBCache.backdoor_signature = bck_sig
-      trace :info, "Backdoor signature saved in the DB cache"
+      DBCache.agent_signature = bck_sig
+      trace :info, "Agent signature saved in the DB cache"
       DBCache.network_signature = net_sig
       trace :info, "Network signature saved in the DB cache"
       DBCache.add_factory_keys @factory_keys
@@ -144,7 +144,7 @@ class DB
       trace :info, "Loading the DB cache..."
 
       # populate the memory cache from the permanent one
-      @backdoor_signature = Digest::MD5.digest DBCache.backdoor_signature unless DBCache.backdoor_signature.nil?
+      @agent_signature = Digest::MD5.digest DBCache.agent_signature unless DBCache.agent_signature.nil?
       @network_signature = DBCache.network_signature unless DBCache.network_signature.nil?
       @factory_keys = DBCache.factory_keys
 
@@ -192,25 +192,25 @@ class DB
     return nil
   end
 
-  # returns ALWAYS the status of a backdoor
-  def backdoor_status(build_id, instance_id, subtype)
+  # returns ALWAYS the status of an agent
+  def agent_status(build_id, instance_id, subtype)
     # if the database has gone, reply with a fake response in order for the sync to continue
-    return DB::UNKNOWN_BACKDOOR, 0 unless @available
+    return DB::UNKNOWN_AGENT, 0 unless @available
 
     trace :debug, "Asking the status of [#{build_id}] to the db"
 
-    # ask the database the status of the backdoor
-    status, bid = db_rest_call :backdoor_status, build_id, instance_id, subtype
+    # ask the database the status of the agent
+    status, bid = db_rest_call :agent_status, build_id, instance_id, subtype
     
     # if status is nil, the db down. btw we must not fail, fake the reply
-    return (status.nil?) ? [DB::UNKNOWN_BACKDOOR, 0] : [status, bid]
+    return (status.nil?) ? [DB::UNKNOWN_AGENT, 0] : [status, bid]
   end
 
   def sync_start(session, version, user, device, source, time)
     # database is down, continue
     return unless @available
 
-    # tell the db that the backdoor has synchronized
+    # tell the db that the agent has synchronized
     db_rest_call :sync_start, session, version, user, device, source, time
   end
 
@@ -263,7 +263,7 @@ class DB
   end
 
   def activate_conf(bid)
-    # set the status to "sent" in the db
+    # set the status to "activated" in the db
     db_rest_call :activate_conf, bid if @available
   end
 

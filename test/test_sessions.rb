@@ -33,7 +33,7 @@ class TestSessions < Test::Unit::TestCase
   def test_session_value
     # check the values of the session
     session = SessionManager.instance.get(@cookie)
-    assert_equal "BUILD", session[:build]
+    assert_equal "BUILD", session[:ident]
 
     assert_equal 1, SessionManager.instance.length
   end

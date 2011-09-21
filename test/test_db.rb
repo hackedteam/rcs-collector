@@ -43,9 +43,9 @@ class DB_mockup_rest
   # mockup methods
   def login(user, pass); return (@@failure) ? false : true; end
   def logout; end
-  def backdoor_signature
+  def agent_signature
     raise if @@failure
-    return "test-backdoor-signature"
+    return "test-agent-signature"
   end
   def network_signature
     raise if @@failure
@@ -55,10 +55,10 @@ class DB_mockup_rest
     raise if @@failure
     return {'BUILD001' => 'secret class key', 'BUILD002' => "another secret"}
   end
-  def backdoor_status(build_id, instance_id, subtype)
+  def agent_status(build_id, instance_id, subtype)
     raise if @@failure
     # return status, bid
-    return DB::ACTIVE_BACKDOOR, 1
+    return DB::ACTIVE_AGENT, 1
   end
   def new_conf?(bid)
     raise if @@failure
@@ -119,7 +119,7 @@ class TestDB < Test::Unit::TestCase
 
   def test_cache_init
     assert_true DB.instance.cache_init
-    assert_equal Digest::MD5.digest('test-backdoor-signature'), DB.instance.backdoor_signature
+    assert_equal Digest::MD5.digest('test-agent-signature'), DB.instance.agent_signature
     assert_equal 'test-network-signature', DB.instance.network_signature
     assert_equal Digest::MD5.digest('secret class key'), DB.instance.factory_key_of('BUILD001')
 
@@ -127,13 +127,13 @@ class TestDB < Test::Unit::TestCase
     # this will fail to reach the db 
     assert_false DB.instance.cache_init
     assert_false DB.instance.connected?
-    assert_equal Digest::MD5.digest('test-backdoor-signature'), DB.instance.backdoor_signature
+    assert_equal Digest::MD5.digest('test-agent-signature'), DB.instance.agent_signature
     assert_equal 'test-network-signature', DB.instance.network_signature
     assert_equal Digest::MD5.digest('secret class key'), DB.instance.factory_key_of('BUILD001')
 
     # now the error was reported to the DB layer, so it should init correctly
     assert_true DB.instance.cache_init
-    assert_equal Digest::MD5.digest('test-backdoor-signature'), DB.instance.backdoor_signature
+    assert_equal Digest::MD5.digest('test-agent-signature'), DB.instance.agent_signature
     assert_equal 'test-network-signature', DB.instance.network_signature
     assert_equal Digest::MD5.digest('secret class key'), DB.instance.factory_key_of('BUILD001')
   end
@@ -152,14 +152,14 @@ class TestDB < Test::Unit::TestCase
     assert_equal nil, DB.instance.factory_key_of('404')
   end
 
-  def test_backdoor_status
-    assert_equal [DB::ACTIVE_BACKDOOR, 1], DB.instance.backdoor_status('BUILD001', 'inst', 'type')
+  def test_agent_status
+    assert_equal [DB::ACTIVE_AGENT, 1], DB.instance.agent_status('BUILD001', 'inst', 'type')
     # during the db failure, we must be able to continue
     DB_mockup_rest.failure = true
-    assert_equal [DB::UNKNOWN_BACKDOOR, 0], DB.instance.backdoor_status('BUILD001', 'inst', 'type')
+    assert_equal [DB::UNKNOWN_AGENT, 0], DB.instance.agent_status('BUILD001', 'inst', 'type')
     assert_false DB.instance.connected?
     # now the layer is aware of the failure
-    assert_equal [DB::UNKNOWN_BACKDOOR, 0], DB.instance.backdoor_status('BUILD001', 'inst', 'type')
+    assert_equal [DB::UNKNOWN_AGENT, 0], DB.instance.agent_status('BUILD001', 'inst', 'type')
   end
 
   def test_new_conf

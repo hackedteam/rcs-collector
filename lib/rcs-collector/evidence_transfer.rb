@@ -79,10 +79,10 @@ class EvidenceTransfer
               # if the session bid is zero, it means that we have collected the evidence
               # when the DB was DOWN. we have to ask again to the db the real bid of the instance
               if sess[:bid] == 0 then
-                # ask the database the bid of the backdoor
-                status, bid = DB.instance.backdoor_status(sess[:ident], sess[:instance], sess[:subtype])
+                # ask the database the bid of the agent
+                status, bid = DB.instance.agent_status(sess[:ident], sess[:instance], sess[:subtype])
                 sess[:bid] = bid
-                raise "Backdoor_id cannot be ZERO" if bid == 0
+                raise "agent _id cannot be ZERO" if bid == 0
               end
               
               # update the status in the db

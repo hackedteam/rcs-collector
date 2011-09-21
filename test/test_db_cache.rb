@@ -52,13 +52,13 @@ class TestCache < Test::Unit::TestCase
   def test_signature
     # since the cache is not initialized,
     # the call should create it and store the value
-    DBCache.backdoor_signature = "test signature"
+    DBCache.agent_signature = "test signature"
 
     # check if the file was created
     assert_true File.exist?(Dir.pwd + "/config/cache.db")
 
     # check the correct value
-    assert_equal "test signature", DBCache.backdoor_signature
+    assert_equal "test signature", DBCache.agent_signature
   end
 
   def test_network_signature
@@ -77,7 +77,7 @@ class TestCache < Test::Unit::TestCase
     # clear the cache
     DBCache.empty!
 
-    assert_nil DBCache.backdoor_signature
+    assert_nil DBCache.agent_signature
     assert_equal 0, DBCache.length
   end
 

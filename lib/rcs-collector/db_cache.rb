@@ -22,7 +22,7 @@ class DBCache
     end
 
     # the schema of the persistent cache
-    schema = ["CREATE TABLE backdoor_signature (signature CHAR(32))",
+    schema = ["CREATE TABLE agent_signature (signature CHAR(32))",
               "CREATE TABLE network_signature (signature CHAR(32))",
               "CREATE TABLE factory_keys (id CHAR(16), key CHAR(32))",
               "CREATE TABLE configs (bid CHAR(32), config BLOB)",
@@ -74,24 +74,24 @@ class DBCache
   end
 
   ##############################################
-  # BACKDOOR SIGNATURE
+  # AGENT SIGNATURE
   ##############################################
 
-  def self.backdoor_signature=(sig)
+  def self.agent_signature=(sig)
     # ensure the db was already created, otherwise create it
     create! unless File.exist?(CACHE_FILE)
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("DELETE FROM backdoor_signature;")
-      db.execute("INSERT INTO backdoor_signature VALUES ('#{sig}');")
+      db.execute("DELETE FROM agent_signature;")
+      db.execute("INSERT INTO agent_signature VALUES ('#{sig}');")
       db.close
     rescue Exception => e
       trace :warn, "Cannot save the cache: #{e.message}"
     end
   end
 
-  def self.backdoor_signature
+  def self.agent_signature
     return nil unless File.exist?(CACHE_FILE)
 
     # default value
@@ -99,7 +99,7 @@ class DBCache
 
     begin
       db = SQLite3::Database.open CACHE_FILE
-      db.execute("SELECT signature FROM backdoor_signature;") do |row|
+      db.execute("SELECT signature FROM agent_signature;") do |row|
         signature = row.first
       end
       db.close

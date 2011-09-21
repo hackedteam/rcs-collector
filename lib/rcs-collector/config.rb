@@ -216,10 +216,10 @@ class Config
       opts.on( '-N', '--no-network', 'Disable the Network Controller' ) do
         options[:nc_enabled] = false
       end
-      opts.on( '-c', '--collector', 'Enable the Backdoor Collector' ) do
+      opts.on( '-c', '--collector', 'Enable the Collector' ) do
         options[:coll_enabled] = true
       end
-      opts.on( '-C', '--no-collector', 'Disable the Backdoor Collector' ) do
+      opts.on( '-C', '--no-collector', 'Disable the Collector' ) do
         options[:coll_enabled] = false
       end
       opts.on( '-X', '--defaults', 'Write a new config file with default values' ) do

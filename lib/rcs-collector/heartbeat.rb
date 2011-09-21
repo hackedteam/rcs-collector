@@ -29,10 +29,10 @@ class HeartBeat
     ip = ''
 
     # retrieve how many session we have
-    # this number represents the number of backdoor that are synchronizing
+    # this number represents the number of agent that are synchronizing
     active_sessions = SessionManager.instance.length
 
-    # if we are serving backdoors, report it accordingly
+    # if we are serving agents, report it accordingly
     message = (active_sessions > 0) ? "Serving #{active_sessions} sessions" : "Idle..."
 
     # report our status

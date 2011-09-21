@@ -91,7 +91,7 @@ class HTTPHandler < EM::Connection
       # here we pass the control to the internal parser which will return:
       #   - the content of the reply
       #   - the content_type
-      #   - the cookie if the backdoor successfully passed the auth phase
+      #   - the cookie if the agent successfully passed the auth phase
       begin
         content, content_type, cookie = http_parse(@http_headers.split("\x00"), @http_request_method, @http_request_uri, @http_cookie, @http_post_content)
       rescue Exception => e

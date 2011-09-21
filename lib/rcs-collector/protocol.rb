@@ -35,7 +35,7 @@ class Protocol
 
     # decrypt the message with the per customer signature
     begin
-      message = aes_decrypt(content, DB.instance.backdoor_signature)
+      message = aes_decrypt(content, DB.instance.agent_signature)
     rescue Exception => e
       trace :error, "[#{peer}] Invalid message decryption: #{e.message}"
       return
@@ -79,7 +79,7 @@ class Protocol
     # this class does not exist
     return if conf_key.nil?
 
-    # the server will calculate the same sha digest and authenticate the backdoor
+    # the server will calculate the same sha digest and authenticate the agent
     # since the conf key is pre-shared
     sha_check = Digest::SHA1.digest(build_id + instance_id + subtype + conf_key)
     trace :debug, "[#{peer}] Auth -- sha_check: " << sha_check.unpack('H*').to_s
@@ -107,21 +107,21 @@ class Protocol
 
     # prepare the response:
     # Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response )
-    message = aes_encrypt(ks, DB.instance.backdoor_signature)
+    message = aes_encrypt(ks, DB.instance.agent_signature)
 
-    # ask the database the status of the backdoor
-    status, bid = DB.instance.backdoor_status(build_id_real, instance_id, subtype)
+    # ask the database the status of the agent
+    status, bid = DB.instance.agent_status(build_id_real, instance_id, subtype)
 
     response = [Commands::PROTO_NO].pack('I')
-    # what to do based on the backdoor status
+    # what to do based on the agent status
     case status
-      when DB::DELETED_BACKDOOR, DB::NO_SUCH_BACKDOOR, DB::CLOSED_BACKDOOR
+      when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
         response = [Commands::PROTO_UNINSTALL].pack('I')
         trace :info, "[#{peer}] Uninstall command sent"
-      when DB::QUEUED_BACKDOOR
+      when DB::QUEUED_AGENT
         response = [Commands::PROTO_NO].pack('I')
         trace :warn, "[#{peer}] was queued for license limit exceeded"
-      when DB::ACTIVE_BACKDOOR, DB::UNKNOWN_BACKDOOR
+      when DB::ACTIVE_AGENT, DB::UNKNOWN_AGENT
         # everything is ok or the db is not connected, proceed
         response = [Commands::PROTO_OK].pack('I')
 
@@ -131,7 +131,7 @@ class Protocol
         trace :info, "[#{peer}] Authentication phase 2 completed [#{cookie}]"
     end
 
-    # complete the message for the backdoor
+    # complete the message for the agent
     message += aes_encrypt(nonce + response, k)
 
     return message, 'application/octet-stream', cookie

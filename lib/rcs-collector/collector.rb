@@ -71,13 +71,13 @@ class Application
         # this case should happen only the first time we connect to the db
         # after the first successful connection, the cache will get populated
         # and even if the db is down we can continue
-        if DB.instance.backdoor_signature.nil? then
+        if DB.instance.agent_signature.nil? then
           trace :info, "Empty global signature, cannot continue. Waiting 10 seconds and retry..."
           sleep 10
         end
 
-      # do not continue if we don't have the global backdoor signature
-      end while DB.instance.backdoor_signature.nil?
+      # do not continue if we don't have the global agent signature
+      end while DB.instance.agent_signature.nil?
 
       # if some instance are still in SYNC_IN_PROGRESS status, reset it to
       # SYNC_TIMEOUT. we are starting now, so no valid session can exist
