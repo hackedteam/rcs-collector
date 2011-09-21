@@ -253,11 +253,11 @@ class DB_rest
     end
   end
 
-  def conf_sent(bid)
+  def activate_conf(bid)
     begin
       return rest_call('DELETE', "/backdoor/config/#{bid}")
     rescue Exception => e
-      trace :error, "Error calling conf_sent: #{e.class} #{e.message}"
+      trace :error, "Error calling activate_conf: #{e.class} #{e.message}"
       propagate_error e
     end
   end

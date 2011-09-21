@@ -130,11 +130,26 @@ module Commands
   # Protocol Conf
   # -> PROTO_CONF
   # <- PROTO_NO | PROTO_OK [ Conf ]
+  # -> PROTO_CONF [ status ]
+  # <- PROTO_NO | PROTO_OK [ Conf ]
   def command_conf(peer, session, message)
     trace :info, "[#{peer}][#{session[:cookie]}] Configuration request"
 
+    # if the command contains a message
+    # it is a response to inform us of the stressfulness of the operation
+    if message.size > 0
+      status = message.slice!(0..3).unpack('I').first
+      if status == PROTO_OK
+        trace :info, "[#{peer}][#{session[:cookie]}] Configuration successfully received by the agent"
+        DB.instance.activate_conf session[:bid]
+      else
+        trace :warn, "[#{peer}][#{session[:cookie]}] There was an error on the agent while receiving the configuration"
+      end
+      return [PROTO_OK].pack('I')
+    end
+
     # the conf was already retrieved (if any) during the ident phase
-    # here we get just the content (locally) without asking again to the db
+    # here we just get the content (locally) without asking again to the db
     conf = DB.instance.new_conf session[:bid]
 
     # send the response

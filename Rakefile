@@ -18,7 +18,7 @@ Jeweler::Tasks.new do |gem|
   gem.homepage = "http://rcs-dev/cgi-bin/gitweb.cgi?p=rcs-collector.git"
   gem.license = "MIT"
   gem.summary = %Q{The RCS Evidence Collector}
-  gem.description = %Q{This service is used to communicate with the backdoors during the synchronization phase}
+  gem.description = %Q{This service is used to communicate with the agents during the synchronization phase}
   gem.email = "alor@hackingteam.it"
   gem.authors = ["ALoR"]
   # Include your dependencies below. Runtime dependencies are required when using your gem,

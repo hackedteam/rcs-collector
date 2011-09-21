@@ -256,13 +256,15 @@ class DB
 
     return nil if config.nil?
 
-    # set the status to "sent" in the db
-    db_rest_call :conf_sent, bid if @available
-
     # delete the conf from the cache
     DBCache.del_conf bid
 
     return config
+  end
+
+  def activate_conf(bid)
+    # set the status to "sent" in the db
+    db_rest_call :activate_conf, bid if @available
   end
 
   def new_uploads?(bid)
