@@ -182,27 +182,19 @@ class Config
       # Set a banner, displayed at the top of the help screen.
       opts.banner = "Usage: rcs-collector-config [options]"
 
-      # Define the options, and what they do
-      opts.on( '-l', '--listen PORT', Integer, 'Listen on tcp/PORT' ) do |port|
-        options[:port] = port
-      end
+      opts.separator ""
+      opts.separator "Database host:"
       opts.on( '-d', '--db-address HOSTNAME', 'Use the rcs-db at HOSTNAME' ) do |host|
         options[:db_address] = host
       end
       opts.on( '-P', '--db-port PORT', Integer, 'Connect to tcp/PORT on rcs-db' ) do |port|
         options[:db_port] = port
       end
-      opts.on( '-t', '--db-cert', 'Retrieve the certificate file (pem) used from rcs-db (requires --user-pass)' ) do
-        options[:db_cert] = true
-      end
-      opts.on( '-s', '--db-sign', 'Retrieve the signature file (sig) from rcs-db (requires --user-pass)' ) do
-        options[:db_sign] = true
-      end
-      opts.on( '-u', '--user USERNAME', 'rcs-db username' ) do |user|
-        options[:user] = user
-      end
-      opts.on( '-p', '--password PASSWORD', 'rcs-db password' ) do |password|
-        options[:pass] = password
+
+      opts.separator ""
+      opts.separator "Collector options:"
+      opts.on( '-l', '--listen PORT', Integer, 'Listen on tcp/PORT' ) do |port|
+        options[:port] = port
       end
       opts.on( '-b', '--db-heartbeat SEC', Integer, 'Time in seconds between two heartbeats to the rcs-db' ) do |sec|
         options[:hb_interval] = sec
@@ -222,15 +214,32 @@ class Config
       opts.on( '-C', '--no-collector', 'Disable the Collector' ) do
         options[:coll_enabled] = false
       end
+
+      opts.separator ""
+      opts.separator "General options:"
       opts.on( '-X', '--defaults', 'Write a new config file with default values' ) do
         options[:defaults] = true
       end
-
-      # This displays the help screen
       opts.on( '-h', '--help', 'Display this screen' ) do
         puts opts
         return 0
       end
+
+      opts.separator ""
+      opts.separator "Utilities:"
+      opts.on( '-t', '--db-cert', 'Retrieve the certificate file (pem) used from rcs-db (requires --user-pass)' ) do
+        options[:db_cert] = true
+      end
+      opts.on( '-s', '--db-sign', 'Retrieve the signature file (sig) from rcs-db (requires --user-pass)' ) do
+        options[:db_sign] = true
+      end
+      opts.on( '-u', '--user USERNAME', 'rcs-db username' ) do |user|
+        options[:user] = user
+      end
+      opts.on( '-p', '--password PASSWORD', 'rcs-db password' ) do |password|
+        options[:pass] = password
+      end
+
     end
 
     optparse.parse(argv)
