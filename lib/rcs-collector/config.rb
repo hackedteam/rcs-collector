@@ -137,6 +137,7 @@ class Config
   end
 
   def get_from_server(user, pass, resource)
+    trace :info, "Retrieving files from the server..."
     begin
       http = Net::HTTP.new(@global['DB_ADDRESS'], @global['DB_PORT'])
       http.use_ssl = true
@@ -162,6 +163,7 @@ class Config
     rescue Exception => e
       trace :fatal, "ERROR: auto-retrieve of component failed: #{e.message}"
     end
+    trace :info, "done."
     return nil
   end
 
