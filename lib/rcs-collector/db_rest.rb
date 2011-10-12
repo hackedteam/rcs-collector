@@ -32,7 +32,7 @@ class DB_rest
     @http.use_ssl = true
     
     # no SSL verify for this connection
-    @http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    #@http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
     # CA certificate to check if the server ssl certificate is valid
     @http.ca_file = Config.instance.file('DB_CERT')
