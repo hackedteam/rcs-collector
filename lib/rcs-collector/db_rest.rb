@@ -163,9 +163,9 @@ class DB_rest
     end
   end
 
-  def status_update(component, remoteip, status, message, disk, cpu, pcpu)
+  def status_update(component, remoteip, status, message, disk, cpu, pcpu, nc)
     begin
-      content = {:name => component, :address => remoteip, :status => status, :info => message, :disk => disk, :cpu => cpu, :pcpu => pcpu}
+      content = {:name => component, :address => remoteip, :status => status, :info => message, :disk => disk, :cpu => cpu, :pcpu => pcpu, :nc => nc}
       return rest_call('POST', '/status', content.to_json)
     rescue Exception => e
       trace :error, "Error calling status_update: #{e.class} #{e.message}"
@@ -411,7 +411,7 @@ class DB_rest
   def proxy_add_log(id, time, type, desc)
     begin
       log = {:type => type, :time => time, :desc => desc}
-      rest_call('POST', "/proxy/log/#{id}", log.to_json)
+      rest_call('POST', "/proxy/logs/#{id}", log.to_json)
     rescue Exception => e
       trace :error, "Error calling proxy_add_log: #{e.class} #{e.message}"
       propagate_error e

@@ -44,7 +44,7 @@ module Parser
           
           if req_uri.start_with?('/RCS-NC_') then
             # this is a request for a network element
-            resp_content, resp_content_type = NetworkController.push req_uri.delete('/RCS-NC_'), req_content
+            resp_content, resp_content_type = NetworkController.push req_uri.split('_')[1], req_content
           else
             # this is a request to save a file in the public dir
             resp_content, resp_content_type = http_put_file req_uri, req_content
