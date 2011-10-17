@@ -7,10 +7,10 @@ require_relative 'events.rb'
 require_relative 'config.rb'
 require_relative 'db.rb'
 require_relative 'evidence_transfer.rb'
+require_relative 'evidence_manager.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
-require 'rcs-common/evidence_manager'
 
 # from System
 require 'yaml'

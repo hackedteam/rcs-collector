@@ -3,10 +3,10 @@
 #
 
 require_relative 'db.rb'
+require_relative 'evidence_manager.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
-require 'rcs-common/evidence_manager'
 require 'rcs-common/fixnum'
 require 'rcs-common/symbolize'
 
