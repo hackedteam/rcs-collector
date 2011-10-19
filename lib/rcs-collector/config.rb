@@ -23,7 +23,7 @@ class Config
 
   DEFAULT_CONFIG= {'DB_ADDRESS' => 'rcs-server',
                    'DB_PORT' => 4444,
-                   'DB_CERT' => 'rcs-ca.pem',
+                   'DB_CERT' => 'rcs.pem',
                    'DB_SIGN' => 'rcs-server.sig',
                    'LISTENING_PORT' => 80,
                    'HB_INTERVAL' => 30,

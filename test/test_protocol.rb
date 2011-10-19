@@ -3,6 +3,7 @@ require 'rcs-common'
 require 'singleton'
 
 module RCS
+module Collector
 
 class EvidenceManager
   def trace(a, b)
@@ -11,8 +12,6 @@ class EvidenceManager
     # do nothing during test
   end
 end
-
-module Collector
 
 class EvidenceTransfer
   def trace(a, b)
@@ -40,7 +39,7 @@ class Config
     @global = {'DB_ADDRESS' => 'test',
                'DB_PORT' => 80,
                'DB_SIGN' => 'rcs-server.sig',
-               'DB_CERT' => 'rcs-ca.pem'}
+               'DB_CERT' => 'rcs.pem'}
   end
 end
 

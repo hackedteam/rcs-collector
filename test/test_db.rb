@@ -18,7 +18,7 @@ class Config
     @global = {'DB_ADDRESS' => 'test',
                'DB_PORT' => 80,
                'DB_SIGN' => 'rcs-server.sig',
-               'DB_CERT' => 'rcs-ca.pem'}
+               'DB_CERT' => 'rcs.pem'}
   end
 end
 
