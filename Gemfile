@@ -1,11 +1,11 @@
 source "http://rubygems.org"
 # Add dependencies required to use your gem here.
 
-gem 'eventmachine', "= 1.0.0.beta.3"
+gem 'eventmachine', ">= 1.0.0.beta.4"
 git "git://github.com/alor/evma_httpserver.git", :branch => "master" do
   gem 'eventmachine_httpserver', ">= 0.2.2"
 end
-gem 'sqlite3-ruby'
+gem 'sqlite3'
 gem 'uuidtools'
 #gem 'rcs-common', ">= 0.1.4"
 

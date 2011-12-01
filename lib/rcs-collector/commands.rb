@@ -158,7 +158,7 @@ module Commands
       response = [PROTO_NO].pack('I')
     else
       trace :info, "[#{peer}][#{session[:cookie]}] New configuration (#{conf.length} bytes)"
-      response = [PROTO_OK].pack('I') + [conf.length].pack('I') + conf
+      response = [PROTO_OK].pack('I') + [conf.bytesize].pack('I') + conf
     end
 
     return response
