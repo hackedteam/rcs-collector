@@ -195,9 +195,11 @@ class NetworkController
   def self.report_status(elem, status, message, disk=0, cpu=0, pcpu=0)
     if not elem['_id'].nil? then
       component = "RCS::IPA::" + elem['name']
+      internal_component = 'ipa'
     end
     if not elem['collector_id'].nil? then
       component = "RCS::ANON::" + elem['collector']
+      internal_component = 'anonymizer'
     end
 
     trace :info, "[NC] [#{component}] #{elem['address']} #{status}"
@@ -206,7 +208,7 @@ class NetworkController
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.instance.update_status component, elem['address'], status, message, stats
+    DB.instance.update_status component, elem['address'], status, message, stats, internal_component
   end
 
   
@@ -225,7 +227,7 @@ class NetworkController
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.instance.update_status component, ip, status, message, stats, true
+    DB.instance.update_status component, ip, status, message, stats, 'nc'
   end
 
 end
