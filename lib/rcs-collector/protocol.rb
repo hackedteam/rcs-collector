@@ -29,10 +29,10 @@ class Protocol
   # <-  [ Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response ) ]  |  SetCookie ( SessionCookie )
   def self.authenticate(peer, uri, content)
     trace :info, "[#{peer}] Authentication required..."
-
+    
     # integrity check (104 byte of data, 112 padded)
     return unless content.length == 112
-
+    
     # decrypt the message with the per customer signature
     begin
       message = aes_decrypt(content, DB.instance.agent_signature)
@@ -193,7 +193,7 @@ class Protocol
       return
     end
 
-    return response, 'application/octet-stream'
+    return response, 'application/octet-stream', cookie
   end
 
   # the protocol is parsed here
@@ -201,7 +201,7 @@ class Protocol
   #   - Authentication
   #   - Commands
   def self.parse(peer, uri, cookie, content)
-
+    
     # if the request does not contains any cookies,
     # we need to perform authentication first
     return authenticate(peer, uri, content) if cookie.nil?
