@@ -9,6 +9,8 @@ class CollectorController < RESTController
   def get
     # serve the requested file
     http_get_file(@request[:headers], @request[:uri])
+  rescue Exception => e
+    return decoy_page
   end
   
   def put
@@ -52,8 +54,6 @@ class CollectorController < RESTController
     # retrieve the Operating System and app specific extension of the requester
     os, ext = http_get_os(headers)
 
-    puts "OS: #{os} EXT: #{ext}"
-    
     file_path = File.realdirpath(file_path)
     file_path += ext unless File.exist?(file_path) and File.file?(file_path)
     

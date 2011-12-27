@@ -41,7 +41,7 @@ class RESTController
     file_path = Dir.pwd + "/config/decoy.html"
     page = File.read(file_path) if File.exist?(file_path)
 
-    trace :info, "[#{@peer}] Decoy page displayed"
+    trace :info, "[#{@request[:peer]}] Decoy page displayed"
 
     return page
   end
