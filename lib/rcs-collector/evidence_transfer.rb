@@ -3,12 +3,12 @@
 #
 
 require_relative 'db.rb'
+require_relative 'evidence_manager.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
-require 'rcs-common/evidence_manager'
-require 'rcs-common/flatsingleton'
 require 'rcs-common/fixnum'
+require 'rcs-common/symbolize'
 
 # from system
 require 'thread'
@@ -18,7 +18,6 @@ module Collector
 
 class EvidenceTransfer
   include Singleton
-  extend FlatSingleton
   include RCS::Tracer
 
   def initialize
@@ -32,8 +31,8 @@ class EvidenceTransfer
     trace :info, "Transferring cached evidence to the db..."
 
     # for every instance, get all the cached evidence and send them
-    EvidenceManager.instances.each do |instance|
-      EvidenceManager.evidence_ids(instance).each do |id|
+    EvidenceManager.instance.instances.each do |instance|
+      EvidenceManager.instance.evidence_ids(instance).each do |id|
         self.queue instance, id
       end
     end
@@ -54,6 +53,9 @@ class EvidenceTransfer
       # pass the control to other threads
       sleep 1
 
+      # don't try to transfer if the db is down
+      next unless DB.instance.connected?
+
       # keep an eye on race conditions...
       # copy the value and don't keep the resource locked too long
       instances = @semaphore.synchronize { @evidences.each_key.to_a }
@@ -67,16 +69,24 @@ class EvidenceTransfer
             # only perform the job if we have something to transfer
             if not @evidences[instance].empty? then
               # get the info from the instance
-              info = EvidenceManager.instance_info instance
+              info = EvidenceManager.instance.instance_info instance
 
               # make sure that the symbols are present
               # we are doing this hack since we are passing information taken from the store
               # and passing them as they were a session
-              info[:bid] = info['bid']
-              info[:instance] = info['instance']
+              sess = info.symbolize
 
+              # if the session bid is zero, it means that we have collected the evidence
+              # when the DB was DOWN. we have to ask again to the db the real bid of the instance
+              if sess[:bid] == 0 then
+                # ask the database the bid of the agent
+                status, bid = DB.instance.agent_status(sess[:ident], sess[:instance], sess[:subtype])
+                sess[:bid] = bid
+                raise "agent _id cannot be ZERO" if bid == 0
+              end
+              
               # update the status in the db
-              DB.sync_start info, info['version'], info['user'], info['device'], info['source'], info['sync_time']
+              DB.instance.sync_start sess, info['version'], info['user'], info['device'], info['source'], info['sync_time']
 
               # transfer all the evidence
               while (id = @evidences[instance].shift)
@@ -84,7 +94,7 @@ class EvidenceTransfer
               end
 
               # the sync is ended
-              DB.sync_end info
+              DB.instance.sync_end sess
             end
           rescue Exception => e
             trace :error, "Error processing evidences: #{e.message}"
@@ -100,15 +110,15 @@ class EvidenceTransfer
   end
 
   def transfer(instance, id, left)
-    evidence = EvidenceManager.get_evidence(id, instance)
+    evidence = EvidenceManager.instance.get_evidence(id, instance)
 
     trace :info, "Transferring [#{instance}] #{evidence.size.to_s_bytes} - #{left} left to send"
 
     # send and delete the evidence
-    ret, error = DB.send_evidence(instance, evidence)
+    ret, error = DB.instance.send_evidence(instance, evidence)
 
     if ret then
-      EvidenceManager.del_evidence(id, instance)
+      EvidenceManager.instance.del_evidence(id, instance)
     else
       trace :error, "Evidence NOT transferred: #{error}"
     end

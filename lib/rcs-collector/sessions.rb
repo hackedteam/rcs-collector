@@ -2,10 +2,10 @@
 #  Session Manager, manages all the cookies
 #
 
+require_relative 'evidence_manager'
+
 # from RCS::Common
 require 'rcs-common/trace'
-require 'rcs-common/evidence_manager'
-require 'rcs-common/flatsingleton'
 
 # system
 require 'uuidtools'
@@ -15,14 +15,13 @@ module Collector
 
 class SessionManager
   include Singleton
-  extend FlatSingleton
   include RCS::Tracer
 
   def initialize
     @sessions = {}
   end
 
-  def create(bid, build, instance, subtype, k)
+  def create(bid, ident, instance, subtype, k)
 
     # create a new random cookie
     #cookie = SecureRandom.random_bytes(8).unpack('H*').first
@@ -30,7 +29,7 @@ class SessionManager
 
     # store the sessions
     @sessions[cookie] = {:bid => bid,
-                         :build => build,
+                         :ident => ident,
                          :instance => instance,
                          :subtype => subtype,
                          :key => k,
@@ -72,8 +71,8 @@ class SessionManager
         trace :info, "Session Timeout for [#{sess[:cookie]}]"
         
         # update the status accordingly
-        DB.sync_timeout sess
-        EvidenceManager.sync_timeout sess
+        DB.instance.sync_timeout sess
+        EvidenceManager.instance.sync_timeout sess
 
         # delete the entry
         @sessions.delete key

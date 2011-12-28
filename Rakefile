@@ -18,7 +18,7 @@ Jeweler::Tasks.new do |gem|
   gem.homepage = "http://rcs-dev/cgi-bin/gitweb.cgi?p=rcs-collector.git"
   gem.license = "MIT"
   gem.summary = %Q{The RCS Evidence Collector}
-  gem.description = %Q{This service is used to communicate with the backdoors during the synchronization phase}
+  gem.description = %Q{This service is used to communicate with the agents during the synchronization phase}
   gem.email = "alor@hackingteam.it"
   gem.authors = ["ALoR"]
   # Include your dependencies below. Runtime dependencies are required when using your gem,
@@ -35,24 +35,7 @@ Rake::TestTask.new(:test) do |test|
   test.verbose = true
 end
 
-require 'rcov/rcovtask'
-Rcov::RcovTask.new do |test|
-  test.libs << 'test'
-  test.pattern = 'test/**/test_*.rb'
-  test.verbose = true
-end
-
 task :default => :test
-
-require 'rake/rdoctask'
-Rake::RDocTask.new do |rdoc|
-  version = File.exist?('VERSION') ? File.read('VERSION') : ""
-
-  rdoc.rdoc_dir = 'rdoc'
-  rdoc.title = "rcs-collector #{version}"
-  rdoc.rdoc_files.include('README*')
-  rdoc.rdoc_files.include('lib/**/*.rb')
-end
 
 
 def execute(message)
@@ -74,16 +57,6 @@ task :clean do
   end
   execute "Cleaning the DB cache" do
     File.delete('./config/cache.db') if File.exist?('./config/cache.db')
-  end
-end
-
-desc "Create the NSIS installer for windows"
-task :nsis do
-  puts "Housekeeping..."
-  Rake::Task[:clean].invoke
-  execute "Creating NSIS installer" do
-    # invoke the nsis builder
-    system "\"C:\\Program Files\\NSIS\\makensis.exe\" /V2 ./nsis/RCSCollector.nsi"
   end
 end
 
