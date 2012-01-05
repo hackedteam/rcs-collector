@@ -44,13 +44,17 @@ class RESTResponse
 
     begin
       @response.content = (@content_type == 'application/json') ? @content.to_json : @content
-    rescue Exception
+    rescue Exception => e
       @response.status = STATUS_SERVER_ERROR
       @response.content = 'JSON_SERIALIZATION_ERROR'
+      trace :error, e.message
+      trace :fatal, "EXCEPTION(#{e.class}): " + e.backtrace.join("\n")
     end
 
+    expiry = (Time.now() + 86400).strftime('%A, %d-%b-%y %H:%M:%S %Z')
+
     @response.headers['Content-Type'] = @content_type
-    @response.headers['Set-Cookie'] = @cookie unless @cookie.nil?
+    @response.headers['Set-Cookie'] = "ID=" + @cookie + "; expires=#{expiry}; secure" unless @cookie.nil?
 
     if keep_alive? connection
       # keep the connection open to allow multiple requests on the same connection

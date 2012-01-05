@@ -66,7 +66,7 @@ module Parser
 
   def guid_from_cookie(cookie)
     # this will match our GUID session cookie
-    re = '.*?(ID=)?([A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12})'
+    re = '.*?(ID=)([A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12})'
     m = Regexp.new(re, Regexp::IGNORECASE).match(cookie)
     return nil if m.nil?
     m[2]
