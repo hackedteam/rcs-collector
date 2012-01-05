@@ -6,6 +6,7 @@
 require_relative 'config.rb'
 require_relative 'db_rest.rb'
 require_relative 'db_cache.rb'
+require_relative 'my_ip.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -35,9 +36,12 @@ class DB
     # database address
     @host = Config.instance.global['DB_ADDRESS'].to_s + ":" + Config.instance.global['DB_PORT'].to_s
 
+    # get the external ip address
+    external_address = MyIp.get
+
     # the username is an unique identifier for each machine.
     # we use the MD5 of the MAC address
-    @username = Digest::MD5.hexdigest(UUIDTools::UUID.mac_address.to_s)
+    @username = Digest::MD5.hexdigest(UUIDTools::UUID.mac_address.to_s) + ':' + external_address
     # the password is a signature taken from a file
     @password = File.read(Config.instance.file('DB_SIGN'))
 

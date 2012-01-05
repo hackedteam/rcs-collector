@@ -29,7 +29,8 @@ class Config
                    'HB_INTERVAL' => 30,
                    'NC_INTERVAL' => 30,
                    'NC_ENABLED' => true,
-                   'COLL_ENABLED' => true}
+                   'COLL_ENABLED' => true,
+                   'RESOLVE_IP' => true}
 
   attr_reader :global
 
