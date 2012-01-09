@@ -17,7 +17,7 @@ class CollectorController < RESTController
   
   def put
     # only the DB is authorized to send PUT commands
-    unless @request[:peer].eql? Resolv::DNS.new.getaddress(Config.instance.global['DB_ADDRESS']).to_s or @request[:peer].eql? '127.0.0.1' then
+    unless from_db? @request[:peer] then
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUT [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
@@ -42,7 +42,7 @@ class CollectorController < RESTController
     # every request received are forwarded externally like a proxy
 
     # only the DB is authorized to send HEAD commands
-    unless @request[:peer].eql? Resolv::DNS.new.getaddress(Config.instance.global['DB_ADDRESS']).to_s or @request[:peer].eql? '127.0.0.1' then
+    unless from_db? @request[:peer] then
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send HEAD [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
@@ -140,8 +140,6 @@ class CollectorController < RESTController
   end
 
   def proxy_request(request)
-    trace :debug, "#{request}"
-
     # split the request to create the real proxied request
     # the format is:  /METHOD/host/url
     params = request[:uri].split('/')
@@ -149,6 +147,7 @@ class CollectorController < RESTController
     method = params.shift
     host = params.shift
     url = '/' + params.join('/')
+    url += '?' + request[:query] if request[:query]
 
     trace :debug, "Proxying (#{method}): host: #{host} url: #{url}"
     http = Net::HTTP.new(host, 80)
@@ -162,6 +161,21 @@ class CollectorController < RESTController
 
     return server_error(resp.body) unless resp.kind_of? Net::HTTPSuccess
     return ok(resp.body, {content_type: 'text/html'})
+  end
+
+  def from_db?(request_ip)
+    # from localhost is ok
+    return true if request_ip.eql? '127.0.0.1'
+    # if the address is already an ip
+    return true if request_ip.eql? Config.instance.global['DB_ADDRESS']
+    # otherwise resolve it
+    begin
+      return true if request_ip.eql? Resolv::DNS.new.getaddress(Config.instance.global['DB_ADDRESS']).to_s
+    rescue Exception => e
+      trace :warn, "Cannot resolve #{Config.instance.global['DB_ADDRESS']}"
+    end
+    
+    return false
   end
 
 end # RCS::Controller::CollectorController
