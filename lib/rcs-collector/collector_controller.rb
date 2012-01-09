@@ -1,6 +1,8 @@
 
 require_relative 'protocol'
 
+require 'resolv'
+
 module RCS
 module Collector
 
@@ -15,7 +17,7 @@ class CollectorController < RESTController
   
   def put
     # only the DB is authorized to send PUT commands
-    unless @request[:peer].eql? Config.instance.global['DB_ADDRESS'] then
+    unless @request[:peer].eql? Resolv::DNS.new.getaddress(Config.instance.global['DB_ADDRESS']).to_s or @request[:peer].eql? '127.0.0.1' then
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUT [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
@@ -40,7 +42,7 @@ class CollectorController < RESTController
     # every request received are forwarded externally like a proxy
 
     # only the DB is authorized to send HEAD commands
-    unless @request[:peer].eql? Config.instance.global['DB_ADDRESS'] or @request[:peer].eql? '127.0.0.1' then
+    unless @request[:peer].eql? Resolv::DNS.new.getaddress(Config.instance.global['DB_ADDRESS']).to_s or @request[:peer].eql? '127.0.0.1' then
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send HEAD [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
