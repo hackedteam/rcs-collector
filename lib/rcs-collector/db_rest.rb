@@ -376,7 +376,7 @@ class DB_rest
 
   def get_proxies
     begin
-      ret = rest_call('GET', "/proxy")
+      ret = rest_call('GET', "/injector")
       return JSON.parse(ret.body)
     rescue Exception => e
       trace :error, "Error calling get_proxies: #{e.class} #{e.message}"
@@ -384,18 +384,18 @@ class DB_rest
     end
   end
 
-  def proxy_set_version(id, version)
+  def injector_set_version(id, version)
     begin
-      rest_call('POST', "/proxy/version/#{id}", {:version => version}.to_json)
+      rest_call('POST', "/injector/version/#{id}", {:version => version}.to_json)
     rescue Exception => e
-      trace :error, "Error calling proxy_set_version: #{e.class} #{e.message}"
+      trace :error, "Error calling injector_set_version: #{e.class} #{e.message}"
       propagate_error e
     end
   end
 
-  def proxy_config(id)
+  def injector_config(id)
     begin
-      ret = rest_call('GET', "/proxy/config/#{id}")
+      ret = rest_call('GET', "/injector/config/#{id}")
 
       if ret.kind_of? Net::HTTPNotFound then
         return nil
@@ -403,17 +403,17 @@ class DB_rest
 
       return ret.body
     rescue Exception => e
-      trace :error, "Error calling proxy_config: #{e.class} #{e.message}"
+      trace :error, "Error calling injector_config: #{e.class} #{e.message}"
       propagate_error e
     end
   end
 
-  def proxy_add_log(id, time, type, desc)
+  def injector_add_log(id, time, type, desc)
     begin
       log = {:type => type, :time => time, :desc => desc}
-      rest_call('POST', "/proxy/logs/#{id}", log.to_json)
+      rest_call('POST', "/injector/logs/#{id}", log.to_json)
     rescue Exception => e
-      trace :error, "Error calling proxy_add_log: #{e.class} #{e.message}"
+      trace :error, "Error calling injector_add_log: #{e.class} #{e.message}"
       propagate_error e
     end
   end

@@ -134,6 +134,8 @@ class RESTController
         return :put
       when 'DELETE'
         return :delete
+      when 'HEAD'
+        return :head
     end
   end
 
