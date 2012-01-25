@@ -100,7 +100,7 @@ class Config
     load_from_file
 
     trace :info, ""
-    trace :info, "Current configuration:"
+    trace :info, "Previous configuration:"
     pp @global
 
     # use the default values
@@ -128,7 +128,7 @@ class Config
     end
 
     trace :info, ""
-    trace :info, "Final configuration:"
+    trace :info, "Current configuration:"
     pp @global
 
     # save the configuration
