@@ -44,7 +44,12 @@ module HTTPHandler
     self.max_content_length = 100 * 1024 * 1024
     
     # get the peer name
-    @peer_port, @peer = Socket.unpack_sockaddr_in(get_peername)
+    if get_peername
+      @peer_port, @peer = Socket.unpack_sockaddr_in(get_peername)
+    else
+      @peer = 'unknown'
+      @peer_port = 0
+    end
     @network_peer = @peer
     trace :debug, "Connection from #{@network_peer}:#{@peer_port}"
   end

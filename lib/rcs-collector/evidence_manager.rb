@@ -363,6 +363,7 @@ class EvidenceManager
     end
     
     entries.sort! { |a, b| a['sync_time'] <=> b['sync_time'] }
+    entries.reverse!
 
     # table definitions
     table_width = 128

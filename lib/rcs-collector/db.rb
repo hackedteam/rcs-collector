@@ -312,12 +312,12 @@ class DB
     DBCache.clear_upgrade bid
 
     # retrieve the upgrade from the db
-    upgrade = db_rest_call :new_upgrades, bid
+    upgrades = db_rest_call :new_upgrades, bid
 
     # put the upgrade in the cache
-    DBCache.save_upgrade bid, upgrade unless (upgrade.nil? or upgrade.empty?)
+    DBCache.save_upgrade bid, upgrades unless (upgrades.nil? or upgrades.empty?)
 
-    return (upgrade.nil? or upgrade.empty?) ? false : true
+    return (upgrades.nil? or upgrades.empty?) ? false : true
   end
 
   def new_upgrade(bid)

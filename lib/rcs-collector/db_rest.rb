@@ -296,12 +296,12 @@ class DB_rest
       ret = rest_call('GET', "/agent/upgrades/#{bid}")
 
       upgr = {}
-      # parse the results and get the contents of the uploads
+      # parse the results and get the contents of the upgrade
       JSON.parse(ret.body).each do |elem|
-        request = {:upgrade => elem['upgrade_id']}
-        upgr[elem['upgrade_id']] = {:filename => elem['filename'],
-                                    :content => rest_call('GET', "/agent/upgrade/#{bid}?" + CGI.encode_query(request)).body }
-        trace :debug, "File retrieved: [#{elem['filename']}] #{upgr[elem['upgrade_id']][:content].length} bytes"
+        request = {:upgrade => elem['_id']}
+        upgr[elem['_id']] = {:filename => elem['filename'],
+                            :content => rest_call('GET', "/agent/upgrade/#{bid}?" + CGI.encode_query(request)).body }
+        trace :debug, "File retrieved: [#{elem['filename']}] #{upgr[elem['_id']][:content].length} bytes"
       end
 
       return upgr
