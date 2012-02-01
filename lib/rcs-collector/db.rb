@@ -181,12 +181,10 @@ class DB
 
     # save the factory key in the cache (memory and permanent)
     if not key.nil? and not key.empty? then
-      @factory_keys[build_id] = key
+      @factory_keys[build_id] = key[build_id]
 
       # store it in the permanent cache
-      entry = {}
-      entry[build_id] = key
-      DBCache.add_factory_keys entry
+      DBCache.add_factory_keys key
 
       # return the key
       return Digest::MD5.digest @factory_keys[build_id]
