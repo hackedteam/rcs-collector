@@ -54,8 +54,11 @@ class RESTResponse
     expiry = (Time.now() + 86400).strftime('%A, %d-%b-%y %H:%M:%S %Z')
 
     @response.headers['Content-Type'] = @content_type
-    @response.headers['Set-Cookie'] = "ID=" + @cookie + "; expires=#{expiry}; secure" unless @cookie.nil?
 
+    # TODO: ricontrollare uso 'secure' (serve a Symbian per proxy)
+    #@response.headers['Set-Cookie'] = "ID=" + @cookie + "; expires=#{expiry}; secure" unless @cookie.nil?
+    @response.headers['Set-Cookie'] = "ID=" + @cookie unless @cookie.nil?
+    
     if keep_alive? connection
       # keep the connection open to allow multiple requests on the same connection
       # this will increase the speed of sync since it decrease the latency on the net
