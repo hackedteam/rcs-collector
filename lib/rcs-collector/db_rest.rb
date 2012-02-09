@@ -93,6 +93,7 @@ class DB_rest
       resp = @http.request_post('/auth/login', account.to_json, nil)
       # remember the session cookie
       @cookie = resp['Set-Cookie'] unless resp['Set-Cookie'].nil?
+      puts @cookie
       # check that the response is valid JSON
       return JSON.parse(resp.body).class == Hash
     rescue Exception => e
