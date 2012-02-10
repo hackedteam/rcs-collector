@@ -39,9 +39,12 @@ class DB
     # get the external ip address
     external_address = MyIp.get
 
+    # the version of the collector
+    version = File.read(Dir.pwd + '/config/version.txt')
+
     # the username is an unique identifier for each machine.
     # we use the MD5 of the MAC address
-    @username = Digest::MD5.hexdigest(UUIDTools::UUID.mac_address.to_s) + ':' + external_address
+    @username = Digest::MD5.hexdigest(UUIDTools::UUID.mac_address.to_s) + ':' + version + ':' + external_address
     # the password is a signature taken from a file
     @password = File.read(Config.instance.file('DB_SIGN'))
 
@@ -63,7 +66,7 @@ class DB
 
   def connect!
     trace :info, "Checking the DB connection [#{@host}]..."
-    # during the transition we log in to both xml-rpc and rest interfaces
+    
     if @db_rest.login(@username, @password) then
       @available = true
       trace :info, "Connected to [#{@host}]"
