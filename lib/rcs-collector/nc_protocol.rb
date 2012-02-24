@@ -97,7 +97,7 @@ class NCProto
     # the element have a new config
     unless content.nil? then
       # retro compatibility (260 byte array for the name)
-      message = "config.zip".ljust(260, "\x00")
+      message = "config".ljust(260, "\x00")
       # len of the file
       message += [content.length].pack('I')
   

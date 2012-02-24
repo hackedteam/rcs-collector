@@ -177,7 +177,7 @@ class NetworkController
     elements.delete_if {|x| x['address'] != host}
     element = elements.first
 
-    trace :info, "[NC] PUSHING to #{element['address']}"
+    trace :info, "[NC] PUSHING to #{element['address']}:#{element['port']}"
 
     begin
       # contact the element
