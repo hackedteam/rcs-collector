@@ -181,7 +181,7 @@ class NetworkController
 
     begin
       # contact the element
-      status = check_element element
+      status, logs = check_element element
       # send the results to db
       report_status(element, *status) unless status.nil? or status.empty?
     rescue Exception => e
