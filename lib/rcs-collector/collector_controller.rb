@@ -2,6 +2,7 @@
 require_relative 'protocol'
 
 require 'resolv'
+require 'socket'
 
 module RCS
 module Collector
@@ -19,13 +20,13 @@ class CollectorController < RESTController
     # only the DB is authorized to send PUT commands
     unless from_db? @request[:peer] then
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUT [#{@request[:uri]}] commands!!!"
-      return decoy_page
+      #return decoy_page
     end
     
     # this is a request to save a file in the public dir
     return http_put_file @request[:uri], @request[:content] unless @request[:uri].start_with?('/RCS-NC_')
     
-    content, content_type = NetworkController.push @request[:uri].split('_')[1], @request[:content]
+    content, content_type = NetworkController.push(@request[:uri].split('_')[1], @request[:content])
     return ok(content, {content_type: content_type})
   end
 
@@ -168,11 +169,13 @@ class CollectorController < RESTController
     return true if request_ip.eql? '127.0.0.1'
     # if the address is already an ip
     return true if request_ip.eql? Config.instance.global['DB_ADDRESS']
+    # check if its from local
+    return true if request_ip.eql? IPSocket.getaddress(Socket.gethostname)
     # otherwise resolve it
     begin
       return true if request_ip.eql? Resolv::DNS.new.getaddress(Config.instance.global['DB_ADDRESS']).to_s
     rescue Exception => e
-      trace :warn, "Cannot resolve #{Config.instance.global['DB_ADDRESS']}"
+      trace :warn, "Cannot resolve #{Config.instance.global['DB_ADDRESS']}: #{e.message}"
     end
     
     return false
