@@ -76,7 +76,7 @@ class NCProto
   end
 
   def monitor
-    # the status (OK, KO, WARN)
+    # the status (OK, ERROR, WARN)
     status = @socket.read(16).delete("\x00")
 
     # 3 consecutive int

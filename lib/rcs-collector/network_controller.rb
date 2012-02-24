@@ -185,6 +185,7 @@ class NetworkController
       # send the results to db
       report_status(element, *status) unless status.nil? or status.empty?
     rescue Exception => e
+      trace :warn, "[NC] CANNOT PUSH TO #{element['address']}: #{e.message}"
       return e.message, "text/html"
     end
 
@@ -193,13 +194,13 @@ class NetworkController
 
 
   def self.report_status(elem, status, message, disk=0, cpu=0, pcpu=0)
-    if not elem['_id'].nil? then
+
+    if elem['type'] == 'remote' then
+      component = "RCS::ANON::" + elem['name']
+      internal_component = 'anonymizer'
+    else
       component = "RCS::NIA::" + elem['name']
       internal_component = 'injector'
-    end
-    if not elem['collector_id'].nil? then
-      component = "RCS::ANON::" + elem['collector']
-      internal_component = 'anonymizer'
     end
 
     trace :info, "[NC] [#{component}] #{elem['address']} #{status}"

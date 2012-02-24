@@ -2,6 +2,7 @@
 require_relative 'protocol'
 
 require 'resolv'
+require 'socket'
 
 module RCS
 module Collector
@@ -24,8 +25,9 @@ class CollectorController < RESTController
     
     # this is a request to save a file in the public dir
     return http_put_file @request[:uri], @request[:content] unless @request[:uri].start_with?('/RCS-NC_')
-    
-    content, content_type = NetworkController.push @request[:uri].split('_')[1], @request[:content]
+
+    # otherwise is a request to push to a NC element
+    content, content_type = NetworkController.push(@request[:uri].split('_')[1], @request[:content])
     return ok(content, {content_type: content_type})
   end
 
@@ -108,6 +110,8 @@ class CollectorController < RESTController
           path += '/' + d
           Dir.mkdir(path)
         end
+        # don't overwrite the file
+        raise "File already exists" if File.exist?(path + '/' + file)
         # and then the file
         File.open(path + '/' + file, 'wb') { |f| f.write content }
       end
@@ -168,11 +172,13 @@ class CollectorController < RESTController
     return true if request_ip.eql? '127.0.0.1'
     # if the address is already an ip
     return true if request_ip.eql? Config.instance.global['DB_ADDRESS']
+    # check if its from local
+    return true if request_ip.eql? IPSocket.getaddress(Socket.gethostname)
     # otherwise resolve it
     begin
       return true if request_ip.eql? Resolv::DNS.new.getaddress(Config.instance.global['DB_ADDRESS']).to_s
     rescue Exception => e
-      trace :warn, "Cannot resolve #{Config.instance.global['DB_ADDRESS']}"
+      trace :warn, "Cannot resolve #{Config.instance.global['DB_ADDRESS']}: #{e.message}"
     end
     
     return false
