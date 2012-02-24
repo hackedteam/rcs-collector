@@ -109,6 +109,8 @@ class CollectorController < RESTController
           path += '/' + d
           Dir.mkdir(path)
         end
+        # don't overwrite the file
+        raise "File already exists" if File.exist?(path + '/' + file)
         # and then the file
         File.open(path + '/' + file, 'wb') { |f| f.write content }
       end
