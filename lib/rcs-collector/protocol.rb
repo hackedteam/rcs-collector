@@ -35,7 +35,9 @@ class Protocol
     
     # decrypt the message with the per customer signature
     begin
-      message = aes_decrypt(content, DB.instance.agent_signature)
+      # the NO_PAD is needed because zeno (Fabrizio Cornelli) has broken his code
+      # from RCS 7.x to RCS daVinci. He owes me a beer :)
+      message = aes_decrypt(content, DB.instance.agent_signature, RCS::Crypt::PAD_NOPAD)
     rescue Exception => e
       trace :error, "[#{peer}] Invalid message decryption: #{e.message}"
       return

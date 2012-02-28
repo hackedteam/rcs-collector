@@ -177,11 +177,11 @@ class NetworkController
     elements.delete_if {|x| x['address'] != host}
     element = elements.first
 
-    trace :info, "[NC] PUSHING to #{element['address']}"
+    trace :info, "[NC] PUSHING to #{element['address']}:#{element['port']}"
 
     begin
       # contact the element
-      status = check_element element
+      status, logs = check_element element
       # send the results to db
       report_status(element, *status) unless status.nil? or status.empty?
     rescue Exception => e
