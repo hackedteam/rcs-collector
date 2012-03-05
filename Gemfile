@@ -11,7 +11,7 @@ git "git://github.com/alor/evma_httpserver.git", :branch => "master" do
   gem 'eventmachine_httpserver', ">= 0.2.2"
 end
 gem 'sqlite3'
-gem 'uuidtools'
+gem 'uuidtools', "= 2.0.0"
 
 # Add dependencies to develop your gem here.
 # Include everything needed to run rake, tests, features, etc.
