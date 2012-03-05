@@ -14,6 +14,7 @@ require 'rcs-common/trace'
 # system
 require 'digest/md5'
 require 'uuidtools'
+require 'socket'
 
 module RCS
 module Collector
@@ -44,7 +45,14 @@ class DB
 
     # the username is an unique identifier for each machine.
     # we use the MD5 of the MAC address
-    @username = Digest::MD5.hexdigest(UUIDTools::UUID.mac_address.to_s) + ':' + version + ':' + external_address
+    begin
+      mac = UUIDTools::UUID.mac_address.to_s
+    rescue Exception => e
+      mac = Socket.gethostname
+    end
+
+
+    @username = Digest::MD5.hexdigest(mac) + ':' + version + ':' + external_address
     # the password is a signature taken from a file
     @password = File.read(Config.instance.file('DB_SIGN'))
 

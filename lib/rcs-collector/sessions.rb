@@ -29,7 +29,7 @@ class SessionManager
 
     # backward compatibility fix because symbian 7.x has an internal buffer of 32 chars
     # Giovanna owes me a beer... :)
-    cookie = cookie.slice(0..31) if subtype == 'symbian'
+    cookie = cookie.slice(0..25) if subtype == 'SYMBIAN'
 
     # store the sessions
     @sessions[cookie] = {:bid => bid,
