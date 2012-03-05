@@ -3,6 +3,17 @@ require 'rcs-common/trace'
 
 require 'net/http'
 
+module EventMachine
+  class FileStreamer
+    # on windows the stream_without_mapping has HUGE problems
+    # we monkey patch the class to force it to ALWAYS stream a file
+    # the mapping threshold is responsible to choose the behavior
+    if RUBY_PLATFORM =~ /mingw/
+      MappingThreshold = 0
+    end
+  end
+end
+
 module RCS
 module Collector
 
