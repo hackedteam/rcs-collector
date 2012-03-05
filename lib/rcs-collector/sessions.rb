@@ -39,7 +39,8 @@ class SessionManager
                          :key => k,
                          :cookie => cookie,
                          :time => Time.now,
-                         :count => 0}
+                         :count => 0,
+                         :total => 0}
 
     return cookie
   end
