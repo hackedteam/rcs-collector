@@ -27,6 +27,10 @@ class SessionManager
     #cookie = SecureRandom.random_bytes(8).unpack('H*').first
     cookie = UUIDTools::UUID.random_create.to_s
 
+    # backward compatibility fix because symbian 7.x has an internal buffer of 32 chars
+    # Giovanna owes me a beer... :)
+    cookie = cookie.slice(0..31) if subtype == 'symbian'
+
     # store the sessions
     @sessions[cookie] = {:bid => bid,
                          :ident => ident,
