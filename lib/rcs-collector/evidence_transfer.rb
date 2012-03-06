@@ -60,10 +60,10 @@ class EvidenceTransfer
       # copy the value and don't keep the resource locked too long
       instances = @semaphore.synchronize { @evidences.each_key.to_a }
 
+      threads = []
       # for each instance get the ids we have and send them
       instances.each do |instance|
         # one thread per instance
-        threads = []
         threads << Thread.new do
           begin
             # only perform the job if we have something to transfer
@@ -84,7 +84,7 @@ class EvidenceTransfer
                 sess[:bid] = bid
                 raise "agent _id cannot be ZERO" if bid == 0
               end
-              
+
               # update the status in the db
               DB.instance.sync_start sess, info['version'], info['user'], info['device'], info['source'], info['sync_time']
 
@@ -98,14 +98,15 @@ class EvidenceTransfer
             end
           rescue Exception => e
             trace :error, "Error processing evidences: #{e.message}"
+            trace :error, e.backtrace
           ensure
             # job done, exit
             Thread.exit
           end
         end
-        # wait for all the threads to die
-        threads.each { |t| t.join }
       end
+      # wait for all the threads to die
+      threads.each { |t| t.join }
     end
   end
 
