@@ -123,8 +123,11 @@ class DB_rest
                  :source => source,
                  :sync_time => time}
 
-      rest_call('POST', '/evidence/start', content.to_json)
-    rescue
+      ret = rest_call('POST', '/evidence/start', content.to_json)
+      raise unless ret.kind_of? Net::HTTPOK
+    rescue Exception => e
+      trace :fatal, "evidence start failed #{e.message}"
+      raise
     end
   end
 
@@ -217,6 +220,7 @@ class DB_rest
       ret = rest_call('GET', '/agent/status/?' + CGI.encode_query(request))
       
       return DB::NO_SUCH_AGENT, 0 if ret.kind_of? Net::HTTPNotFound
+      return DB::UNKNOWN_AGENT, 0 unless ret.kind_of? Net::HTTPOK
 
       status = JSON.parse(ret.body)
 
@@ -228,7 +232,7 @@ class DB_rest
         when 'OPEN'
           return DB::ACTIVE_AGENT, bid
         when 'QUEUED'
-          return DB::QUEUED_AGENT, bid
+              return DB::QUEUED_AGENT, bid
         when 'CLOSED'
           return DB::CLOSED_AGENT, bid
       end
