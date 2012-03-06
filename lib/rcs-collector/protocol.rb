@@ -63,6 +63,12 @@ class Protocol
     build_id_real[0..3] = 'RCS_'
     trace :info, "[#{peer}] Auth -- BuildId: " << build_id_real
 
+    # check that the ident is decrypted correctly (it only has RCS_ and numbers)
+    if Regexp.new('(RCS_)([0-9]{10})', Regexp::IGNORECASE).match(build_id_real).nil?
+      trace :error, "[#{peer}] Auth -- Invalid BuildId. Possible decryption issue."
+      return
+    end
+
     # instance of the device
     instance_id = message.slice!(0..19)
     trace :info, "[#{peer}] Auth -- InstanceId: " << instance_id.unpack('H*').first
