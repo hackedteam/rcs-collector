@@ -39,8 +39,7 @@ class EvidenceManager
 
     begin
       db = SQLite3::Database.open(file_from_session(session))
-      db.execute("DELETE FROM info;")
-      db.execute("INSERT INTO info VALUES ('#{session[:ident]}',
+      db.execute("INSERT OR REPLACE INTO info VALUES ('#{session[:ident]}',
                                            '#{session[:instance]}',
                                            '#{session[:subtype]}',
                                            #{version},
@@ -49,7 +48,6 @@ class EvidenceManager
                                            '#{source}',
                                            #{time},
                                            #{SYNC_IN_PROGRESS});")
-
 
       db.close
     rescue SQLite3::BusyException => e
