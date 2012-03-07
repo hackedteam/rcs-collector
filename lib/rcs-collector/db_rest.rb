@@ -45,29 +45,22 @@ class DB_rest
 
   # generic method invocation
   def rest_call(method, uri, content = nil, headers = {})
-    begin
+    return @semaphore.synchronize do
       Timeout::timeout(DB_TIMEOUT) do
-        return @semaphore.synchronize do
-          # the HTTP headers for the authentication
-          full_headers = {'Cookie' => @cookie, 'Connection' => 'Keep-Alive' }
-          full_headers.merge! headers if headers.is_a? Hash
-          case method
-            when 'POST'
-              @http.request_post(uri, content, full_headers)
-            when 'GET'
-              @http.request_get(uri, full_headers)
-            #when 'PUT'
-            #  @http.request_put(uri, full_headers)
-            when 'DELETE'
-              @http.delete(uri, full_headers)
-          end
+        # the HTTP headers for the authentication
+        full_headers = {'Cookie' => @cookie, 'Connection' => 'Keep-Alive' }
+        full_headers.merge! headers if headers.is_a? Hash
+        case method
+          when 'POST'
+            @http.request_post(uri, content, full_headers)
+          when 'GET'
+            @http.request_get(uri, full_headers)
+          #when 'PUT'
+          #  @http.request_put(uri, full_headers)
+          when 'DELETE'
+            @http.delete(uri, full_headers)
         end
       end
-    rescue
-      # ensure the mutex is unlocked on timeout or errors
-      @semaphore.unlock if @semaphore.locked?
-      # propagate the exception to the upper layer
-      raise
     end
   end
 
