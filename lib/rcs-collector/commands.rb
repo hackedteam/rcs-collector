@@ -296,13 +296,10 @@ module Commands
     # send the evidence to the db
     begin
       # store the evidence in the db
-      id = EvidenceManager.instance.store_evidence session, size, message
+      EvidenceManager.instance.store_evidence session, size, message
 
       # remember how many evidence were transferred in this session
       session[:count] += 1
-
-      # notify the transfer manager that an evidence is available
-      EvidenceTransfer.instance.queue "#{session[:ident]}_#{session[:instance]}", id
 
       trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes) - #{session[:count]} of #{session[:total]}"
     rescue Exception => e

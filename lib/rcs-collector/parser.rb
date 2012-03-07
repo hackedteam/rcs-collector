@@ -64,14 +64,6 @@ module Parser
     end
   end
 
-  def guid_from_cookie(cookie)
-    # this will match our GUID session cookie
-    re = '.*?(ID=)([A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12})'
-    m = Regexp.new(re, Regexp::IGNORECASE).match(cookie)
-    return nil if m.nil?
-    m[2]
-  end
-  
   def prepare_request(method, uri, query, cookie, content_type, content)
     controller, uri_params = parse_uri uri
     
@@ -81,7 +73,7 @@ module Parser
     request[:query] = query
     request[:uri] = uri
     request[:uri_params] = uri_params
-    request[:cookie] = guid_from_cookie(cookie)
+    request[:cookie] = SessionManager.instance.guid_from_cookie(cookie)
     # if not content_type is provided, default to urlencoded
     request[:content_type] = content_type || 'application/x-www-form-urlencoded'
     

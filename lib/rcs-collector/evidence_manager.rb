@@ -28,7 +28,7 @@ class EvidenceManager
     return REPO_DIR + '/' + session[:ident] + '_' + session[:instance]
   end
 
-  def sync_start(session, version, user, device, source, time, key=nil)
+  def sync_start(session, version, user, device, source, time)
 
     # create the repository for this instance
     return unless create_repository session
@@ -39,14 +39,7 @@ class EvidenceManager
 
     begin
       db = SQLite3::Database.open(file_from_session(session))
-      if key.nil? then
-        # retrieve the old one and keep it
-        old = db.execute("SELECT key FROM info;")
-        key = old.first.first unless old.empty?
-      end
-      db.execute("DELETE FROM info;")
-      db.execute("INSERT INTO info VALUES ('#{session[:bid]}',
-                                           '#{session[:ident]}',
+      db.execute("INSERT OR REPLACE INTO info VALUES ('#{session[:ident]}',
                                            '#{session[:instance]}',
                                            '#{session[:subtype]}',
                                            #{version},
@@ -54,9 +47,7 @@ class EvidenceManager
                                            '#{device}',
                                            '#{source}',
                                            #{time},
-                                           #{SYNC_IN_PROGRESS},
-                                           '#{key}');")
-
+                                           #{SYNC_IN_PROGRESS});")
 
       db.close
     rescue SQLite3::BusyException => e
@@ -135,7 +126,7 @@ class EvidenceManager
         
     begin
       db = SQLite3::Database.open(path)
-      db.execute("UPDATE info SET sync_status = #{SYNC_IDLE} WHERE bid = '#{session[:bid]}';")
+      db.execute("UPDATE info SET sync_status = #{SYNC_IDLE};")
       db.close
     rescue SQLite3::BusyException => e
           trace :warn, "Cannot update because database is busy, retrying. [#{e.message}]"
@@ -188,6 +179,7 @@ class EvidenceManager
           trace :fatal, "SQL syntax error: #{e.message}, query was: #{query}"
     rescue Exception => e
       trace :warn, "Cannot read from the repository: #{e.message} [#{e.class}]"
+      return nil
     end
   end
 
@@ -213,6 +205,7 @@ class EvidenceManager
     # return all the instances
     entries = []
     Dir[REPO_DIR + '/*'].each do |e|
+      next if e['-journal']
       entries << File.basename(e)
     end
     return entries
@@ -221,7 +214,7 @@ class EvidenceManager
   def instance_info(instance)
     # sanity check
     path = REPO_DIR + '/' + instance
-    return unless File.exist?(path)
+    raise "cannot find sqlite for instance #{instance}" unless File.exist?(path)
     
     begin
       db = SQLite3::Database.open(path)
@@ -237,7 +230,7 @@ class EvidenceManager
       trace :warn, "Cannot read from the repository: #{e.message}"
     end
   end
-  
+
   def evidence_info(instance)
     # sanity check
     path = REPO_DIR + '/' + instance
@@ -291,8 +284,7 @@ class EvidenceManager
     end
 
     # the schema of repository
-    schema = ["CREATE TABLE IF NOT EXISTS info (bid CHAR(32),
-                                                ident CHAR(16),
+    schema = ["CREATE TABLE IF NOT EXISTS info (ident CHAR(16),
                                                 instance CHAR(40),
                                                 subtype CHAR(16),
                                                 version INT,
@@ -300,8 +292,7 @@ class EvidenceManager
                                                 device CHAR(256),
                                                 source CHAR(256),
                                                 sync_time INT,
-                                                sync_status INT,
-                                                key CHAR(32))",
+                                                sync_status INT)",
               "CREATE TABLE IF NOT EXISTS evidence (id INTEGER PRIMARY KEY ASC,
                                                     size INT,
                                                     content BLOB)"
