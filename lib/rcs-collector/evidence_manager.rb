@@ -182,6 +182,7 @@ class EvidenceManager
           trace :fatal, "SQL syntax error: #{e.message}, query was: #{query}"
     rescue Exception => e
       trace :warn, "Cannot read from the repository: #{e.message} [#{e.class}]"
+      return nil
     end
   end
 
@@ -207,6 +208,7 @@ class EvidenceManager
     # return all the instances
     entries = []
     Dir[REPO_DIR + '/*'].each do |e|
+      next if e['-journal']
       entries << File.basename(e)
     end
     return entries
@@ -215,7 +217,7 @@ class EvidenceManager
   def instance_info(instance)
     # sanity check
     path = REPO_DIR + '/' + instance
-    raise "cannot find sqlite for evidence" unless File.exist?(path)
+    raise "cannot find sqlite for instance #{instance}" unless File.exist?(path)
     
     begin
       db = SQLite3::Database.open(path)

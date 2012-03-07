@@ -155,8 +155,6 @@ class DB_rest
     begin
       ret = rest_call('POST', "/evidence/#{instance}", evidence)
 
-      puts ret.inspect
-
       if ret.kind_of? Net::HTTPSuccess then
         return true, "OK"
       end

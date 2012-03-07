@@ -83,8 +83,8 @@ class Application
       # SYNC_TIMEOUT. we are starting now, so no valid session can exist
       EvidenceManager.instance.sync_timeout_all
 
-      # transfer all the previously cached evidence, if any
-      EvidenceTransfer.instance.send_cached
+      # start transfer the collected evidences
+      EvidenceTransfer.instance.start
 
       # enter the main loop (hopefully will never exit from it)
       Events.new.setup Config.instance.global['LISTENING_PORT']
