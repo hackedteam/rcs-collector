@@ -40,8 +40,7 @@ class EvidenceManager
     begin
       db = SQLite3::Database.open(file_from_session(session))
       db.execute("DELETE FROM info;")
-      db.execute("INSERT INTO info VALUES ('#{session[:bid]}',
-                                           '#{session[:ident]}',
+      db.execute("INSERT INTO info VALUES ('#{session[:ident]}',
                                            '#{session[:instance]}',
                                            '#{session[:subtype]}',
                                            #{version},
@@ -129,7 +128,7 @@ class EvidenceManager
         
     begin
       db = SQLite3::Database.open(path)
-      db.execute("UPDATE info SET sync_status = #{SYNC_IDLE} WHERE bid = '#{session[:bid]}';")
+      db.execute("UPDATE info SET sync_status = #{SYNC_IDLE};")
       db.close
     rescue SQLite3::BusyException => e
           trace :warn, "Cannot update because database is busy, retrying. [#{e.message}]"
@@ -287,8 +286,7 @@ class EvidenceManager
     end
 
     # the schema of repository
-    schema = ["CREATE TABLE IF NOT EXISTS info (bid CHAR(32),
-                                                ident CHAR(16),
+    schema = ["CREATE TABLE IF NOT EXISTS info (ident CHAR(16),
                                                 instance CHAR(40),
                                                 subtype CHAR(16),
                                                 version INT,
