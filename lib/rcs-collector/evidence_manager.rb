@@ -215,7 +215,7 @@ class EvidenceManager
   def instance_info(instance)
     # sanity check
     path = REPO_DIR + '/' + instance
-    return unless File.exist?(path)
+    raise "cannot find sqlite for evidence" unless File.exist?(path)
     
     begin
       db = SQLite3::Database.open(path)

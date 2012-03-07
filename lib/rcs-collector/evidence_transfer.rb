@@ -68,6 +68,7 @@ class EvidenceTransfer
         Thread.new do
           begin
 
+            # get the status of this instance to check if we already have a thread processing it
             status = EvidenceManager.instance.instance_get_processing instance
 
             # only perform the job if we have something to transfer
@@ -93,7 +94,7 @@ class EvidenceTransfer
                 sess[:bid] = bid
                 raise "agent _id cannot be ZERO" if bid == 0
               end
-              
+
               # update the status in the db
               DB.instance.sync_start sess, info['version'], info['user'], info['device'], info['source'], info['sync_time']
 
@@ -107,6 +108,7 @@ class EvidenceTransfer
             end
           rescue Exception => e
             trace :error, "Error processing evidences: #{e.message}"
+            trace :error, e.backtrace
           ensure
             # mark this instance free from
             EvidenceManager.instance.instance_set_processing instance, STATUS_IDLE
