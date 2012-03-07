@@ -154,9 +154,11 @@ class DB_rest
   def send_evidence(instance, evidence)
     begin
       ret = rest_call('POST', "/evidence/#{instance}", evidence)
-      
+
+      puts ret.inspect
+
       if ret.kind_of? Net::HTTPSuccess then
-        return true
+        return true, "OK"
       end
 
       return false, ret.body

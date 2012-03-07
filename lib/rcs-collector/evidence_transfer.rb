@@ -113,15 +113,14 @@ class EvidenceTransfer
   def transfer(instance, id, left)
     evidence = EvidenceManager.instance.get_evidence(id, instance)
 
-    trace :info, "Transferring [#{instance}] #{evidence.size.to_s_bytes} - #{left} left to send"
-
     # send and delete the evidence
     ret, error = DB.instance.send_evidence(instance, evidence)
 
     if ret then
+      trace :info, "Evidence transferred [#{instance}] #{evidence.size.to_s_bytes} - #{left} left to send"
       EvidenceManager.instance.del_evidence(id, instance)
     else
-      trace :error, "Evidence NOT transferred: #{error}"
+      trace :error, "Evidence NOT transferred [#{instance}]: #{error}"
     end
     
   end
