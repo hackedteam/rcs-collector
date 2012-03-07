@@ -20,10 +20,8 @@ class EvidenceTransfer
   include Singleton
   include RCS::Tracer
 
-  STATUS_PROCESSING = 1
-  STATUS_IDLE = 0
-
   def start
+    @threads = Hash.new
     @worker = Thread.new { self.work }
   end
 
@@ -33,30 +31,20 @@ class EvidenceTransfer
       # pass the control to other threads
       sleep 1
 
-      puts "processing"
-
       # don't try to transfer if the db is down
       next unless DB.instance.connected?
 
       # for each instance get the ids we have and send them
       EvidenceManager.instance.instances.each do |instance|
         # one thread per instance, but check if an instance is already under processing
-        Thread.new do
+        @threads[instance] ||= Thread.new do
           begin
-
-            Thread.current[:instance] = instance
-
-            # get the status of this instance to check if we already have a thread processing it
-            status = EvidenceManager.instance.instance_get_processing instance
 
             # get all the ids of the evidence for this instance
             evidences = EvidenceManager.instance.evidence_ids(instance)
 
             # only perform the job if we have something to transfer
-            if not evidences.empty? and not status == STATUS_PROCESSING
-
-              # mark this instance under processing
-              EvidenceManager.instance.instance_set_processing instance, STATUS_PROCESSING
+            if not evidences.empty?
 
               # get the info from the instance
               info = EvidenceManager.instance.instance_info instance
@@ -75,8 +63,6 @@ class EvidenceTransfer
               # update the status in the db
               DB.instance.sync_start sess, info['version'], info['user'], info['device'], info['source'], info['sync_time']
 
-              puts "*** THREAD #{Thread.current} instance #{Thread.current[:instance]}"
-
               # transfer all the evidence
               while (id = evidences.shift)
                 self.transfer instance, id, evidences.count
@@ -89,11 +75,8 @@ class EvidenceTransfer
             trace :error, "Error processing evidences: #{e.message}"
             trace :error, e.backtrace
           ensure
-            # mark this instance free from
-            EvidenceManager.instance.instance_set_processing instance, STATUS_IDLE
-
             # job done, exit
-            puts "*** THREAD #{Thread.current} DEAD"
+            @threads[instance] = nil
             Thread.exit
           end
         end
@@ -103,11 +86,7 @@ class EvidenceTransfer
 
   def transfer(instance, id, left)
     evidence = EvidenceManager.instance.get_evidence(id, instance)
-
-    if evidence.nil?
-      puts "NIL #{instance} #{id}"
-      exit!
-    end
+    raise "evidence to be transferred is nil" if evidence.nil?
 
     # send and delete the evidence
     ret, error = DB.instance.send_evidence(instance, evidence)

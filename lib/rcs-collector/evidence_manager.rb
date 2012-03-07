@@ -234,45 +234,6 @@ class EvidenceManager
     end
   end
 
-  def instance_get_processing(instance)
-    # sanity check
-    path = REPO_DIR + '/' + instance
-    return unless File.exist?(path)
-
-    begin
-      db = SQLite3::Database.open(path)
-      db.results_as_hash = true
-      ret = db.execute("SELECT * FROM processing;")
-      db.close
-      return ret.first['status']
-    rescue SQLite3::BusyException => e
-          trace :warn, "Cannot select because database is busy, retrying. [#{e.message}]"
-          sleep 0.1
-          retry
-    rescue Exception => e
-      trace :warn, "Cannot read from the repository: #{e.message}"
-    end
-  end
-
-  def instance_set_processing(instance, value)
-    # sanity check
-    path = REPO_DIR + '/' + instance
-    return unless File.exist?(path)
-
-    begin
-      db = SQLite3::Database.open(path)
-      db.execute("DELETE FROM processing;")
-      db.execute("INSERT INTO processing VALUES (#{value});")
-      db.close
-    rescue SQLite3::BusyException => e
-          trace :warn, "Cannot select because database is busy, retrying. [#{e.message}]"
-          sleep 0.1
-          retry
-    rescue Exception => e
-      trace :warn, "Cannot write to the repository: #{e.message}"
-    end
-  end
-
   def evidence_info(instance)
     # sanity check
     path = REPO_DIR + '/' + instance
@@ -338,8 +299,7 @@ class EvidenceManager
                                                 sync_status INT)",
               "CREATE TABLE IF NOT EXISTS evidence (id INTEGER PRIMARY KEY ASC,
                                                     size INT,
-                                                    content BLOB)",
-              "CREATE TABLE IF NOT EXISTS processing (status INT)"
+                                                    content BLOB)"
              ]
     
     # create all the tables
