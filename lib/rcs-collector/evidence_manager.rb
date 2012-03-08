@@ -39,15 +39,15 @@ class EvidenceManager
 
     begin
       db = SQLite3::Database.open(file_from_session(session))
-      db.execute("INSERT OR REPLACE INTO info VALUES ('#{session[:ident]}',
-                                           '#{session[:instance]}',
-                                           '#{session[:subtype]}',
-                                           #{version},
-                                           '#{user}',
-                                           '#{device}',
-                                           '#{source}',
-                                           #{time},
-                                           #{SYNC_IN_PROGRESS});")
+      db.execute("UPDATE info SET ident = '#{session[:ident]}',
+                                  instance = '#{session[:instance]}',
+                                  subtype = '#{session[:subtype]}',
+                                  version = #{version},
+                                  user = '#{user}',
+                                  device = '#{device}',
+                                  source = '#{source}',
+                                  sync_time = #{time},
+                                  sync_status = #{SYNC_IN_PROGRESS};")
 
       db.close
     rescue SQLite3::BusyException => e
@@ -302,6 +302,8 @@ class EvidenceManager
     schema.each do |query|
       begin
         db.execute query
+        # insert the entry here, will be updated in other methods
+        db.execute("INSERT INTO info VALUES ('', '', '', 0, '', '', '', 0, 0);")
       rescue SQLite3::BusyException => e
             trace :warn, "Cannot create tables because database is busy, retrying. [#{e.message}]"
             sleep 0.1
