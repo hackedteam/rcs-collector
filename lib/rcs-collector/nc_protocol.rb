@@ -37,7 +37,7 @@ class NCProto
       command = @socket.read(HEADER_LENGTH)
       # decode the integer
       return command.unpack('I').first
-    rescue EOFError
+    rescue Exception => e
       return nil
     end
   end
