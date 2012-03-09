@@ -302,7 +302,7 @@ class EvidenceManager
     schema.each do |query|
       begin
         db.execute query
-        # insert the entry here, will be updated in other methods
+        # insert the entry here, will be updated in sync_start methods
         db.execute("INSERT INTO info VALUES ('', '', '', 0, '', '', '', 0, 0);")
       rescue SQLite3::BusyException => e
             trace :warn, "Cannot create tables because database is busy, retrying. [#{e.message}]"

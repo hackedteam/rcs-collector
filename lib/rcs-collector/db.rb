@@ -183,7 +183,7 @@ class DB
     # if we already have it return otherwise we have to ask to the db
     return Digest::MD5.digest @factory_keys[build_id] unless @factory_keys[build_id].nil?
 
-    trace :debug, "Cache Miss: factory key for #{build_id}"
+    trace :info, "Cache Miss: factory key for #{build_id}, asking to the db..."
 
     return nil unless @available
     
