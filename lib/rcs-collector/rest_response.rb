@@ -66,7 +66,7 @@ class RESTResponse
 
     @response.headers['Content-Type'] = @content_type
 
-    # TODO: ricontrollare uso 'secure' (serve a Symbian per proxy)
+    # TODO: check the 'secure' flag (Symbian on proxy)
     #@response.headers['Set-Cookie'] = "ID=" + @cookie + "; expires=#{expiry}; secure" unless @cookie.nil?
     @response.headers['Set-Cookie'] = "ID=" + @cookie unless @cookie.nil?
     
@@ -117,7 +117,6 @@ class RESTFileStream
 
     @response.headers["Content-length"] = File.size @filename
 
-    # TODO: turbo zozza per content-length
     # fixup_headers override to evade content-length reset
     metaclass = class << @response; self; end
     metaclass.send(:define_method, :fixup_headers, proc {})

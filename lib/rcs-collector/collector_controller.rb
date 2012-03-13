@@ -111,8 +111,9 @@ class CollectorController < RESTController
           path += '/' + d
           Dir.mkdir(path)
         end
+        #TODO: when the file manager will be implemented
         # don't overwrite the file
-        raise "File already exists" if File.exist?(path + '/' + file)
+        #raise "File already exists" if File.exist?(path + '/' + file)
         # and then the file
         File.open(path + '/' + file, 'wb') { |f| f.write content }
       end
