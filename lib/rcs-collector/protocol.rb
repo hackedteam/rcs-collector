@@ -85,7 +85,11 @@ class Protocol
     conf_key = DB.instance.factory_key_of build_id_real
 
     # this class does not exist
-    return if conf_key.nil?
+    if conf_key.nil?
+      trace :warn, "[#{peer}] Factory key not found"
+      return
+    end
+
 
     # the server will calculate the same sha digest and authenticate the agent
     # since the conf key is pre-shared

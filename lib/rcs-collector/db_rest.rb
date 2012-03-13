@@ -148,13 +148,15 @@ class DB_rest
     begin
       ret = rest_call('POST', "/evidence/#{instance}", evidence)
 
-      if ret.kind_of? Net::HTTPSuccess then
-        return true, "OK"
+      case ret
+        when Net::HTTPSuccess then return true, "OK", :delete
+        when Net::HTTPConflict then return false, "empty evidence", :delete
       end
 
       return false, ret.body
     rescue Exception => e
       trace :error, "Error calling send_evidence: #{e.class} #{e.message}"
+      trace :fatal, e.backtrace
       propagate_error e
     end
   end

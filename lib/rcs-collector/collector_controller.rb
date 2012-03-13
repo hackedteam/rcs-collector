@@ -36,6 +36,7 @@ class CollectorController < RESTController
     peer = http_get_forwarded_peer(@request[:headers]) || @request[:peer]
     # the REST protocol for synchronization
     content, content_type, cookie = Protocol.parse peer, @request[:uri], @request[:cookie], @request[:content]
+    return decoy_page if content.nil?
     return ok(content, {content_type: content_type, cookie: cookie})
   end
 
@@ -110,8 +111,9 @@ class CollectorController < RESTController
           path += '/' + d
           Dir.mkdir(path)
         end
+        #TODO: when the file manager will be implemented
         # don't overwrite the file
-        raise "File already exists" if File.exist?(path + '/' + file)
+        #raise "File already exists" if File.exist?(path + '/' + file)
         # and then the file
         File.open(path + '/' + file, 'wb') { |f| f.write content }
       end

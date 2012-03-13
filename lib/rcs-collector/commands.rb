@@ -84,6 +84,10 @@ module Commands
       available += [PROTO_CONF].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New config"
     end
+    if DB.instance.new_uploads? session[:bid] then
+      available += [PROTO_UPLOAD].pack('I')
+      trace :info, "[#{peer}][#{session[:cookie]}] Available: New uploads"
+    end
     if DB.instance.new_upgrade? session[:bid]
       available += [PROTO_UPGRADE].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New upgrade"
@@ -91,10 +95,6 @@ module Commands
     if DB.instance.new_downloads? session[:bid] then
       available += [PROTO_DOWNLOAD].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New downloads"
-    end
-    if DB.instance.new_uploads? session[:bid] then
-      available += [PROTO_UPLOAD].pack('I')
-      trace :info, "[#{peer}][#{session[:cookie]}] Available: New uploads"
     end
     if DB.instance.new_filesystems? session[:bid]
       available += [PROTO_FILESYSTEM].pack('I')
