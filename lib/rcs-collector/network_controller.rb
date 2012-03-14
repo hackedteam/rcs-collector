@@ -134,7 +134,7 @@ class NetworkController
 
         when NCProto::PROTO_CONF
           content = nil
-          if element['configured'] == false then
+          if not element['configured']
             content = DB.instance.injector_config(element['_id']) if element['type'].nil?
             content = DB.instance.collector_config(element['_id']) unless element['type'].nil?
             trace :info, "[NC] #{element['address']} has a new configuration (#{content.length} bytes)" unless content.nil?
@@ -143,7 +143,11 @@ class NetworkController
 
         when NCProto::PROTO_UPGRADE
           content = nil
-          trace :info, "[NC] #{element['address']} has a new upgrade (#{content.length} bytes)" unless content.nil?
+          if element['upgradable']
+            content = DB.instance.injector_upgrade(element['_id']) if element['type'].nil?
+            content = DB.instance.collector_upgrade(element['_id']) unless element['type'].nil?
+            trace :info, "[NC] #{element['address']} has a new upgrade (#{content.length} bytes)" unless content.nil?
+          end
           proto.upgrade(content)
 
         when NCProto::PROTO_LOG
