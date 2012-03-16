@@ -11,7 +11,7 @@ class CollectorController < RESTController
   
   def get
     # serve the requested file
-    http_get_file(@request[:headers], @request[:uri])
+    return http_get_file(@request[:headers], @request[:uri])
   rescue Exception => e
     return decoy_page
   end
@@ -76,7 +76,8 @@ class CollectorController < RESTController
     return decoy_page unless File.exist?(file_path) and File.file?(file_path)
 
     trace :info, "[#{@request[:peer]}][#{os}] serving #{file_path}"
-    
+
+    return ok(File.read(file_path), {content-type: 'binary/octet-stream'}) if File.size(file_path) < 16384
     return stream_file File.realdirpath(file_path)
   end
   
