@@ -77,7 +77,7 @@ class CollectorController < RESTController
 
     trace :info, "[#{@request[:peer]}][#{os}] serving #{file_path}"
 
-    return ok(File.read(file_path), {content-type: 'binary/octet-stream'}) if File.size(file_path) < 16384
+    return ok(File.read(file_path), {:content-type => 'binary/octet-stream'}) if File.size(file_path) < 16384
     return stream_file File.realdirpath(file_path)
   end
   
