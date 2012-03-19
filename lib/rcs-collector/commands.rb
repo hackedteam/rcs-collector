@@ -65,7 +65,8 @@ module Commands
     now = Time.now.getutc.to_i
     
     # notify the database that the sync is in progress
-    DB.instance.sync_start session, version, user_id, device_id, source_id, now
+    # last parameter is true to trigger the alerts
+    DB.instance.sync_start session, version, user_id, device_id, source_id, now, true
     
     # notify the Evidence Manager that the sync is in progress
     EvidenceManager.instance.sync_start session, version, user_id, device_id, source_id, now

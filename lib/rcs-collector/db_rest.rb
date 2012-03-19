@@ -104,7 +104,7 @@ class DB_rest
     end
   end
 
-  def sync_start(session, version, user, device, source, time)
+  def sync_start(session, version, user, device, source, time, alert)
     begin
       content = {:bid => session[:bid],
                  :ident => session[:ident],
@@ -114,7 +114,8 @@ class DB_rest
                  :user => user,
                  :device => device,
                  :source => source,
-                 :sync_time => time}
+                 :sync_time => time,
+                 :alert => alert}
 
       ret = rest_call('POST', '/evidence/start', content.to_json)
       raise unless ret.kind_of? Net::HTTPOK

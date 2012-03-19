@@ -219,12 +219,12 @@ class DB
     return (status.nil?) ? [DB::UNKNOWN_AGENT, 0] : [status, bid]
   end
 
-  def sync_start(session, version, user, device, source, time)
+  def sync_start(session, version, user, device, source, time, alert=false)
     # database is down, continue
     return unless @available
 
     # tell the db that the agent has synchronized
-    db_rest_call :sync_start, session, version, user, device, source, time
+    db_rest_call :sync_start, session, version, user, device, source, time, alert
   end
 
   def sync_timeout(session)

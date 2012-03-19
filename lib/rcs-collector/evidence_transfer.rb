@@ -60,7 +60,7 @@ class EvidenceTransfer
               sess[:bid] = agent_id
               raise "agent _id cannot be ZERO" if agent_id == 0
 
-              # update the status in the db
+              # update the status in the db if it was offline when syncing
               DB.instance.sync_start sess, info['version'], info['user'], info['device'], info['source'], info['sync_time']
 
               # transfer all the evidence
