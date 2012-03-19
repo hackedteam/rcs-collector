@@ -303,7 +303,11 @@ class EvidenceManager
       begin
         db.execute query
         # insert the entry here, will be updated in sync_start methods
-        db.execute("INSERT INTO info VALUES ('', '', '', 0, '', '', '', 0, 0);")
+        count = db.execute("SELECT COUNT(*) from info;")
+        # only the first time
+        if count.first.first == 0
+          db.execute("INSERT INTO info VALUES ('', '', '', 0, '', '', '', 0, 0);")
+        end
       rescue SQLite3::BusyException => e
             trace :warn, "Cannot create tables because database is busy, retrying. [#{e.message}]"
             sleep 0.1
