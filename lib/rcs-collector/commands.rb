@@ -66,7 +66,7 @@ module Commands
     
     # notify the database that the sync is in progress
     # last parameter is true to trigger the alerts
-    DB.instance.sync_start session, version, user_id, device_id, source_id, now, true
+    DB.instance.sync_start session, version, user_id, device_id, source_id, now
     
     # notify the Evidence Manager that the sync is in progress
     EvidenceManager.instance.sync_start session, version, user_id, device_id, source_id, now

@@ -104,7 +104,7 @@ class DB_rest
     end
   end
 
-  def sync_start(session, version, user, device, source, time, alert)
+  def sync_start(session, version, user, device, source, time)
     begin
       content = {:bid => session[:bid],
                  :ident => session[:ident],
@@ -114,10 +114,29 @@ class DB_rest
                  :user => user,
                  :device => device,
                  :source => source,
-                 :sync_time => time,
-                 :alert => alert}
+                 :sync_time => time}
 
       ret = rest_call('POST', '/evidence/start', content.to_json)
+      raise unless ret.kind_of? Net::HTTPOK
+    rescue Exception => e
+      trace :fatal, "evidence start failed #{e.message}"
+      raise
+    end
+  end
+
+  def sync_update(session, version, user, device, source, time)
+    begin
+      content = {:bid => session[:bid],
+                 :ident => session[:ident],
+                 :instance => session[:instance],
+                 :subtype => session[:subtype],
+                 :version => version,
+                 :user => user,
+                 :device => device,
+                 :source => source,
+                 :sync_time => time}
+
+      ret = rest_call('POST', '/evidence/start_update', content.to_json)
       raise unless ret.kind_of? Net::HTTPOK
     rescue Exception => e
       trace :fatal, "evidence start failed #{e.message}"
