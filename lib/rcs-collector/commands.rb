@@ -302,7 +302,8 @@ module Commands
       # remember how many evidence were transferred in this session
       session[:count] += 1
 
-      trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes) - #{session[:count]} of #{session[:total]}"
+      total = session[:total] > 0 ? session[:total] : 'unknown'
+      trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes) - #{session[:count]} of #{total}"
     rescue Exception => e
       trace :warn, "[#{peer}][#{session[:cookie]}] Evidence NOT saved: #{e.message}"
       return [PROTO_NO].pack('I')
