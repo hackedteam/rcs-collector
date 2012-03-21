@@ -13,8 +13,6 @@ class CollectorController < RESTController
     # serve the requested file
     return http_get_file(@request[:headers], @request[:uri])
   rescue Exception => e
-    puts e.message
-    puts e.backtrace
     return decoy_page
   end
   
