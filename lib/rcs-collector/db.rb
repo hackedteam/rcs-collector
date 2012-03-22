@@ -227,6 +227,14 @@ class DB
     db_rest_call :sync_start, session, version, user, device, source, time
   end
 
+  def sync_update(session, version, user, device, source, time)
+    # database is down, continue
+    return unless @available
+
+    # tell the db that the agent has synchronized
+    db_rest_call :sync_update, session, version, user, device, source, time
+  end
+
   def sync_timeout(session)
     # database is down, continue
     return unless @available
@@ -460,6 +468,16 @@ class DB
   def collector_config(id)
     return unless @available
     db_rest_call :collector_config, id
+  end
+
+  def injector_upgrade(id)
+    return unless @available
+    db_rest_call :injector_upgrade, id
+  end
+
+  def collector_upgrade(id)
+    return unless @available
+    db_rest_call :collector_upgrade, id
   end
 
   def injector_add_log(id, time, type, desc)

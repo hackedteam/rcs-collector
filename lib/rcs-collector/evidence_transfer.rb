@@ -60,16 +60,14 @@ class EvidenceTransfer
               sess[:bid] = agent_id
               raise "agent _id cannot be ZERO" if agent_id == 0
 
-              # update the status in the db
-              DB.instance.sync_start sess, info['version'], info['user'], info['device'], info['source'], info['sync_time']
+              # update the status in the db if it was offline when syncing
+              DB.instance.sync_update sess, info['version'], info['user'], info['device'], info['source'], info['sync_time']
 
               # transfer all the evidence
               while (id = evidences.shift)
                 self.transfer instance, id, evidences.count
               end
 
-              # the sync is ended
-              DB.instance.sync_end sess
             end
           rescue Exception => e
             trace :error, "Error processing evidences: #{e.message}"

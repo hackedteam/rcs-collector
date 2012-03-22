@@ -29,7 +29,7 @@ class RESTResponse
     @content = content
     @content_type = opts[:content_type]
     @content_type ||= 'application/json'
-
+    @location ||= opts[:location]
     @cookie ||= opts[:cookie]
     
     @callback=callback
@@ -69,7 +69,10 @@ class RESTResponse
     # TODO: check the 'secure' flag (Symbian on proxy)
     #@response.headers['Set-Cookie'] = "ID=" + @cookie + "; expires=#{expiry}; secure" unless @cookie.nil?
     @response.headers['Set-Cookie'] = "ID=" + @cookie unless @cookie.nil?
-    
+
+    # used for redirects
+    @response.headers['Location'] = @location unless @location.nil?
+
     if keep_alive? connection
       # keep the connection open to allow multiple requests on the same connection
       # this will increase the speed of sync since it decrease the latency on the net

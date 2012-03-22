@@ -123,7 +123,7 @@ class NCProto
       # len of the file
       message += [content.length].pack('I')
 
-      # send the CONF command
+      # send the UPGRADE command
       header = [PROTO_UPGRADE].pack('I')
       header += [message.length].pack('I')
       @socket.write header + message + content

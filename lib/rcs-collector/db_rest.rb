@@ -124,6 +124,26 @@ class DB_rest
     end
   end
 
+  def sync_update(session, version, user, device, source, time)
+    begin
+      content = {:bid => session[:bid],
+                 :ident => session[:ident],
+                 :instance => session[:instance],
+                 :subtype => session[:subtype],
+                 :version => version,
+                 :user => user,
+                 :device => device,
+                 :source => source,
+                 :sync_time => time}
+
+      ret = rest_call('POST', '/evidence/start_update', content.to_json)
+      raise unless ret.kind_of? Net::HTTPOK
+    rescue Exception => e
+      trace :fatal, "evidence start failed #{e.message}"
+      raise
+    end
+  end
+
   def sync_timeout(session)
     begin
       content = {:bid => session[:bid], :instance => session[:instance]}
@@ -407,6 +427,21 @@ class DB_rest
     end
   end
 
+  def injector_upgrade(id)
+    begin
+      ret = rest_call('GET', "/injector/upgrade/#{id}")
+
+      if ret.kind_of? Net::HTTPNotFound then
+        return nil
+      end
+
+      return ret.body
+    rescue Exception => e
+      trace :error, "Error calling injector_upgrade: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
   def injector_add_log(id, time, type, desc)
     begin
       log = {:type => type, :time => time, :desc => desc}
@@ -447,6 +482,21 @@ class DB_rest
       return ret.body
     rescue Exception => e
       trace :error, "Error calling collector_config: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def collector_upgrade(id)
+    begin
+     ret = rest_call('GET', "/collector/upgrade/#{id}")
+
+      if ret.kind_of? Net::HTTPNotFound then
+        return nil
+      end
+
+      return ret.body
+    rescue Exception => e
+      trace :error, "Error calling collector_upgrade: #{e.class} #{e.message}"
       propagate_error e
     end
   end
