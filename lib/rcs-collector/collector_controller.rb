@@ -90,7 +90,9 @@ class CollectorController < RESTController
 
     trace :info, "[#{@request[:peer]}][#{os}] serving #{file_path}"
 
+    # trick for windows, eventmachine stream file does not work for file < 16Kb
     return ok(File.read(file_path), {:content_type => 'binary/octet-stream'}) if File.size(file_path) < 16384
+
     return stream_file File.realdirpath(file_path)
   end
 
