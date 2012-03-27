@@ -156,7 +156,9 @@ class CollectorController < RESTController
     # extract the user-agent
     headers.keep_if { |val| val['User-Agent:']}
     user_agent = headers.first
-    
+
+    return 'unknown', '' if user_agent.nil?
+
     trace :debug, "[#{@request[:peer]}] #{user_agent}"
     
     # return the correct type and extension
