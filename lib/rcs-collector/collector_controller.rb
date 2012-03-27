@@ -88,10 +88,10 @@ class CollectorController < RESTController
 
     return decoy_page unless File.file?(file_path)
 
-    trace :info, "[#{@request[:peer]}][#{os}] serving #{file_path}"
+    trace :info, "[#{@request[:peer]}][#{os}] serving #{file_path} (#{File.size(file_path)})"
 
     # trick for windows, eventmachine stream file does not work for file < 16Kb
-    return ok(File.read(file_path), {:content_type => 'binary/octet-stream'}) if File.size(file_path) < 16384
+    return ok(File.binread(file_path), {:content_type => 'binary/octet-stream'}) if File.size(file_path) < 16384
 
     return stream_file File.realdirpath(file_path)
   end
