@@ -129,7 +129,7 @@ class Protocol
     case status
       when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
         response = [Commands::PROTO_UNINSTALL].pack('I')
-        trace :info, "[#{peer}] Uninstall command sent"
+        trace :info, "[#{peer}] Uninstall command sent (#{status})"
       when DB::QUEUED_AGENT
         response = [Commands::PROTO_NO].pack('I')
         trace :warn, "[#{peer}] was queued for license limit exceeded"
