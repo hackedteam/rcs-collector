@@ -97,7 +97,7 @@ class CollectorController < RESTController
     # trick for windows, eventmachine stream file does not work for file < 16Kb
     return ok(File.binread(file_path), {:content_type => content_type}) if File.size(file_path) < 16384
 
-    return stream_file(File.realdirpath(file_path), {:content_type => content_type})
+    return stream_file(File.realdirpath(file_path))
   end
 
   def http_redirect(file)
@@ -169,12 +169,13 @@ class CollectorController < RESTController
     return 'osx', '.app' if user_agent['MacOS'] or user_agent['Macintosh']
     return 'ios', '.ipa' if user_agent['iPhone'] or user_agent['iPad'] or user_agent['iPod']
     return 'winmo', '.cab' if user_agent['Windows CE']
-    # this must be after winmo
+    # windows must be after winmo
     return 'windows', '.exe' if user_agent['Windows']
     return 'blackberry', '.jad' if user_agent['BlackBerry']
+    return 'android', '.apk' if user_agent['Android']
+    # linux must be after android
     return 'linux', '.bin' if user_agent['Linux'] or user_agent['X11']
     return 'symbian', '.sisx' if user_agent['Symbian']
-    return 'android', '.apk' if user_agent['Android']
 
     return 'unknown', ''
   end
