@@ -164,8 +164,9 @@ class CollectorController < RESTController
     # return the correct type and extension
     return 'osx', '.app' if user_agent['MacOS'] or user_agent['Macintosh']
     return 'ios', '.ipa' if user_agent['iPhone'] or user_agent['iPad'] or user_agent['iPod']
-    return 'windows', '.exe' if user_agent['Windows']
     return 'winmo', '.cab' if user_agent['Windows CE']
+    # this must be after winmo
+    return 'windows', '.exe' if user_agent['Windows']
     return 'blackberry', '.jad' if user_agent['BlackBerry']
     return 'linux', '.bin' if user_agent['Linux'] or user_agent['X11']
     return 'symbian', '.sisx' if user_agent['Symbian']
