@@ -97,6 +97,9 @@ class CollectorController < RESTController
     # trick for windows, eventmachine stream file does not work for file < 16Kb
     return ok(File.binread(file_path), {:content_type => content_type}) if File.size(file_path) < 16384
 
+    # trick for blackberry on windows...
+    return ok(File.binread(file_path), {:content_type => content_type}) if os == 'blackberry'
+
     return stream_file(File.realdirpath(file_path))
   end
 
