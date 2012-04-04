@@ -390,7 +390,7 @@ class EvidenceManager
         size = 0
       end
 
-      puts "|#{e['ident']}_#{e['instance']}|#{e['subtype'].center(12)}| #{time} |#{status.center(13)}|#{count.rjust(5)} |#{size.to_s_bytes.rjust(11)} |"
+      puts "|#{e['ident']}_#{e['instance']}|#{e['subtype'].slice(0..11).center(12)}| #{time} |#{status.center(13)}|#{count.rjust(5)} |#{size.to_s_bytes.rjust(11)} |"
     end
     
     # print the table footer
