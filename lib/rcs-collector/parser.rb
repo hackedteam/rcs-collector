@@ -73,7 +73,14 @@ module Parser
     request[:query] = query
     request[:uri] = uri
     request[:uri_params] = uri_params
-    request[:cookie] = SessionManager.instance.guid_from_cookie(cookie)
+
+    # 32 bytes and [A-Za-z0-9] is a signature (used with the cookies from db)
+    if cookie =~ /[A-Za-z0-9]/ and cookie.length == 32
+      request[:cookie] = cookie
+    else
+      request[:cookie] = SessionManager.instance.guid_from_cookie(cookie)
+    end
+
     # if not content_type is provided, default to urlencoded
     request[:content_type] = content_type || 'application/x-www-form-urlencoded'
     
