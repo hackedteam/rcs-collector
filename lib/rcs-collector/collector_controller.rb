@@ -20,7 +20,7 @@ class CollectorController < RESTController
   
   def put
     # only the DB is authorized to send PUT commands
-    unless from_db? @request[:peer] then
+    unless from_db?(@request[:peer], @request[:cookie]) then
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUT [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
@@ -207,20 +207,14 @@ class CollectorController < RESTController
     return ok(resp.body, {content_type: 'text/html'})
   end
 
-  def from_db?(request_ip)
+  def from_db?(request_ip, cookie)
     # from localhost is ok
     return true if request_ip.eql? '127.0.0.1'
     # if the address is already an ip
     return true if request_ip.eql? Config.instance.global['DB_ADDRESS']
-    # check if its from local
-    return true if request_ip.eql? IPSocket.getaddress(Socket.gethostname)
-    # otherwise resolve it
-    begin
-      return true if request_ip.eql? Resolv::DNS.new.getaddress(Config.instance.global['DB_ADDRESS']).to_s
-    rescue Exception => e
-      trace :warn, "Cannot resolve #{Config.instance.global['DB_ADDRESS']}: #{e.message}"
-    end
-    
+    # the cookie from the server is our signature
+    return true if cookie == File.read(Config.instance.file('DB_SIGN'))
+
     return false
   end
 
