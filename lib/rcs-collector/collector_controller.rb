@@ -214,7 +214,15 @@ class CollectorController < RESTController
     return true if request_ip.eql? Config.instance.global['DB_ADDRESS']
     # the cookie from the server is our signature
     return true if cookie == File.read(Config.instance.file('DB_SIGN'))
-
+    # check if its from local
+    return true if request_ip.eql? IPSocket.getaddress(Socket.gethostname)
+    # otherwise resolve it
+    begin
+      return true if request_ip.eql? Resolv::DNS.new.getaddress(Config.instance.global['DB_ADDRESS']).to_s
+    rescue Exception => e
+      trace :warn, "Cannot resolve #{Config.instance.global['DB_ADDRESS']}: #{e.message}"
+    end
+    
     return false
   end
 
