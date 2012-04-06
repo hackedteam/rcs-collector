@@ -214,7 +214,9 @@ class DB
 
     # ask the database the status of the agent
     status, bid = db_rest_call :agent_status, build_id, instance_id, subtype
-    
+
+    trace :info, "Status of [#{build_id}_#{instance_id}] is #{status}"
+
     # if status is nil, the db down. btw we must not fail, fake the reply
     return (status.nil?) ? [DB::UNKNOWN_AGENT, 0] : [status, bid]
   end
