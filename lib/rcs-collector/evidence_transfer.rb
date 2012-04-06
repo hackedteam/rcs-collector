@@ -60,14 +60,23 @@ class EvidenceTransfer
               sess[:bid] = agent_id
               raise "agent _id cannot be ZERO" if agent_id == 0
 
-              # update the status in the db if it was offline when syncing
-              DB.instance.sync_update sess, info['version'], info['user'], info['device'], info['source'], info['sync_time']
+              case status
+                when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
+                  trace :info, "[#{instance}] has status (#{status}) deleting queued evidence"
+                  while (id = evidences.shift)
+                    EvidenceManager.instance.del_evidence(id, instance)
+                  end
+                when DB::QUEUED_AGENT, DB::UNKNOWN_AGENT
+                  trace :warn, "[#{instance}] was queued, not transferring evidence"
+                when DB::ACTIVE_AGENT
+                  # update the status in the db if it was offline when syncing
+                  DB.instance.sync_update sess, info['version'], info['user'], info['device'], info['source'], info['sync_time']
 
-              # transfer all the evidence
-              while (id = evidences.shift)
-                self.transfer instance, id, evidences.count
+                  # transfer all the evidence
+                  while (id = evidences.shift)
+                    self.transfer instance, id, evidences.count
+                  end
               end
-
             end
           rescue Exception => e
             trace :error, "Error processing evidences: #{e.message}"
