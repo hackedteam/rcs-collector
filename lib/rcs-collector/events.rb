@@ -172,7 +172,7 @@ class Events
           EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { EM.defer(proc{ HeartBeat.perform }) }
 
           # timeout for the sessions (will destroy inactive sessions)
-          EM::PeriodicTimer.new(60) { SessionManager.instance.timeout }
+          EM::PeriodicTimer.new(60) { EM.defer(proc{ SessionManager.instance.timeout }) }
         end
 
         # set up the network checks (the interval is in the config)
