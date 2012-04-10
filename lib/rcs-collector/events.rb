@@ -80,7 +80,7 @@ module HTTPHandler
     size = (@http_post_content) ? @http_post_content.bytesize : 0
     trace :debug, "[#{@peer}] REQ: [#{@http_request_method}] #{@http_request_uri} #{@http_query_string} (#{Time.now - @request_time}) #{size.to_s_bytes}"
 
-    # get it again since if the connection is keep-alived we need a fresh timing for each
+    # get it again since if the connection is kept-alive we need a fresh timing for each
     # request and not the total from the beginning of the connection
     @request_time = Time.now
 
