@@ -222,7 +222,7 @@ class CollectorController < RESTController
     rescue Exception => e
       trace :warn, "Cannot resolve #{Config.instance.global['DB_ADDRESS']}: #{e.message}"
     end
-    
+
     return false
   end
 
