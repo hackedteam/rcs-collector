@@ -20,17 +20,19 @@ class CollectorController < RESTController
   
   def put
     # only the DB is authorized to send PUT commands
-    unless from_db?(@request[:peer], @request[:cookie]) then
+    unless from_db?(@request[:headers]) then
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUT [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
-    
-    # this is a request to save a file in the public dir
-    return http_put_file @request[:uri], @request[:content] unless @request[:uri].start_with?('/RCS-NC_')
 
-    # otherwise is a request to push to a NC element
-    content, content_type = NetworkController.push(@request[:uri].split('_')[1], @request[:content])
-    return ok(content, {content_type: content_type})
+    if @request[:uri].start_with?('/RCS-NC_')
+      # it is a request to push to a NC element
+      content, content_type = NetworkController.push(@request[:uri].split('_')[1], @request[:content])
+      return ok(content, {content_type: content_type})
+    end
+
+    # this is a request to save a file in the public dir
+    return http_put_file @request[:uri], @request[:content]
   end
 
   def post
@@ -47,7 +49,7 @@ class CollectorController < RESTController
     # every request received are forwarded externally like a proxy
 
     # only the DB is authorized to send HEAD commands
-    unless from_db? @request[:peer] then
+    unless from_db?(@request[:headers]) then
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send HEAD [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
@@ -207,21 +209,16 @@ class CollectorController < RESTController
     return ok(resp.body, {content_type: 'text/html'})
   end
 
-  def from_db?(request_ip, cookie)
-    # from localhost is ok
-    return true if request_ip.eql? '127.0.0.1'
-    # if the address is already an ip
-    return true if request_ip.eql? Config.instance.global['DB_ADDRESS']
-    # the cookie from the server is our signature
-    return true if cookie == File.read(Config.instance.file('DB_SIGN'))
-    # check if its from local
-    return true if request_ip.eql? IPSocket.getaddress(Socket.gethostname)
-    # otherwise resolve it
-    begin
-      return true if request_ip.eql? Resolv::DNS.new.getaddress(Config.instance.global['DB_ADDRESS']).to_s
-    rescue Exception => e
-      trace :warn, "Cannot resolve #{Config.instance.global['DB_ADDRESS']}: #{e.message}"
-    end
+  def from_db?(headers)
+    # search the header for our X-Auth-Frontend value
+    auth = headers.keep_if {|x| x.start_with? 'X-Auth-Frontend'}.first
+    return false unless auth
+
+    # take the values
+    sig = auth.split(' ').last
+
+    # only the db knows this
+    return true if sig == File.read(Config.instance.file('DB_SIGN'))
 
     return false
   end
