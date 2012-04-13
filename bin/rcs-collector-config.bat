@@ -1,2 +1,8 @@
 @echo off
-ruby rcs-collector-config %*
+
+set CWD=%CD%
+cd /D C:\RCS\Collector
+
+ruby bin\rcs-collector-config %*
+
+cd /D %CWD%
