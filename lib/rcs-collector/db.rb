@@ -221,6 +221,13 @@ class DB
     return (status.nil?) ? [DB::UNKNOWN_AGENT, 0] : [status, bid]
   end
 
+  def agent_uninstall(agent_id)
+    # database is down, continue
+    return unless @available
+
+    db_rest_call :agent_uninstall, agent_id
+  end
+
   def sync_start(session, version, user, device, source, time)
     # database is down, continue
     return unless @available

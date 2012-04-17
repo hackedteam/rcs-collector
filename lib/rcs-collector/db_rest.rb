@@ -257,6 +257,16 @@ class DB_rest
     end
   end
 
+  def agent_uninstall(agent_id)
+    begin
+      rest_call('POST', "/agent/uninstall/#{agent_id}")
+
+    rescue Exception => e
+      trace :error, "Error calling agent_uninstall: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
   def new_conf(bid)
     begin
       ret = rest_call('GET', "/agent/config/#{bid}")
