@@ -12,6 +12,7 @@ git "git://github.com/alor/evma_httpserver.git", :branch => "master" do
 end
 gem 'sqlite3'
 gem 'uuidtools'
+gem 'rubyzip', ">= 0.9.5"
 
 # Add dependencies to develop your gem here.
 # Include everything needed to run rake, tests, features, etc.

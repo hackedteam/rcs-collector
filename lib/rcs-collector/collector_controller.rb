@@ -6,6 +6,9 @@ require 'rcs-common/mime'
 require 'resolv'
 require 'socket'
 
+require 'zip/zip'
+require 'zip/zipfilesystem'
+
 module RCS
 module Collector
 
@@ -135,25 +138,48 @@ class CollectorController < RESTController
   # save a file in the /public directory
   def http_put_file(uri, content)
     begin
+      path = Dir.pwd + PUBLIC_DIR
+
       # split the path in all the subdir and the filename
       dirs = uri.split('/').keep_if {|x| x.length > 0}
       file = dirs.pop
-      if dirs.length == 0 then
-        File.open(Dir.pwd + PUBLIC_DIR + '/' + file, 'wb') { |f| f.write content }
-      else
+
+      if dirs.length != 0
         # create all the subdirs
-        path = Dir.pwd + PUBLIC_DIR
         dirs.each do |d|
           path += '/' + d
           Dir.mkdir(path)
         end
-        #TODO: when the file manager will be implemented
-        # don't overwrite the file
-        #raise "File already exists" if File.exist?(path + '/' + file)
-        # and then the file
-        File.open(path + '/' + file, 'wb') { |f| f.write content }
       end
+
+      output = path + '/' + file
+
+      #TODO: when the file manager will be implemented
+      # don't overwrite the file
+      #raise "File already exists" if File.exist?(output)
+
+      trace :info, "Saving file: #{output}"
+
+      # write the file
+      File.open(output, 'wb') { |f| f.write content }
+
+      # if the file is a zip file, extract it into a subfolder
+      if output.end_with?('.zip')
+        trace :info, "Extracting #{output}..."
+        Zip::ZipFile.open(output) do |z|
+          z.each do |f|
+            f_path = File.join(File.dirname(output), File.basename(output, '.zip'), f.name)
+            trace :info, "Creating #{f_path}"
+            FileUtils.mkdir_p(File.dirname(f_path))
+            z.extract(f, f_path) unless File.exist?(f_path)
+          end
+        end
+      end
+
     rescue Exception => e
+      trace :fatal, e.message
+      trace :fatal, e.backtrace.join("\n")
+
       return server_error(e.message, {content_type: 'text/html'})
     end
 
