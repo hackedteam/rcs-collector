@@ -6,9 +6,9 @@ source "http://rubygems.org"
 
 gem "rcs-common", ">= 8.0.0", :path => "../rcs-common"
 
-git "git://github.com/alor/eventmachine.git", :branch => "master" do
+#git "git://github.com/alor/eventmachine.git", :branch => "master" do
   gem 'eventmachine', ">= 1.0.0.beta.4"
-end
+#end
 git "git://github.com/alor/evma_httpserver.git", :branch => "master" do
   gem 'eventmachine_httpserver', ">= 0.2.2"
 end
