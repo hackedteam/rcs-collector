@@ -103,6 +103,7 @@ class CollectorController < RESTController
     return ok(File.binread(file_path), {:content_type => content_type}) if File.size(file_path) < 16384
 
     # trick for blackberry on windows...
+    # some BB don't like the streaming of the file, but accept it if written in one pass
     return ok(File.binread(file_path), {:content_type => content_type}) if os == 'blackberry'
 
     return stream_file(File.realdirpath(file_path))
@@ -189,7 +190,7 @@ class CollectorController < RESTController
   # returns the operating system of the requester
   def http_get_os(headers)
     # extract the user-agent
-    headers.keep_if { |val| val['User-Agent:']}
+    headers.keep_if { |val| val.downcase['user-agent:']}
     user_agent = headers.first
 
     return 'unknown', '' if user_agent.nil?
