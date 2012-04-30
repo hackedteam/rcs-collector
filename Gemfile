@@ -6,12 +6,8 @@ source "http://rubygems.org"
 
 gem "rcs-common", ">= 8.0.0", :path => "../rcs-common"
 
-#git "git://github.com/alor/eventmachine.git", :branch => "master" do
-  gem 'eventmachine', ">= 1.0.0.beta.4"
-#end
-git "git://github.com/alor/evma_httpserver.git", :branch => "master" do
-  gem 'eventmachine_httpserver', ">= 0.2.2"
-end
+gem 'eventmachine', ">= 1.0.0.beta.4"
+gem 'em-http-server', :path => "../em-http-server"
 gem 'sqlite3'
 gem 'uuidtools'
 gem 'rubyzip', ">= 0.9.5"

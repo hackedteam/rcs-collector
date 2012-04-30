@@ -14,35 +14,25 @@ require 'rcs-common/systemstatus'
 
 # system
 require 'eventmachine'
-require 'evma_httpserver'
+require 'em-http-server'
 require 'socket'
 
 module RCS
 module Collector
 
-module HTTPHandler
+class HTTPHandler < EM::Http::Server
   include RCS::Tracer
-  include EM::HttpServer
   include Parser
   
   attr_reader :peer
   attr_reader :peer_port
   
   def post_init
-    # don't forget to call super here !
-    super
-    
     # timeout on the socket
     set_comm_inactivity_timeout 30
     
     @request_time = Time.now
-    
-    # to speed-up the processing, we disable the CGI environment variables
-    self.no_environment_strings
-    
-    # set the max content length of the POST
-    self.max_content_length = 100 * 1024 * 1024
-    
+
     # get the peer name
     if get_peername
       @peer_port, @peer = Socket.unpack_sockaddr_in(get_peername)
@@ -77,7 +67,7 @@ module HTTPHandler
     #   @http_headers
     
     #trace :info, "[#{@peer}] Incoming HTTP Connection"
-    size = (@http_post_content) ? @http_post_content.bytesize : 0
+    size = (@http_content) ? @http_content.bytesize : 0
     trace :debug, "[#{@peer}] REQ: [#{@http_request_method}] #{@http_request_uri} #{@http_query_string} (#{Time.now - @request_time}) #{size.to_s_bytes}"
 
     # get it again since if the connection is kept-alive we need a fresh timing for each
@@ -94,12 +84,10 @@ module HTTPHandler
       generation_time = Time.now
       
       begin
-        # parse all the request params
-        request = prepare_request @http_request_method, @http_request_uri, @http_query_string, @http_cookie, @http_content_type, @http_post_content
 
-        request[:peer] = @peer
-        request[:headers] = @http_headers.split("\x00")
-        
+        # parse all the request params
+        request = prepare_request @http_request_method, @http_request_uri, @http_query_string, @http_content, @http, @peer
+
         # get the correct controller
         controller = CollectorController.new
         controller.request = request
@@ -108,7 +96,6 @@ module HTTPHandler
         responder = controller.act!
         
         # create the response object to be used in the EM::defer callback
-        
         reply = responder.prepare_response(self, request)
 
         # keep the size of the reply to be used in the closing method
@@ -140,6 +127,7 @@ module HTTPHandler
   end
 
 end #HTTPHandler
+
 
 class Events
   include RCS::Tracer

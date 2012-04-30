@@ -125,8 +125,7 @@ class CollectorController < RESTController
   # return the content of the X-Forwarded-For header
   def http_get_forwarded_peer(headers)
     # extract the XFF
-    headers.keep_if { |val| val['X-Forwarded-For:']}
-    xff = headers.first
+    xff = headers[:x_forwarded_for]
     # no header
     return nil if xff.nil?
     # remove the x-forwarded-for: part
@@ -192,8 +191,7 @@ class CollectorController < RESTController
   # returns the operating system of the requester
   def http_get_os(headers)
     # extract the user-agent
-    headers.keep_if { |val| val.downcase['user-agent:']}
-    user_agent = headers.first
+    user_agent = headers[:user_agent]
 
     return 'unknown', '' if user_agent.nil?
 
@@ -240,7 +238,7 @@ class CollectorController < RESTController
 
   def from_db?(headers)
     # search the header for our X-Auth-Frontend value
-    auth = headers.keep_if {|x| x.start_with? 'X-Auth-Frontend'}.first
+    auth = headers[:x_auth_frontend]
     return false unless auth
 
     # take the values

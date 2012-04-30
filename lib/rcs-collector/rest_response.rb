@@ -24,11 +24,6 @@ class RESTResponse
     @callback=callback
   end
 
-  def keep_alive?(connection)
-    http_headers = connection.instance_variable_get :@http_headers
-    http_headers.split("\x00").index {|h| h['Connection: keep-alive'] || h['Connection: Keep-Alive']}
-  end
-
   #
   # BEWARE: for any reason this method should raise an exception!
   # An exception raised here WILL NOT be cough, resulting in a crash.
@@ -62,7 +57,7 @@ class RESTResponse
     # used for redirects
     @response.headers['Location'] = @location unless @location.nil?
 
-    if keep_alive? connection
+    if request[:headers][:connection].downcase == 'keep-alive'
       # keep the connection open to allow multiple requests on the same connection
       # this will increase the speed of sync since it decrease the latency on the net
       @response.keep_connection_open true
@@ -96,11 +91,6 @@ class RESTFileStream
     @callback = callback
   end
 
-  def keep_alive?(connection)
-    http_headers = connection.instance_variable_get :@http_headers
-    http_headers.split("\x00").index {|h| h['Connection: keep-alive'] || h['Connection: Keep-Alive']}
-  end
-
   def prepare_response(connection, request)
 
     @request = request
@@ -119,7 +109,7 @@ class RESTFileStream
     # RCS::MimeType (rcs-common)
     @response.headers["Content-Type"] = RCS::MimeType.get @filename
 
-    if keep_alive? connection
+    if request[:headers][:connection].downcase == 'keep-alive'
       # keep the connection open to allow multiple requests on the same connection
       # this will increase the speed of sync since it decrease the latency on the net
       @response.keep_connection_open true
