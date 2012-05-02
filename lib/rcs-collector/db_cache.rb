@@ -60,12 +60,10 @@ class DBCache
   def self.length
     return 0 unless File.exist?(CACHE_FILE)
 
-    count = 0
     begin
       db = SQLite.open CACHE_FILE
-      db.execute("SELECT COUNT(*) FROM factory_keys;") do |row|
-        count = row.first
-      end
+      row = db.execute("SELECT COUNT(*) FROM factory_keys;")
+      count = row.first.first
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
@@ -95,14 +93,10 @@ class DBCache
   def self.agent_signature
     return nil unless File.exist?(CACHE_FILE)
 
-    # default value
-    signature = nil
-
     begin
       db = SQLite.open CACHE_FILE
-      db.execute("SELECT signature FROM agent_signature;") do |row|
-        signature = row.first
-      end
+      row = db.execute("SELECT signature FROM agent_signature;")
+      signature = row.first.first
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
@@ -132,14 +126,10 @@ class DBCache
   def self.network_signature
     return nil unless File.exist?(CACHE_FILE)
 
-    # default value
-    signature = nil
-
     begin
       db = SQLite.open CACHE_FILE
-      db.execute("SELECT signature FROM network_signature;") do |row|
-        signature = row.first
-      end
+      row = db.execute("SELECT signature FROM network_signature;")
+      signature = row.first.first
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
@@ -173,7 +163,8 @@ class DBCache
     factory_keys = {}
     begin
       db = SQLite.open CACHE_FILE
-      db.execute("SELECT * FROM factory_keys;") do |row|
+      rows = db.execute("SELECT * FROM factory_keys;")
+      rows.each do |row|
         factory_keys[row[0]] = row[1]
       end
       db.close

@@ -25,13 +25,13 @@ module SQLite_Ruby
     end
 
     # convenience methods
-    def self.safe_escape(*strings)
+    def safe_escape(*strings)
       strings.each do |s|
         s.replace SQLite3::Database.quote(s) if s.class == String
       end
     end
 
-    def self.blob(content)
+    def blob(content)
       SQLite3::Blob.new(content)
     end
   end
@@ -62,12 +62,32 @@ end
 # implementation for JRuby (java)
 module SQLite_Java
 
-  CHAR = 1
+=begin
+  -7	BIT
+  -6	TINYINT
+  -5	BIGINT
+  -4	LONGVARBINARY
+  -3	VARBINARY
+  -2	BINARY
+  -1	LONGVARCHAR
+  0	NULL
+  1	CHAR
+  2	NUMERIC
+  3	DECIMAL
+  4	INTEGER
+  5	SMALLINT
+  6	FLOAT
+  7	REAL
+  8	DOUBLE
+  12	VARCHAR
+  91	DATE
+  92	TIME
+  93	TIMESTAMP
+  1111 	OTHER
+=end
+
   INTEGER = 4
   VARCHAR = 12
-  DATE = 91
-  TIME = 92
-  TIMESTAMP = 93
 
   def self.included(base)
     base.extend(ClassMethods)
@@ -78,16 +98,19 @@ module SQLite_Java
     def open(file)
       #initialize the driver
       org.sqlite.JDBC
-      #grab your connection
       db = java.sql.DriverManager.getConnection("jdbc:sqlite:#{file}")
       self.new(db)
     end
 
     # convenience methods
-    def self.safe_escape(*strings)
+    def safe_escape(*strings)
+      strings.each do |s|
+        s.gsub!( /'/, "''" ) if s.class == String
+      end
     end
 
-    def self.blob(content)
+    def blob(content)
+      #TODO: implement this
     end
   end
 
@@ -98,47 +121,20 @@ module SQLite_Java
 
   def execute(query, bind_vars = [])
     statement = @db.createStatement
-    flat = []
+    result = []
 
     # we have to differentiate on the type of query
     if query =~ /SELECT/i
-
-      res = statement.executeQuery(query)
-      meta = res.getMetaData
-
-      while (res.next)
-        row = @result_as_hash ? {} : []
-
-        # inspect the columns (starting from 1... java)
-        1.upto(meta.getColumnCount) do |i|
-
-          type = meta.getColumnType(i)
-          case type
-            when VARCHAR
-              value = res.getString(i)
-            when INTEGER
-              value = res.getInt(i)
-          end
-
-          if @result_as_hash
-            row[meta.getColumnLabel(i)] = value
-          else
-            row << value
-          end
-        end
-
-        flat << row
-      end
-      res.close
-
+      execute_select statement, query, result
+    elsif query =~ /\?/
+      execute_insert_blob statement, query, bind_vars, result
     else
-      # save the result in the flat array
-      flat << statement.execute(query)
+      result << statement.execute(query)
     end
 
   ensure
     statement.close
-    return flat
+    return result
   end
 
   def close
@@ -147,6 +143,49 @@ module SQLite_Java
 
   def results_as_hash=(value)
     @result_as_hash = value
+  end
+
+  private
+
+  def execute_select(statement, query, result)
+    res = statement.executeQuery(query)
+    meta = res.getMetaData
+
+    while (res.next)
+      row = @result_as_hash ? {} : []
+
+      # inspect the columns (starting from 1... java)
+      1.upto(meta.getColumnCount) do |i|
+
+        type = meta.getColumnType(i)
+        case type
+          when VARCHAR
+            value = res.getString(i)
+          when INTEGER
+            value = res.getInt(i)
+          else
+            raise "unsupported column type: #{type}"
+        end
+
+        if @result_as_hash
+          row[meta.getColumnLabel(i)] = value
+        else
+          row << value
+        end
+      end
+
+      result << row
+    end
+    res.close
+  end
+
+  def execute_insert_blob(statement, query, bind_vars, result)
+    puts "PREPARED: #{query}"
+
+    bind_vars.each do |var|
+      puts var.inspect
+    end
+
   end
 
 end

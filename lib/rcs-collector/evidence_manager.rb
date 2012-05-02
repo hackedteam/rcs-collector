@@ -128,13 +128,11 @@ class EvidenceManager
     begin
       db = SQLite.open(path)
       db.execute("INSERT INTO evidence (size, content) VALUES (#{size}, ? );", SQLite.blob(content))
-      ret = db.last_insert_row_id
       db.close
     rescue Exception => e
       trace :warn, "Cannot insert into the repository: #{e.message}"
       raise "Cannot save evidence"
     end
-    return ret
   end
   
   def get_evidence(id, instance)
