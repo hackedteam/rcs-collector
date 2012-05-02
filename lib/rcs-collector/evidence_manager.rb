@@ -2,10 +2,11 @@
 #  Evidence Manager module for handling evidences
 #
 
+require_relative 'sqlite3'
+
 # from RCS::Common
 require 'rcs-common/trace'
 require 'rcs-common/fixnum'
-require 'rcs-common/sqlite3'
 
 # system
 require 'pp'

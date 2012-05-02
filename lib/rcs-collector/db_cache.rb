@@ -2,9 +2,10 @@
 #  Cache management for the db
 #
 
+require_relative 'sqlite3'
+
 # from RCS::Common
 require 'rcs-common/trace'
-require 'rcs-common/sqlite3'
 
 module RCS
 module Collector
