@@ -16,9 +16,9 @@ platforms :ruby do
 end
 
 platforms :jruby do
-  gem 'jdbc-sqlite3'
   gem 'json'
   gem 'jruby-openssl'
+  gem 'jdbc-sqlite3'
 end
 
 # Add dependencies to develop your gem here.

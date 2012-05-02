@@ -84,7 +84,7 @@ class EvidenceTransfer
           ensure
             # job done, exit
             @threads[instance] = nil
-            Thread.exit
+            Thread.kill Thread.current
           end
         end
       end
