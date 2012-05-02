@@ -8,14 +8,18 @@ gem "rcs-common", ">= 8.0.0", :path => "../rcs-common"
 
 gem 'eventmachine', ">= 1.0.0.beta.4"
 gem 'em-http-server'
-platforms :jruby do
-  gem 'jdbc-sqlite3'
-end
+gem 'uuidtools'
+gem 'rubyzip'
+
 platforms :ruby do
   gem 'sqlite3'
 end
-gem 'uuidtools'
-gem 'rubyzip', ">= 0.9.5"
+
+platforms :jruby do
+  gem 'jdbc-sqlite3'
+  gem 'json'
+  gem 'jruby-openssl'
+end
 
 # Add dependencies to develop your gem here.
 # Include everything needed to run rake, tests, features, etc.
