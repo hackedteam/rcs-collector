@@ -283,6 +283,6 @@ if __FILE__ == $0
 
   db.close
 
-
+  FileUtils.rm_rf CACHE_FILE
 
 end
