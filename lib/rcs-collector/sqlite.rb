@@ -40,8 +40,8 @@ module SQLite_Ruby
     @db = db
   end
 
-  def execute(query, bind_vars = [])
-    @db.execute(query, bind_vars)
+  def execute(query, bind_vars = [], *args)
+    @db.execute(query, bind_vars, args)
   rescue SQLite3::BusyException => e
     trace :warn, "Cannot execute query because database is busy, retrying. [#{e.message}]"
     trace :debug, "Query was: #{query}"
@@ -110,7 +110,7 @@ module SQLite_Java
     end
 
     def blob(content)
-      #TODO: implement this
+      content
     end
   end
 
@@ -119,21 +119,20 @@ module SQLite_Java
     @result_as_hash = false
   end
 
-  def execute(query, bind_vars = [])
-    statement = @db.createStatement
+  def execute(query, bind_vars = [], *args)
     result = []
 
     # we have to differentiate on the type of query
     if query =~ /SELECT/i
-      execute_select statement, query, result
+      execute_select query, result
     elsif query =~ /\?/
-      execute_insert_blob statement, query, bind_vars, result
+      execute_insert_blob query, bind_vars, *args, result
     else
+      statement = @db.createStatement()
       result << statement.execute(query)
+      statement.close()
     end
 
-  ensure
-    statement.close
     return result
   end
 
@@ -147,9 +146,10 @@ module SQLite_Java
 
   private
 
-  def execute_select(statement, query, result)
+  def execute_select(query, result)
+    statement = @db.createStatement()
     res = statement.executeQuery(query)
-    meta = res.getMetaData
+    meta = res.getMetaData()
 
     while (res.next)
       row = @result_as_hash ? {} : []
@@ -163,6 +163,8 @@ module SQLite_Java
             value = res.getString(i)
           when INTEGER
             value = res.getInt(i)
+          when 2004
+            value = String.from_java_bytes(res.getBytes(i))
           else
             raise "unsupported column type: #{type}"
         end
@@ -177,15 +179,38 @@ module SQLite_Java
       result << row
     end
     res.close
+  ensure
+    statement.close()
   end
 
-  def execute_insert_blob(statement, query, bind_vars, result)
-    puts "PREPARED: #{query}"
+  def execute_insert_blob(query, bind_vars, *args, result)
+    statement = @db.prepareStatement(query)
 
-    bind_vars.each do |var|
-      puts var.inspect
+    bind_vars = [bind_vars] + args
+
+    begin
+
+    bind_vars.each_with_index do |var, index|
+      # len = var.bytesize
+      # byte[] data = new byte[len]
+      # Arrays.copyArray(...)
+
+      data = var.to_java_bytes
+      #puts "DATA SIZE: #{data.size}"
+      statement.setBytes(index + 1, data)
+
+      #statement.setString(index + 1, var)
     end
 
+    rescue Exception => e
+      puts "EXCEPTION: #{e.message}"
+    end
+
+
+    statement.executeUpdate()
+
+  ensure
+    statement.close()
   end
 
 end
@@ -198,4 +223,66 @@ class SQLite
   else
     include SQLite_Ruby
   end
+end
+
+
+if __FILE__ == $0
+
+  require 'fileutils'
+  require 'securerandom'
+
+  CACHE_FILE = './zzz_sqlite3'
+
+  FileUtils.rm_rf CACHE_FILE
+
+  db = SQLite.open CACHE_FILE
+  schema = ["CREATE TABLE string (text CHAR(32))",
+            "CREATE TABLE int (id CHAR(32), uid INT)",
+            "CREATE TABLE bin (id CHAR(32), content BLOB)",
+           ]
+  # create all the tables
+  schema.each do |query|
+    db.execute query
+  end
+  db.close
+
+  db = SQLite.open CACHE_FILE
+  string = "ciao miao bau"
+  db.execute("INSERT INTO string VALUES ('#{string}');")
+  row = db.execute("SELECT text FROM string;")
+  signature = row.first.first
+  raise "string not equal" if signature != string
+  db.close
+
+  db = SQLite.open CACHE_FILE
+  num = 123
+  db.execute("INSERT INTO int VALUES (1, #{num});")
+  row = db.execute("SELECT * FROM int;").first
+  raise "int not equal" if row != ["1", 123]
+  db.close
+
+  db = SQLite.open CACHE_FILE
+  blob = SecureRandom.random_bytes(10)
+
+  puts blob.encoding
+  puts blob.unpack('H*')
+
+  db.execute("INSERT INTO bin VALUES (1, ?);", SQLite.blob(blob))
+
+  content = db.execute("SELECT content FROM bin;").first
+
+  puts content.first.encoding
+  puts content.first.unpack('H*')
+  raise "content not equal" if blob != content.first
+
+  row = db.execute("SELECT * FROM bin;").first
+
+  puts row[1].encoding
+  puts row[1].unpack('H*')
+  raise "content not equal" if blob != row[1]
+
+  db.close
+
+
+
 end
