@@ -28,9 +28,7 @@ class HTTPHandler < EM::Http::Server
   attr_reader :peer_port
   
   def post_init
-    # timeout on the socket
-    set_comm_inactivity_timeout 30
-    
+
     @request_time = Time.now
 
     # get the peer name
@@ -40,7 +38,12 @@ class HTTPHandler < EM::Http::Server
       @peer = 'unknown'
       @peer_port = 0
     end
+
     @network_peer = @peer
+
+    # timeout on the socket
+    set_comm_inactivity_timeout 30
+
     trace :debug, "Connection from #{@network_peer}:#{@peer_port}"
   end
 
@@ -54,18 +57,6 @@ class HTTPHandler < EM::Http::Server
   end
 
   def process_http_request
-    # the http request details are available via the following instance variables:
-    #   @http_protocol
-    #   @http_request_method
-    #   @http_cookie
-    #   @http_if_none_match
-    #   @http_content_type
-    #   @http_path_info
-    #   @http_request_uri
-    #   @http_query_string
-    #   @http_post_content
-    #   @http_headers
-    
     #trace :info, "[#{@peer}] Incoming HTTP Connection"
     size = (@http_content) ? @http_content.bytesize : 0
     trace :debug, "[#{@peer}] REQ: [#{@http_request_method}] #{@http_request_uri} #{@http_query_string} (#{Time.now - @request_time}) #{size.to_s_bytes}"
@@ -84,7 +75,6 @@ class HTTPHandler < EM::Http::Server
       generation_time = Time.now
       
       begin
-
         # parse all the request params
         request = prepare_request @http_request_method, @http_request_uri, @http_query_string, @http_content, @http, @peer
 
