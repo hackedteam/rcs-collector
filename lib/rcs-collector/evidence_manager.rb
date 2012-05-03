@@ -2,13 +2,12 @@
 #  Evidence Manager module for handling evidences
 #
 
+require 'fileutils'
+
 # from RCS::Common
 require 'rcs-common/trace'
 require 'rcs-common/fixnum'
 require 'rcs-common/sqlite3'
-
-# system
-require 'pp'
 
 module RCS
 module Collector
@@ -253,7 +252,13 @@ class EvidenceManager
   def evidence_ids(instance)
     # sanity check
     path = REPO_DIR + '/' + instance
-    return unless File.exist?(path)
+    return [] unless File.exist?(path)
+
+    # delete file if empty
+    if File.size(path) == 0
+      FileUtils.rm_rf path if File.size(path) == 0
+      return []
+    end
     
     begin
       db = SQLite3::Database.open(path)
@@ -402,8 +407,6 @@ class EvidenceManager
       entry.delete(:evidence)
       # cleanup the duplicates
       entry.delete_if { |key, value| key.class != String }
-
-      pp entry
     end
 
     return 0
