@@ -48,7 +48,7 @@ class NetworkController
 
     # contact every element
     elements.each do |p|
-      threads << Thread.new {
+      threads << Thread.new do
         status = []
         logs = []
         begin
@@ -76,8 +76,8 @@ class NetworkController
         end
         
         # make sure to destroy the thread after the check
-        Thread.exit
-      }
+        Thread.kill Thread.current
+      end
     end
 
     # wait for all the threads to finish

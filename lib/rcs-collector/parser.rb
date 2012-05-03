@@ -64,7 +64,7 @@ module Parser
     end
   end
 
-  def prepare_request(method, uri, query, cookie, content_type, content)
+  def prepare_request(method, uri, query, content, http, peer)
     controller, uri_params = parse_uri uri
     
     request = Hash.new
@@ -73,12 +73,14 @@ module Parser
     request[:query] = query
     request[:uri] = uri
     request[:uri_params] = uri_params
-    request[:cookie] = SessionManager.instance.guid_from_cookie(cookie)
+    request[:cookie] = SessionManager.instance.guid_from_cookie(http[:cookie])
 
     # if not content_type is provided, default to urlencoded
-    request[:content_type] = content_type || 'application/x-www-form-urlencoded'
-    
+    request[:content_type] = http[:content_type] || 'application/x-www-form-urlencoded'
+
+    request[:headers] = http
     request[:content] = content
+    request[:peer] = peer
     
     return request
   end
