@@ -5,7 +5,8 @@
 # from RCS::Common
 require 'rcs-common/trace'
 require 'rcs-common/fixnum'
-require 'rcs-common/sqlite3'
+
+require_relative 'sqlite'
 
 # system
 require 'pp'

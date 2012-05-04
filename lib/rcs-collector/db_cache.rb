@@ -4,7 +4,8 @@
 
 # from RCS::Common
 require 'rcs-common/trace'
-require 'rcs-common/sqlite3'
+
+require_relative 'sqlite'
 
 module RCS
 module Collector
