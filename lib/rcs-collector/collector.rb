@@ -49,10 +49,10 @@ class Application
     end
 
     begin
+      build = File.read(Dir.pwd + '/config/VERSION_BUILD')
+      version = File.read(Dir.pwd + '/config/VERSION')
+      trace :info, "Starting the RCS Evidences Collector #{version} (#{build})..."
 
-      version = File.read(Dir.pwd + '/config/version.txt')
-      trace :info, "Starting the RCS Evidences Collector #{version}..."
-      
       # config file parsing
       return 1 unless Config.instance.load_from_file
 

@@ -41,7 +41,7 @@ class DB
     external_address = MyIp.get
 
     # the version of the collector
-    version = File.read(Dir.pwd + '/config/version.txt')
+    version = File.read(Dir.pwd + '/config/VERSION_BUILD')
 
     # the username is an unique identifier for each machine.
     # we use the MD5 of the MAC address
