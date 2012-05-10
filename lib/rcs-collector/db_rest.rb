@@ -19,7 +19,7 @@ class DB_rest
   include RCS::Tracer
 
   # if a method does not reply in X seconds consider db down
-  DB_TIMEOUT = 10
+  DB_TIMEOUT = 60
 
   def initialize(host)
     @host, @port = host.split(':')
