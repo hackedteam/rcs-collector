@@ -8,6 +8,7 @@ gem "rcs-common", ">= 8.0.0", :path => "../rcs-common"
 
 gem 'eventmachine', ">= 1.0.0.beta.4"
 gem 'em-http-server'
+gem 'persistent_http'
 gem 'uuidtools'
 gem 'rubyzip'
 
