@@ -33,6 +33,7 @@ class StatsManager < Stats
   end
 
   def calculate
+    trace :debug, "Saving statistics: #{@stats[:minutes][:last].first.inspect}"
     super
     # save the stats in the file
     File.open(@dump_file, 'wb') {|f| f.write Marshal.dump @stats} if @persist
