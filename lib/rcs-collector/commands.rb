@@ -299,6 +299,9 @@ module Commands
       # store the evidence in the db
       EvidenceManager.instance.store_evidence session, size, message
 
+      # remember the statistics for input evidence
+      StatsManager.instance.add ev_input: 1, ev_input_size: size
+
       # remember how many evidence were transferred in this session
       session[:count] += 1
 

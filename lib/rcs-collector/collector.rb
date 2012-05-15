@@ -8,6 +8,7 @@ require_relative 'config.rb'
 require_relative 'db.rb'
 require_relative 'evidence_transfer.rb'
 require_relative 'evidence_manager.rb'
+require_relative 'statistics'
 
 # from RCS::Common
 require 'rcs-common/trace'

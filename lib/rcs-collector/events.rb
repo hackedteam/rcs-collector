@@ -7,6 +7,7 @@ require_relative 'heartbeat'
 require_relative 'parser'
 require_relative 'network_controller'
 require_relative 'sessions'
+require_relative 'statistics'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -64,6 +65,9 @@ class HTTPHandler < EM::Http::Server
     # get it again since if the connection is kept-alive we need a fresh timing for each
     # request and not the total from the beginning of the connection
     @request_time = Time.now
+
+    # update the connection statistics
+    StatsManager.instance.add conn: 1
 
     responder = nil
 
@@ -151,6 +155,9 @@ class Events
 
           # timeout for the sessions (will destroy inactive sessions)
           EM::PeriodicTimer.new(60) { EM.defer(proc{ SessionManager.instance.timeout }) }
+
+          # calculate and save the stats
+          EM::PeriodicTimer.new(60) { EM.defer(proc{ StatsManager.instance.calculate }) }
         end
 
         # set up the network checks (the interval is in the config)
