@@ -349,7 +349,7 @@ module Commands
     trace :info, "[#{peer}][#{session[:cookie]}] Purge request"
 
     # TODO: retrieve values from DB
-    time = 0
+    time = 0 #(Time.now + 86400).getutc.to_i
     size = 0
 
     # send the response
@@ -358,7 +358,8 @@ module Commands
       response = [PROTO_NO].pack('I')
     else
       response = [PROTO_OK].pack('I')
-      response += [time.getutc.to_i].pack('Q') + [size].pack('I')
+      content = [time].pack('Q') + [size].pack('I')
+      response += [content.length].pack('I') + content
       trace :info, "[#{peer}][#{session[:cookie]}] purge requests sent [#{time}][#{size}]"
     end
 
