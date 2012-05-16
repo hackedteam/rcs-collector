@@ -57,7 +57,7 @@ class RESTResponse
     # used for redirects
     @response.headers['Location'] = @location unless @location.nil?
 
-    if request[:headers][:connection].downcase == 'keep-alive'
+    if request[:headers][:connection] && request[:headers][:connection].downcase == 'keep-alive'
       # keep the connection open to allow multiple requests on the same connection
       # this will increase the speed of sync since it decrease the latency on the net
       @response.keep_connection_open true
@@ -109,7 +109,7 @@ class RESTFileStream
     # RCS::MimeType (rcs-common)
     @response.headers["Content-Type"] = RCS::MimeType.get @filename
 
-    if request[:headers][:connection].downcase == 'keep-alive'
+    if request[:headers][:connection] && request[:headers][:connection].downcase == 'keep-alive'
       # keep the connection open to allow multiple requests on the same connection
       # this will increase the speed of sync since it decrease the latency on the net
       @response.keep_connection_open true
