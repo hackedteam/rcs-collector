@@ -88,7 +88,7 @@ module Commands
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New config"
     end
     # TODO: retrieve values from DB
-    if true
+    if false
       available += [PROTO_PURGE].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: Purge"
     end
