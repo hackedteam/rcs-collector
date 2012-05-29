@@ -52,6 +52,7 @@ log/*
 
 # the cache
 config/cache.db
+config/stats
 
 # certs
 config/*.pem
