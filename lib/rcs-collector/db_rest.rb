@@ -12,55 +12,50 @@ require 'timeout'
 require 'thread'
 require 'json'
 
+require 'persistent_http'
+
 module RCS
 module Collector
 
 class DB_rest
   include RCS::Tracer
 
-  # if a method does not reply in X seconds consider db down
-  DB_TIMEOUT = 90
-
   def initialize(host)
     @host, @port = host.split(':')
 
-    # the mutex to avoid race conditions
-    @semaphore = Mutex.new
-
     # the HTTP connection object
-    @http = Net::HTTP.new(@host, @port)
-    @http.use_ssl = true
-    
-    # no SSL verify for this connection
-    #@http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    @http = PersistentHTTP.new(
+              :name         => 'PersistentToDB',
+              :pool_size    => 20,
+              :host         => @host,
+              :port         => @port,
+              :use_ssl      => true,
+              :ca_file      => Config.instance.file('DB_CERT'),
+              :cert         => OpenSSL::X509::Certificate.new(File.read(Config.instance.file('DB_CERT')))
+              #:verify_mode => OpenSSL::SSL::VERIFY_NONE
+            )
 
-    # CA certificate to check if the server ssl certificate is valid
-    @http.ca_file = Config.instance.file('DB_CERT')
-
-    # our client certificate to send to the server
-    @http.cert = OpenSSL::X509::Certificate.new(File.read(Config.instance.file('DB_CERT')))
-    
     trace :debug, "Using REST to communicate with #{@host}:#{@port}"
   end
 
   # generic method invocation
   def rest_call(method, uri, content = nil, headers = {})
-    return @semaphore.synchronize do
-      Timeout::timeout(DB_TIMEOUT) do
-        # the HTTP headers for the authentication
-        full_headers = {'Cookie' => @cookie, 'Connection' => 'Keep-Alive' }
-        full_headers.merge! headers if headers.is_a? Hash
-        case method
-          when 'POST'
-            @http.request_post(uri, content, full_headers)
-          when 'GET'
-            @http.request_get(uri, full_headers)
-          #when 'PUT'
-          #  @http.request_put(uri, full_headers)
-          when 'DELETE'
-            @http.delete(uri, full_headers)
-        end
-      end
+    # the HTTP headers for the authentication
+    full_headers = {'Cookie' => @cookie, 'Connection' => 'Keep-Alive' }
+    full_headers.merge! headers if headers.is_a? Hash
+    case method
+      when 'POST'
+        request = Net::HTTP::Post.new(uri, full_headers)
+        request.body = content
+        @http.request(request)
+      when 'GET'
+        request = Net::HTTP::Get.new(uri, full_headers)
+        @http.request(request)
+      #when 'PUT'
+      #  @http.request_put(uri, full_headers)
+      when 'DELETE'
+        request = Net::HTTP::Delete.new(uri, full_headers)
+        @http.request(request)
     end
   end
 
@@ -77,13 +72,11 @@ class DB_rest
   # returns a boolean
   def login(user, pass)
     begin
-      # start the http session (needed for keep-alive)
-      # see this: http://redmine.ruby-lang.org/issues/4522
-      @http.start unless @http.started?
-      
       # send the authentication data
       account = {:user => user, :pass => pass}
-      resp = @http.request_post('/auth/login', account.to_json, nil)
+      request = Net::HTTP::Post.new('/auth/login')
+      request.body = account.to_json
+      resp = @http.request(request)
       # remember the session cookie
       @cookie = resp['Set-Cookie'] unless resp['Set-Cookie'].nil?
       # check that the response is valid JSON

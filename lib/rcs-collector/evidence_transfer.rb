@@ -84,7 +84,7 @@ class EvidenceTransfer
           ensure
             # job done, exit
             @threads[instance] = nil
-            Thread.exit
+            Thread.kill Thread.current
           end
         end
       end
@@ -100,6 +100,9 @@ class EvidenceTransfer
 
     if ret then
       trace :info, "Evidence sent to db [#{instance}] #{evidence.size.to_s_bytes} - #{left} left to send"
+
+      StatsManager.instance.add ev_output: 1, ev_output_size: evidence.size
+
       EvidenceManager.instance.del_evidence(id, instance) if action == :delete
     else
       trace :error, "Evidence NOT sent to db [#{instance}]: #{error}"

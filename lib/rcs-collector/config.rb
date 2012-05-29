@@ -76,7 +76,7 @@ class Config
   end
 
   def file(name)
-    return File.join Dir.pwd, CONF_DIR, @global[name]
+    return File.join Dir.pwd, CONF_DIR, @global[name].nil? ? name : @global[name]
   end
 
   def safe_to_file

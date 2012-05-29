@@ -7,6 +7,7 @@ require_relative 'heartbeat'
 require_relative 'parser'
 require_relative 'network_controller'
 require_relative 'sessions'
+require_relative 'statistics'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -14,35 +15,23 @@ require 'rcs-common/systemstatus'
 
 # system
 require 'eventmachine'
-require 'evma_httpserver'
+require 'em-http-server'
 require 'socket'
 
 module RCS
 module Collector
 
-module HTTPHandler
+class HTTPHandler < EM::Http::Server
   include RCS::Tracer
-  include EM::HttpServer
   include Parser
   
   attr_reader :peer
   attr_reader :peer_port
   
   def post_init
-    # don't forget to call super here !
-    super
-    
-    # timeout on the socket
-    set_comm_inactivity_timeout 30
-    
+
     @request_time = Time.now
-    
-    # to speed-up the processing, we disable the CGI environment variables
-    self.no_environment_strings
-    
-    # set the max content length of the POST
-    self.max_content_length = 100 * 1024 * 1024
-    
+
     # get the peer name
     if get_peername
       @peer_port, @peer = Socket.unpack_sockaddr_in(get_peername)
@@ -50,7 +39,12 @@ module HTTPHandler
       @peer = 'unknown'
       @peer_port = 0
     end
+
     @network_peer = @peer
+
+    # timeout on the socket
+    set_comm_inactivity_timeout 30
+
     trace :debug, "Connection from #{@network_peer}:#{@peer_port}"
   end
 
@@ -64,25 +58,16 @@ module HTTPHandler
   end
 
   def process_http_request
-    # the http request details are available via the following instance variables:
-    #   @http_protocol
-    #   @http_request_method
-    #   @http_cookie
-    #   @http_if_none_match
-    #   @http_content_type
-    #   @http_path_info
-    #   @http_request_uri
-    #   @http_query_string
-    #   @http_post_content
-    #   @http_headers
-    
     #trace :info, "[#{@peer}] Incoming HTTP Connection"
-    size = (@http_post_content) ? @http_post_content.bytesize : 0
+    size = (@http_content) ? @http_content.bytesize : 0
     trace :debug, "[#{@peer}] REQ: [#{@http_request_method}] #{@http_request_uri} #{@http_query_string} (#{Time.now - @request_time}) #{size.to_s_bytes}"
 
     # get it again since if the connection is kept-alive we need a fresh timing for each
     # request and not the total from the beginning of the connection
     @request_time = Time.now
+
+    # update the connection statistics
+    StatsManager.instance.add conn: 1
 
     responder = nil
 
@@ -95,11 +80,8 @@ module HTTPHandler
       
       begin
         # parse all the request params
-        request = prepare_request @http_request_method, @http_request_uri, @http_query_string, @http_cookie, @http_content_type, @http_post_content
+        request = prepare_request @http_request_method, @http_request_uri, @http_query_string, @http_content, @http, @peer
 
-        request[:peer] = @peer
-        request[:headers] = @http_headers.split("\x00")
-        
         # get the correct controller
         controller = CollectorController.new
         controller.request = request
@@ -108,7 +90,6 @@ module HTTPHandler
         responder = controller.act!
         
         # create the response object to be used in the EM::defer callback
-        
         reply = responder.prepare_response(self, request)
 
         # keep the size of the reply to be used in the closing method
@@ -140,6 +121,7 @@ module HTTPHandler
   end
 
 end #HTTPHandler
+
 
 class Events
   include RCS::Tracer
@@ -173,6 +155,9 @@ class Events
 
           # timeout for the sessions (will destroy inactive sessions)
           EM::PeriodicTimer.new(60) { EM.defer(proc{ SessionManager.instance.timeout }) }
+
+          # calculate and save the stats
+          EM::PeriodicTimer.new(60) { EM.defer(proc{ StatsManager.instance.calculate }) }
         end
 
         # set up the network checks (the interval is in the config)

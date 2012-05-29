@@ -48,7 +48,7 @@ class NetworkController
 
     # contact every element
     elements.each do |p|
-      threads << Thread.new {
+      threads << Thread.new do
         status = []
         logs = []
         begin
@@ -76,8 +76,8 @@ class NetworkController
         end
         
         # make sure to destroy the thread after the check
-        Thread.exit
-      }
+        Thread.kill Thread.current
+      end
     end
 
     # wait for all the threads to finish
@@ -129,9 +129,6 @@ class NetworkController
           # version check for incompatibility
           raise "Version too old, please update the component." if ver.to_i < MIN_VERSION
 
-        when NCProto::PROTO_MONITOR
-          result = proto.monitor
-
         when NCProto::PROTO_CONF
           content = nil
           if not element['configured']
@@ -150,6 +147,10 @@ class NetworkController
           end
           proto.upgrade(content)
 
+        when NCProto::PROTO_MONITOR
+          result = proto.monitor
+          trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
+
         when NCProto::PROTO_LOG
           time, type, desc = proto.log
           # we have to be fast here, we cannot insert them directly in the db
@@ -158,6 +159,7 @@ class NetworkController
           logs << [time, type, desc]
 
         when NCProto::PROTO_BYE
+          trace :info, "[NC] #{element['address']} end synchronization"
           break
       end
 
@@ -188,6 +190,7 @@ class NetworkController
       status, logs = check_element element
       # send the results to db
       report_status(element, *status) unless status.nil? or status.empty?
+      trace :info, "[NC] PUSHED to #{element['address']}:#{element['port']}"
     rescue Exception => e
       trace :warn, "[NC] CANNOT PUSH TO #{element['address']}: #{e.message}"
       return e.message, "text/html"
