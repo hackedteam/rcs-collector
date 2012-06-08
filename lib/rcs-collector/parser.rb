@@ -52,6 +52,7 @@ module Parser
   end
 
   def parse_multipart_content(content, content_type)
+
     # extract the boundary from the content type:
     # e.g. multipart/form-data; boundary=530565
     boundary = content_type.split('boundary=')[1]

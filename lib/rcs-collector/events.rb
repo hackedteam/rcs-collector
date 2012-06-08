@@ -21,7 +21,7 @@ require 'socket'
 module RCS
 module Collector
 
-class HTTPHandler < EM::Http::Server
+class HTTPHandler < EM::HttpServer::Server
   include RCS::Tracer
   include Parser
   
