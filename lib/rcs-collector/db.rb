@@ -437,6 +437,28 @@ class DB
     return files
   end
 
+  def purge?(bid)
+    # cannot reach the db, return false
+    return false unless @available
+
+    # retrieve the values from the db
+    values = db_rest_call :purge, bid
+
+    return values != [0, 0]
+  end
+
+  def purge(bid)
+    # cannot reach the db, return false
+    return [0, 0] unless @available
+
+    # retrieve the values from the db
+    values = db_rest_call :purge, bid
+    db_rest_call :del_purge, bid
+
+    return values
+  end
+
+
   def proxies
     # return empty if not available
     return [] unless @available

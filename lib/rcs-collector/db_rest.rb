@@ -396,6 +396,27 @@ class DB_rest
     end
   end
 
+  # retrieve the filesystem list from db (if any)
+  def purge(bid)
+    begin
+      ret = rest_call('GET', "/agent/purge/#{bid}")
+
+      return JSON.parse(ret.body)
+    rescue Exception => e
+      trace :error, "Error calling purge: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def del_purge(bid)
+    begin
+      return rest_call('DELETE', "/agent/purge/#{bid}")
+    rescue Exception => e
+      trace :error, "Error calling del_purge: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
   def get_proxies
     begin
       ret = rest_call('GET', "/injector")
