@@ -20,7 +20,19 @@ class CollectorController < RESTController
   rescue Exception => e
     return decoy_page
   end
-  
+
+  def push
+    # only the DB is authorized to send PUSH commands
+    unless from_db?(@request[:headers]) then
+      trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUSH [#{@request[:uri]}] commands!!!"
+      return decoy_page
+    end
+
+    # it is a request to push to a NC element
+    content, content_type = NetworkController.push(@request[:uri], @request[:content])
+    return ok(content, {content_type: content_type})
+  end
+
   def put
     # only the DB is authorized to send PUT commands
     unless from_db?(@request[:headers]) then
@@ -28,23 +40,18 @@ class CollectorController < RESTController
       return decoy_page
     end
 
-    if @request[:uri].start_with?('/RCS-NC_')
-      # it is a request to push to a NC element
-      content, content_type = NetworkController.push(@request[:uri].split('_')[1], @request[:content])
-      return ok(content, {content_type: content_type})
-    end
-
     # this is a request to save a file in the public dir
     return http_put_file @request[:uri], @request[:content]
   end
 
-  def post
-    # get the peer ip address if it was forwarded by a proxy
-    peer = http_get_forwarded_peer(@request[:headers]) || @request[:peer]
-    # the REST protocol for synchronization
-    content, content_type, cookie = Protocol.parse peer, @request[:uri], @request[:cookie], @request[:content]
-    return decoy_page if content.nil?
-    return ok(content, {content_type: content_type, cookie: cookie})
+  def delete
+    # only the DB is authorized to send DELETE commands
+    unless from_db?(@request[:headers]) then
+      trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send DELETE [#{@request[:uri]}] commands!!!"
+      return decoy_page
+    end
+
+    return http_delete_file @request[:uri]
   end
 
   def proxy
@@ -57,6 +64,15 @@ class CollectorController < RESTController
     end
 
     return proxy_request(@request)
+  end
+
+  def post
+    # get the peer ip address if it was forwarded by a proxy
+    peer = http_get_forwarded_peer(@request[:headers]) || @request[:peer]
+    # the REST protocol for synchronization
+    content, content_type, cookie = Protocol.parse peer, @request[:uri], @request[:cookie], @request[:content]
+    return decoy_page if content.nil?
+    return ok(content, {content_type: content_type, cookie: cookie})
   end
 
   #
@@ -155,9 +171,8 @@ class CollectorController < RESTController
 
       output = path + '/' + file
 
-      #TODO: when the file manager will be implemented
       # don't overwrite the file
-      #raise "File already exists" if File.exist?(output)
+      raise "File already exists on this collector" if File.exist?(output)
 
       trace :info, "Saving file: #{output}"
 
@@ -179,7 +194,24 @@ class CollectorController < RESTController
 
     rescue Exception => e
       trace :fatal, e.message
-      trace :fatal, e.backtrace.join("\n")
+
+      return server_error(e.message, {content_type: 'text/html'})
+    end
+
+    return ok('OK', {content_type: 'text/html'})
+  end
+
+  # delete a file in the /public directory
+  def http_delete_file(uri)
+    begin
+      path = File.join(Dir.pwd, PUBLIC_DIR, uri)
+
+      # remove both the directory and the zip file
+      FileUtils.rm_rf(path)
+      FileUtils.rm_rf(path + '.zip')
+
+    rescue Exception => e
+      trace :fatal, e.message
 
       return server_error(e.message, {content_type: 'text/html'})
     end
