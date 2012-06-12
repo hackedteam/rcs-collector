@@ -43,8 +43,11 @@ class EvidenceTransfer
             # get all the ids of the evidence for this instance
             evidences = EvidenceManager.instance.evidence_ids(instance)
 
+            # compact the database if there are no evidence
+            EvidenceManager.instance.compact(instance) if evidences.empty?
+
             # only perform the job if we have something to transfer
-            if not evidences.empty?
+            unless evidences.empty?
 
               # get the info from the instance
               info = EvidenceManager.instance.instance_info instance

@@ -230,6 +230,26 @@ class EvidenceManager
     end
   end
 
+  def compact(instance)
+    # sanity check
+    path = REPO_DIR + '/' + instance
+    return unless File.exist?(path)
+
+    # delete file if empty
+    if File.size(path) == 0
+      FileUtils.rm_rf path if File.size(path) == 0
+      return
+    end
+
+    begin
+      db = SQLite.open(path)
+      db.execute("VACUUM;")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot compact the repository: #{e.message}"
+    end
+  end
+
   def create_repository(session)
     # ensure the repository directory is present
     Dir::mkdir(REPO_DIR) if not File.directory?(REPO_DIR)
