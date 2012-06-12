@@ -47,13 +47,12 @@ class CollectorController < RESTController
     return ok(content, {content_type: content_type, cookie: cookie})
   end
 
-  def head
-    # we abuse this method to implement a proxy for the backend
+  def proxy
     # every request received are forwarded externally like a proxy
 
-    # only the DB is authorized to send HEAD commands
+    # only the DB is authorized to send PROXY commands
     unless from_db?(@request[:headers]) then
-      trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send HEAD [#{@request[:uri]}] commands!!!"
+      trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PROXY [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
 
