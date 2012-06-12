@@ -40,6 +40,7 @@ class Application
     # ensure the public and log directory are present
     Dir::mkdir(Dir.pwd + PUBLIC_DIR) if not File.directory?(Dir.pwd + PUBLIC_DIR)
     Dir::mkdir(Dir.pwd + '/log') if not File.directory?(Dir.pwd + '/log')
+    Dir::mkdir(Dir.pwd + '/log/err') if not File.directory?(Dir.pwd + '/log/err')
 
     # initialize the tracing facility
     begin
