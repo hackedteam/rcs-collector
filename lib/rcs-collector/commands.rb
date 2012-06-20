@@ -211,12 +211,8 @@ module Commands
   def command_upgrade(peer, session, message)
     trace :info, "[#{peer}][#{session[:cookie]}] Upgrade request"
 
-    if message.nil? or message == ""
-      flavor = ""
-    else
-      flavor = message.unpascalize
-    end
-    trace :debug, "[#{peer}][#{session[:cookie]}] flavor: #{flavor}"
+    flavor = message.size == 0 ? "" : message.unpascalize
+    trace :debug, "[#{peer}][#{session[:cookie]}] Upgrade flavor: #{flavor}"
   
     # the upgrade list was already retrieved (if any) during the ident phase (like upload)
     upgrade, left = DB.instance.new_upgrade(session[:bid], flavor)

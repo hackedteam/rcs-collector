@@ -225,6 +225,7 @@ class CollectorController < RESTController
     return 'winmo', '.cab' if user_agent['Windows CE']
     # windows must be after winmo
     return 'windows', '.exe' if user_agent['Windows']
+
     if user_agent['BlackBerry']    
       major = 4
       minor = 5
@@ -254,6 +255,7 @@ class CollectorController < RESTController
       else
         version = "default"
       end
+
       trace :debug, "[#{@request[:peer]}] version: #{version}"
       return 'android', "." + version + '.apk'
     end
