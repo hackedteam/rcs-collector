@@ -225,8 +225,39 @@ class CollectorController < RESTController
     return 'winmo', '.cab' if user_agent['Windows CE']
     # windows must be after winmo
     return 'windows', '.exe' if user_agent['Windows']
-    return 'blackberry', '.jad' if user_agent['BlackBerry']
-    return 'android', '.apk' if user_agent['Android']
+    if user_agent['BlackBerry']    
+      major = 4
+      minor = 5
+      ver_tuple = user_agent.scan(/Version\/(\d+)\.(\d+)/).flatten
+      trace :debug, "[#{@request[:peer]}] #{ver_tuple}"
+      (major,minor) = ver_tuple unless ver_tuple.empty?
+      trace :debug, "[#{@request[:peer]}] major,minor #{major},#{minor}"
+      if major.to_i >= 5
+        version = "5.0"
+      else
+        version = "4.5"
+      end
+              
+      trace :debug, "[#{@request[:peer]}] version: #{version}"
+      return 'blackberry', "_" + version + '.jad'
+    end
+  
+    if user_agent['Android']
+      major = 4
+      minor = 0
+      ver_tuple = user_agent.scan(/Android (\d+)\.(\d+)/).flatten
+      trace :debug, "[#{@request[:peer]}] #{ver_tuple}"
+      (major,minor) = ver_tuple unless ver_tuple.empty?
+      trace :debug, "[#{@request[:peer]}] major,minor #{major},#{minor}"
+      if major.to_i == 2
+        version = "v2"
+      else
+        version = "default"
+      end
+      trace :debug, "[#{@request[:peer]}] version: #{version}"
+      return 'android', "." + version + '.apk'
+    end
+    
     # linux must be after android
     return 'linux', '.bin' if user_agent['Linux'] or user_agent['X11']
     return 'symbian', '.sisx' if user_agent['Symbian']

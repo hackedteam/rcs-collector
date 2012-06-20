@@ -205,14 +205,21 @@ module Commands
     return response
   end
 
-    # Protocol Upgrade
-  # -> PROTO_UPGRADE
+  # Protocol Upgrade
+  # -> PROTO_UPGRADE [flavor]
   # <- PROTO_NO | PROTO_OK [ left, filename, content ]
   def command_upgrade(peer, session, message)
     trace :info, "[#{peer}][#{session[:cookie]}] Upgrade request"
 
+    if message.nil? or message == ""
+      flavor = ""
+    else
+      flavor = message.unpascalize
+    end
+    trace :debug, "[#{peer}][#{session[:cookie]}] flavor: #{flavor}"
+  
     # the upgrade list was already retrieved (if any) during the ident phase (like upload)
-    upgrade, left = DB.instance.new_upgrade session[:bid]
+    upgrade, left = DB.instance.new_upgrade(session[:bid], flavor)
 
     # send the response
     if upgrade.nil?
