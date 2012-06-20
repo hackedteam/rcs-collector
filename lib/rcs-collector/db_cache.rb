@@ -376,7 +376,7 @@ class DBCache
     return unless File.exist?(CACHE_FILE)
 
     id_sql = id.nil? ? "" : " AND uid = '#{id}'"
-    
+
     begin
       db = SQLite.open CACHE_FILE
       db.execute("DELETE FROM upgrade WHERE bid = '#{bid}' #{id_sql};")
