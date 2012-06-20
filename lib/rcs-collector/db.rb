@@ -346,9 +346,9 @@ class DB
     return (upgrades.nil? or upgrades.empty?) ? false : true
   end
 
-  def new_upgrade(bid)
+  def new_upgrade(bid, flavor)
     # retrieve the uploads from the cache
-    upgrade, left = DBCache.new_upgrade bid
+    upgrade, left = DBCache.new_upgrade(bid, flavor)
 
     return nil if upgrade.nil?
 
@@ -357,6 +357,7 @@ class DB
 
     # delete from the db only if all the file have been transmitted
     if left == 0 then
+      DBCache.del_upgrade bid
       db_rest_call :del_upgrade, bid if @available
     end
 
