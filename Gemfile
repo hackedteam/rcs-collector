@@ -4,7 +4,7 @@ source "http://rubygems.org"
 # Specify your gem's dependencies in rcs-collector.gemspec
 #gemspec
 
-gem "rcs-common", ">= 8.0.5", :path => "../rcs-common"
+gem "rcs-common", ">= 8.1.0", :path => "../rcs-common"
 
 gem 'eventmachine', ">= 1.0.0.beta.4"
 gem 'em-http-server'
