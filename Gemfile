@@ -12,9 +12,9 @@ gem 'persistent_http'
 gem 'uuidtools'
 gem 'rubyzip'
 
-platforms :ruby do
+#platforms :ruby do
   gem 'sqlite3'
-end
+#end
 
 platforms :jruby do
   gem 'json'
