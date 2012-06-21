@@ -23,6 +23,10 @@ class DB_rest
   def initialize(host)
     @host, @port = host.split(':')
 
+    verify_mode = Config.instance.global['SSL_VERIFY'] ? OpenSSL::SSL::VERIFY_PEER : OpenSSL::SSL::VERIFY_NONE
+
+    puts "verify mode: #{verify_mode}"
+
     # the HTTP connection object
     @http = PersistentHTTP.new(
               :name         => 'PersistentToDB',
@@ -31,8 +35,8 @@ class DB_rest
               :port         => @port,
               :use_ssl      => true,
               :ca_file      => Config.instance.file('DB_CERT'),
-              :cert         => OpenSSL::X509::Certificate.new(File.read(Config.instance.file('DB_CERT')))
-              #:verify_mode => OpenSSL::SSL::VERIFY_NONE
+              :cert         => OpenSSL::X509::Certificate.new(File.read(Config.instance.file('DB_CERT'))),
+              :verify_mode  => verify_mode
             )
 
     trace :debug, "Using REST to communicate with #{@host}:#{@port}"
