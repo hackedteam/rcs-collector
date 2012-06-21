@@ -163,7 +163,14 @@ class CollectorController < RESTController
       output = path + '/' + file
 
       # don't overwrite the file
-      raise "File already exists on this collector" if File.exist?(output)
+      #raise "File already exists on this collector" if File.exist?(output)
+
+      if File.exist?(output)
+        trace :info, "Removing previous copy of: #{output}"
+        # remove the file if already present
+        FileUtils.rm_rf(output)
+        FileUtils.rm_rf(File.basename(output, '.*'))
+      end
 
       trace :info, "Saving file: #{output}"
 
