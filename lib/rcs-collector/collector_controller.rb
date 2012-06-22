@@ -169,7 +169,6 @@ class CollectorController < RESTController
         trace :info, "Removing previous copy of: #{output}"
         # remove the file if already present
         FileUtils.rm_rf(output)
-        FileUtils.rm_rf(File.basename(output, '.*'))
       end
 
       trace :info, "Saving file: #{output}"
@@ -185,7 +184,9 @@ class CollectorController < RESTController
             f_path = File.join(File.dirname(output), File.basename(output, '.zip'), f.name)
             trace :info, "Creating #{f_path}"
             FileUtils.mkdir_p(File.dirname(f_path))
-            z.extract(f, f_path) unless File.exist?(f_path)
+            # overwrite the old one
+            FileUtils.rm_rf(f_path) if File.exist?(f_path)
+            z.extract(f, f_path)
           end
         end
       end
