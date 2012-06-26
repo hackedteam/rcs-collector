@@ -20,7 +20,7 @@ class NetworkController
   extend RCS::Tracer
 
   # the minimum requested version of a component in order to work
-  MIN_VERSION = 2011032101
+  MIN_VERSION = 2012063001
   
   def self.check
 
