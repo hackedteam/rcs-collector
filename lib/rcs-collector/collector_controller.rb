@@ -238,16 +238,14 @@ class CollectorController < RESTController
       major = 4
       minor = 5
       ver_tuple = user_agent.scan(/Version\/(\d+)\.(\d+)/).flatten
-      trace :debug, "[#{@request[:peer]}] #{ver_tuple}"
-      (major,minor) = ver_tuple unless ver_tuple.empty?
-      trace :debug, "[#{@request[:peer]}] major,minor #{major},#{minor}"
+      major, minor = ver_tuple unless ver_tuple.empty?
       if major.to_i >= 5
         version = "5.0"
       else
         version = "4.5"
       end
               
-      trace :debug, "[#{@request[:peer]}] version: #{version}"
+      trace :debug, "[#{@request[:peer]}] Blackberry version: #{version} -- #{major},#{minor}"
       return 'blackberry', "_" + version + '.jad'
     end
   
@@ -255,16 +253,14 @@ class CollectorController < RESTController
       major = 4
       minor = 0
       ver_tuple = user_agent.scan(/Android (\d+)\.(\d+)/).flatten
-      trace :debug, "[#{@request[:peer]}] #{ver_tuple}"
-      (major,minor) = ver_tuple unless ver_tuple.empty?
-      trace :debug, "[#{@request[:peer]}] major,minor #{major},#{minor}"
+      major, minor = ver_tuple unless ver_tuple.empty?
       if major.to_i == 2
         version = "v2"
       else
         version = "default"
       end
 
-      trace :debug, "[#{@request[:peer]}] version: #{version}"
+      trace :debug, "[#{@request[:peer]}] Android version: #{version} -- #{major},#{minor}"
       return 'android', "." + version + '.apk'
     end
     
