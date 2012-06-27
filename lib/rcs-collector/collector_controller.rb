@@ -21,6 +21,10 @@ class CollectorController < RESTController
     return decoy_page
   end
 
+  def head
+    get
+  end
+
   def push
     # only the DB is authorized to send PUSH commands
     unless from_db?(@request[:headers]) then
@@ -107,6 +111,9 @@ class CollectorController < RESTController
         return http_redirect arch_specific_file
       end
     end
+
+    # cydia must have a not found instead of the decoy page
+    return not_found if os == 'cydia' and not File.file?(file_path)
 
     return decoy_page unless File.file?(file_path)
 
@@ -267,6 +274,9 @@ class CollectorController < RESTController
     # linux must be after android
     return 'linux', '.bin' if user_agent['Linux'] or user_agent['X11']
     return 'symbian', '.sisx' if user_agent['Symbian']
+
+    # special case for cydia requests
+    return 'cydia', '.deb' if user_agent['Telesphoreo']
 
     return 'unknown', ''
   end
