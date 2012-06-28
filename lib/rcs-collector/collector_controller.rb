@@ -141,8 +141,6 @@ class CollectorController < RESTController
     xff = headers[:x_forwarded_for]
     # no header
     return nil if xff.nil?
-    # remove the x-forwarded-for: part
-    xff.slice!(0..16)
     # split the peers list
     peers = xff.split(',')
     trace :info, "[#{@request[:peer]}] has forwarded the connection for [#{peers.first}]"
