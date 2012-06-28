@@ -126,9 +126,6 @@ class NetworkController
           DB.instance.update_injector_version(element['_id'], ver) if element['type'].nil?
           DB.instance.update_collector_version(element['_id'], ver) unless element['type'].nil?
 
-          # version check for incompatibility
-          raise "Version too old, please update the component." if ver.to_i < MIN_VERSION
-
         when NCProto::PROTO_CONF
           content = nil
           if not element['configured']
@@ -150,6 +147,13 @@ class NetworkController
         when NCProto::PROTO_MONITOR
           result = proto.monitor
           trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
+
+          # version check for incompatibility
+          if ver.to_i < MIN_VERSION
+            result[0] = 'ERROR'
+            result[1] = "Version too old, please update the component."
+            trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
+          end
 
         when NCProto::PROTO_LOG
           time, type, desc = proto.log
