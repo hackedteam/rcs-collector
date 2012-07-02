@@ -1,5 +1,10 @@
+# save the execution dir
+# useful during configuration to get filename paths
+$invocation_directory = Dir.pwd
+
 # ensure the working dir is correct
-Dir.chdir File.dirname(File.dirname(File.realpath(__FILE__)))
+$execution_directory = File.dirname(File.dirname(File.realpath(__FILE__)))
+Dir.chdir $execution_directory
 
 # release file are encrypted and stored in a different directory
 if File.directory?(Dir.pwd + '/lib/rcs-collector-release')
