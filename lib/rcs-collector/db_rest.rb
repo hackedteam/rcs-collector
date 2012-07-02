@@ -23,6 +23,10 @@ class DB_rest
   def initialize(host)
     @host, @port = host.split(':')
 
+    verify_mode = Config.instance.global['SSL_VERIFY'] ? OpenSSL::SSL::VERIFY_PEER : OpenSSL::SSL::VERIFY_NONE
+
+    puts "verify mode: #{verify_mode}"
+
     # the HTTP connection object
     @http = PersistentHTTP.new(
               :name         => 'PersistentToDB',
@@ -31,8 +35,8 @@ class DB_rest
               :port         => @port,
               :use_ssl      => true,
               :ca_file      => Config.instance.file('DB_CERT'),
-              :cert         => OpenSSL::X509::Certificate.new(File.read(Config.instance.file('DB_CERT')))
-              #:verify_mode => OpenSSL::SSL::VERIFY_NONE
+              :cert         => OpenSSL::X509::Certificate.new(File.read(Config.instance.file('DB_CERT'))),
+              :verify_mode  => verify_mode
             )
 
     trace :debug, "Using REST to communicate with #{@host}:#{@port}"
@@ -392,6 +396,27 @@ class DB_rest
       return rest_call('DELETE', "/agent/filesystem/#{bid}?" + CGI.encode_query({:filesystem => id}))
     rescue Exception => e
       trace :error, "Error calling del_filesystem: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  # retrieve the filesystem list from db (if any)
+  def purge(bid)
+    begin
+      ret = rest_call('GET', "/agent/purge/#{bid}")
+
+      return JSON.parse(ret.body)
+    rescue Exception => e
+      trace :error, "Error calling purge: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def del_purge(bid)
+    begin
+      return rest_call('DELETE', "/agent/purge/#{bid}")
+    rescue Exception => e
+      trace :error, "Error calling del_purge: #{e.class} #{e.message}"
       propagate_error e
     end
   end

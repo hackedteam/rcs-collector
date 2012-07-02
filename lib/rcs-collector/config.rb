@@ -30,7 +30,8 @@ class Config
                    'NC_INTERVAL' => 30,
                    'NC_ENABLED' => true,
                    'COLL_ENABLED' => true,
-                   'RESOLVE_IP' => true}
+                   'RESOLVE_IP' => true,
+                   'SSL_VERIFY' => true}
 
   attr_reader :global
 
@@ -71,6 +72,8 @@ class Config
       trace :fatal, "Interval too short, please increase it"
       return false
     end
+
+    @global['SSL_VERIFY'] = true if @global['SSL_VERIFY'].nil?
 
     return true
   end

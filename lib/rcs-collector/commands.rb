@@ -87,8 +87,7 @@ module Commands
       available += [PROTO_CONF].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New config"
     end
-    # TODO: retrieve values from DB
-    if false
+    if DB.instance.purge? session[:bid]
       available += [PROTO_PURGE].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: Purge"
     end
@@ -206,14 +205,17 @@ module Commands
     return response
   end
 
-    # Protocol Upgrade
-  # -> PROTO_UPGRADE
+  # Protocol Upgrade
+  # -> PROTO_UPGRADE [flavor]
   # <- PROTO_NO | PROTO_OK [ left, filename, content ]
   def command_upgrade(peer, session, message)
     trace :info, "[#{peer}][#{session[:cookie]}] Upgrade request"
 
+    flavor = message.size == 0 ? "" : message.unpascalize
+    trace :debug, "[#{peer}][#{session[:cookie]}] Upgrade flavor: #{flavor}"
+  
     # the upgrade list was already retrieved (if any) during the ident phase (like upload)
-    upgrade, left = DB.instance.new_upgrade session[:bid]
+    upgrade, left = DB.instance.new_upgrade(session[:bid], flavor)
 
     # send the response
     if upgrade.nil?
@@ -348,9 +350,7 @@ module Commands
   def command_purge(peer, session, message)
     trace :info, "[#{peer}][#{session[:cookie]}] Purge request"
 
-    # TODO: retrieve values from DB
-    time = 0 #(Time.now + 86400).getutc.to_i
-    size = 0
+    time, size = DB.instance.purge session[:bid]
 
     # send the response
     if time == 0 && size == 0
@@ -360,7 +360,7 @@ module Commands
       response = [PROTO_OK].pack('I')
       content = [time].pack('Q') + [size].pack('I')
       response += [content.length].pack('I') + content
-      trace :info, "[#{peer}][#{session[:cookie]}] purge requests sent [#{time}][#{size}]"
+      trace :info, "[#{peer}][#{session[:cookie]}] purge requests sent [#{Time.at(time).getutc}][#{size}]"
     end
 
     return response

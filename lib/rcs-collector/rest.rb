@@ -142,6 +142,10 @@ class RESTController
         return :delete
       when 'HEAD'
         return :head
+      when 'PROXY'
+        return :proxy
+      when 'PUSH'
+        return :push
     end
   end
 

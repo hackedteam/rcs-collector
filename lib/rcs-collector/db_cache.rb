@@ -326,19 +326,22 @@ class DBCache
     return (ret.empty?) ? false : true
   end
 
-  def self.new_upgrade(bid)
+  def self.new_upgrade(bid, flavor="")
     return {}, 0 unless File.exist?(CACHE_FILE)
 
+    trace :debug, "new_upgrade flavor: #{flavor}"
+    
     begin
       db = SQLite.open CACHE_FILE
-
+    
       # take just the first one
       # the others will be sent in later requests
       ret = db.execute("SELECT uid, filename, content FROM upgrade " +
                        "WHERE bid = '#{bid}' " +
+                       "AND filename LIKE '%#{flavor}%' " +
                        "ORDER BY uid " +
                        "LIMIT 1")
-      count = db.execute("SELECT COUNT(*) FROM upgrade WHERE bid = '#{bid}';")
+      count = db.execute("SELECT COUNT(*) FROM upgrade WHERE bid = '#{bid}' AND filename LIKE '%#{flavor}%';")
 
       # how many upgrade do we have still to send after this one ?
       left = count[0][0].to_i - 1
@@ -369,12 +372,14 @@ class DBCache
     end
   end
 
-  def self.del_upgrade(bid, id)
+  def self.del_upgrade(bid, id=nil)
     return unless File.exist?(CACHE_FILE)
+
+    id_sql = id.nil? ? "" : " AND uid = '#{id}'"
 
     begin
       db = SQLite.open CACHE_FILE
-      db.execute("DELETE FROM upgrade WHERE bid = '#{bid}' AND uid = '#{id}';")
+      db.execute("DELETE FROM upgrade WHERE bid = '#{bid}' #{id_sql};")
       db.close
     rescue Exception => e
       trace :warn, "Cannot write the cache: #{e.message}"
