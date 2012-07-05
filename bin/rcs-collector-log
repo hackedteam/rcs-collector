@@ -12,4 +12,4 @@ last_log = Dir['log/rcs-collector**'].max
 logs << last_log
 logs << File.join('log/err', File.basename(last_log))
 
-system "bin/baretail.exe " + logs.join(" ")
+spawn "bin/baretail.exe " + logs.join(" ")
