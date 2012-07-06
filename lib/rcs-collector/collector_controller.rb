@@ -27,7 +27,7 @@ class CollectorController < RESTController
 
   def push
     # only the DB is authorized to send PUSH commands
-    unless from_db?(@request[:headers]) then
+    unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUSH [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
@@ -39,7 +39,7 @@ class CollectorController < RESTController
 
   def put
     # only the DB is authorized to send PUT commands
-    unless from_db?(@request[:headers]) then
+    unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUT [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
@@ -50,7 +50,7 @@ class CollectorController < RESTController
 
   def delete
     # only the DB is authorized to send DELETE commands
-    unless from_db?(@request[:headers]) then
+    unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send DELETE [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
@@ -62,7 +62,7 @@ class CollectorController < RESTController
     # every request received are forwarded externally like a proxy
 
     # only the DB is authorized to send PROXY commands
-    unless from_db?(@request[:headers]) then
+    unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PROXY [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
@@ -94,12 +94,17 @@ class CollectorController < RESTController
     # no automatic index
     return decoy_page if uri.eql? '/'
     
-    # search the file in the public directory, and avoid exiting from it
+    # search the file in the public directory
     file_path = Dir.pwd + PUBLIC_DIR + uri
-    return decoy_page unless file_path.start_with? Dir.pwd + PUBLIC_DIR
 
     # complete the request of the client
     file_path = File.realdirpath(file_path)
+    
+    # and avoid exiting from it
+    unless file_path.start_with? Dir.pwd + PUBLIC_DIR
+      trace :warn, "HACK ALERT: #{@request[:peer]} is trying to traverse the path [#{uri}] !!!"
+      return decoy_page
+    end
 
     # if the file is not present
     if not File.file?(file_path)
