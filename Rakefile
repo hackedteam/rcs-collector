@@ -1,6 +1,6 @@
 require "bundler/gem_tasks"
 require 'fileutils'
-
+require 'rbconfig'
 require 'rake'
 
 require 'rake/testtask'
@@ -26,7 +26,10 @@ end
 desc "Housekeeping for the project"
 task :clean do
   execute "Cleaning the log directory" do
-    Dir['./log/*'].each do |f|
+    Dir['./log/*.log'].each do |f|
+      File.delete(f)
+    end
+    Dir['./log/err/*.log'].each do |f|
       File.delete(f)
     end
   end
@@ -49,7 +52,14 @@ task :unprotect do
   end
 end
 
-RUBYENCPATH = '/Applications/Development/RubyEncoder'
+case RbConfig::CONFIG['host_os']
+  when /darwin/
+    RUBYENCPATH = '/Applications/Development/RubyEncoder'
+    RUBYENC = "#{RUBYENCPATH}/bin/rubyencoder"
+  when /mingw/
+    RUBYENCPATH = 'C:/Program Files (x86)/RubyEncoder'
+    RUBYENC = "\"C:\\Program Files (x86)\\RubyEncoder\\bin\\rubyencoder.exe\""
+end
 
 desc "Create the encrypted code for release"
 task :protect do
@@ -73,7 +83,7 @@ task :protect do
     # we have to change the current dir, otherwise rubyencoder
     # will recreate the lib/rcs-collector structure under rcs-collector-release
     Dir.chdir "lib/rcs-collector/"
-    system "#{RUBYENCPATH}/bin/rubyencoder -o ../rcs-collector-release --ruby 1.9.2 *.rb"
+    system "#{RUBYENC} -o ../rcs-collector-release --ruby 1.9.2 *.rb"
     Dir.chdir "../.."
   end
 end
