@@ -123,11 +123,15 @@ class Config
     if options[:db_sign]
       sig = get_from_server options[:user], options[:pass], 'server'
       File.open(Config.instance.file('DB_SIGN'), 'wb') {|f| f.write sig}
+      sig = get_from_server options[:user], options[:pass], 'network'
+      File.open(Config.instance.file('rcs-network.sig'), 'wb') {|f| f.write sig}
     end
 
     if options[:db_cert]
-      sig = get_from_server options[:user], options[:pass], 'cert'
-      File.open(Config.instance.file('DB_CERT'), 'wb') {|f| f.write sig}
+      sig = get_from_server options[:user], options[:pass], 'server.pem'
+      File.open(Config.instance.file('DB_CERT'), 'wb') {|f| f.write sig} unless sig.nil?
+      sig = get_from_server options[:user], options[:pass], 'network.pem'
+      File.open(Config.instance.file('rcs-network.pem'), 'wb') {|f| f.write sig} unless sig.nil?
     end
 
     trace :info, ""
@@ -141,7 +145,7 @@ class Config
   end
 
   def get_from_server(user, pass, resource)
-    trace :info, "Retrieving files from the server..."
+    trace :info, "Retrieving #{resource} from the server..."
     begin
       http = Net::HTTP.new(@global['DB_ADDRESS'], @global['DB_PORT'])
       http.use_ssl = true
