@@ -91,6 +91,9 @@ class NetworkController
 
   def self.check_element(element)
 
+    # be sure to have the network certificate
+    DB.instance.get_network_cert(Config.instance.file('rcs-network')) unless File.exist? Config.instance.file('rcs-network.pem')
+
     # socket for the communication
     socket = TCPSocket.new(element['address'], element['port'])
 
