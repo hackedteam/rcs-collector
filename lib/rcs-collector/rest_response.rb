@@ -55,9 +55,6 @@ class RESTResponse
     expiry = (Time.now() + 86400).strftime('%A, %d-%b-%y %H:%M:%S %Z')
 
     @response.headers['Content-Type'] = @content_type
-
-    # TODO: check the 'secure' flag (Symbian on proxy)
-    #@response.headers['Set-Cookie'] = "ID=" + @cookie + "; expires=#{expiry}; secure" unless @cookie.nil?
     @response.headers['Set-Cookie'] = "ID=" + @cookie unless @cookie.nil?
 
     # used for redirects

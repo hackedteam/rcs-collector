@@ -421,6 +421,34 @@ class DB_rest
     end
   end
 
+  # retrieve the exec list from db (if any)
+  def new_exec(bid)
+    begin
+      ret = rest_call('GET', "/agent/exec/#{bid}")
+
+      commands = {}
+      # parse the results
+      JSON.parse(ret.body).each do |elem|
+        commands[elem['_id']] = elem['command']
+      end
+
+      return commands
+    rescue Exception => e
+      trace :error, "Error calling new_exec: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def del_exec(bid, id)
+    begin
+      return rest_call('DELETE', "/agent/exec/#{bid}?" + CGI.encode_query({:exec => id}))
+    rescue Exception => e
+      trace :error, "Error calling del_exec: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+
   def get_proxies
     begin
       ret = rest_call('GET', "/injector")

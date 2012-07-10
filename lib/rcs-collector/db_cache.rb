@@ -30,6 +30,7 @@ class DBCache
               "CREATE TABLE uploads (bid CHAR(32), uid CHAR(32), filename TEXT, content BLOB)",
               "CREATE TABLE upgrade (bid CHAR(32), uid CHAR(32), filename TEXT, content BLOB)",
               "CREATE TABLE downloads (bid CHAR(32), did CHAR(32), filename TEXT)",
+              "CREATE TABLE exec (bid CHAR(32), eid CHAR(32), command TEXT)",
               "CREATE TABLE filesystems (bid CHAR(32), fid CHAR(32), depth INT, path TEXT)"
              ]
 
@@ -522,6 +523,71 @@ class DBCache
     begin
       db = SQLite.open CACHE_FILE
       db.execute("DELETE FROM filesystems WHERE bid = '#{bid}';")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot write the cache: #{e.message}"
+    end
+  end
+
+  ##############################################
+  # EXEC
+  ##############################################
+
+  def self.new_exec?(bid)
+    return false unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite.open CACHE_FILE
+      ret = db.execute("SELECT eid FROM exec WHERE bid = '#{bid}';")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    return (ret.empty?) ? false : true
+  end
+
+  def self.new_exec(bid)
+    return {} unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite.open CACHE_FILE
+      ret = db.execute("SELECT eid, command FROM exec WHERE bid = '#{bid}';")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    commands = {}
+    # parse the results
+    ret.each do |elem|
+      commands[elem[0]] = elem[1]
+    end
+    return commands
+  end
+
+  def self.save_exec(bid, commands)
+    # ensure the db was already created, otherwise create it
+    create! unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite.open CACHE_FILE
+      commands.each_pair do |key, value|
+        SQLite.safe_escape value
+        db.execute("INSERT INTO exec VALUES ('#{bid}', '#{key}', '#{value}' )")
+      end
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot save the cache: #{e.message}"
+    end
+  end
+
+  def self.del_exec(bid)
+    return unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite.open CACHE_FILE
+      db.execute("DELETE FROM exec WHERE bid = '#{bid}';")
       db.close
     rescue Exception => e
       trace :warn, "Cannot write the cache: #{e.message}"

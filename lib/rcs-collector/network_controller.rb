@@ -153,14 +153,8 @@ class NetworkController
           trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
 
           # version check for incompatibility
+          # TODO: check this for 8.2.0
           if ver.to_i < MIN_VERSION
-            result[0] = 'ERROR'
-            result[1] = "Version too old, please update the component."
-            trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
-          end
-
-          # TODO: remove for 8.2.0
-          if not element['type'].nil? and ver.to_i < 2012071601
             result[0] = 'ERROR'
             result[1] = "Version too old, please update the component."
             trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
