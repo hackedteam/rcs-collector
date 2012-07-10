@@ -91,12 +91,16 @@ class NetworkController
 
   def self.check_element(element)
 
+    # TODO: remove in 8.3
+    # be sure to have the network certificate
+    DB.instance.get_network_cert(Config.instance.file('rcs-network')) unless File.exist? Config.instance.file('rcs-network.pem')
+
     # socket for the communication
     socket = TCPSocket.new(element['address'], element['port'])
 
     # ssl encryption stuff
     ssl_context = OpenSSL::SSL::SSLContext.new()
-    ssl_context.cert = OpenSSL::X509::Certificate.new(File.read(Config.instance.file('DB_CERT')))
+    ssl_context.cert = OpenSSL::X509::Certificate.new(File.read(Config.instance.file('rcs-network.pem')))
     #ssl_context.key = OpenSSL::PKey::RSA.new(File.open("keys/MyCompanyClient.key"))
     ssl_socket = OpenSSL::SSL::SSLSocket.new(socket, ssl_context)
     ssl_socket.sync_close = true
@@ -150,6 +154,13 @@ class NetworkController
 
           # version check for incompatibility
           if ver.to_i < MIN_VERSION
+            result[0] = 'ERROR'
+            result[1] = "Version too old, please update the component."
+            trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
+          end
+
+          # TODO: remove for 8.2.0
+          if not element['type'].nil? and ver.to_i < 2012071601
             result[0] = 'ERROR'
             result[1] = "Version too old, please update the component."
             trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"

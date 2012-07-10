@@ -539,6 +539,21 @@ class DB_rest
     end
   end
 
+  def get_network_cert(file)
+    begin
+      res = rest_call('GET', "/signature/network.pem")
+      sig = JSON.parse(res.body)
+      File.open(file + '.pem', 'wb') {|f| f.write sig['value']} unless sig['value'].nil?
+
+      res = rest_call('GET', "/signature/network")
+      sig = JSON.parse(res.body)
+      File.open(file + '.sig', 'wb') {|f| f.write sig['value']} unless sig['value'].nil?
+    rescue Exception => e
+      trace :error, "Error calling get_network_cert: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
 end #
 
 end #Collector::
