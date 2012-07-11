@@ -239,7 +239,7 @@ class EvidenceManager
 
     # skip small files
     return if File.size(path) < 50_000
-    
+
     begin
       db = SQLite.open(path)
       db.execute("VACUUM;")
