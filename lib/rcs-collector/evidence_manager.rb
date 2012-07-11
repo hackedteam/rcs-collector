@@ -232,10 +232,14 @@ class EvidenceManager
 
     # delete file if empty
     if File.size(path) == 0
+      trace :warn, "Corrupted repository [#{instance}], deleting it..."
       FileUtils.rm_rf path if File.size(path) == 0
       return
     end
 
+    # skip small files
+    return if File.size(path) < 50_000
+    
     begin
       db = SQLite.open(path)
       db.execute("VACUUM;")
@@ -246,6 +250,14 @@ class EvidenceManager
     rescue Exception => e
       trace :warn, "Cannot compact the repository [#{instance}]: #{e.class} #{e.message}"
     end
+  end
+
+  def purge(instance)
+    entry = instance_info(instance)
+    evidence = evidence_info(instance)
+    # IN_PROGRESS sync must be preserved
+    # evidences must be preserved
+    File.delete(REPO_DIR + '/' + instance) if entry['sync_status'] != SYNC_IN_PROGRESS and evidence.length == 0
   end
 
   def create_repository(session)
@@ -304,11 +316,7 @@ class EvidenceManager
     # delete all the instance with zero evidence pending and not in progress
     if options[:purge] then
       instances.each do |e|
-        entry = instance_info(e)
-        evidence = evidence_info(e)
-        # IN_PROGRESS sync must be preserved
-        # evidences must be preserved
-        File.delete(REPO_DIR + '/' + e) if entry['sync_status'] != SYNC_IN_PROGRESS and evidence.length == 0
+        purge(e)
       end
     end
 
