@@ -30,10 +30,10 @@ class Protocol
   # <-  [ Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response ) ]  |  SetCookie ( SessionCookie )
   def self.authenticate(peer, uri, content)
     trace :info, "[#{peer}] Authentication required..."
-    
+
     # integrity check (104 byte of data, 112 padded)
     return unless content.length == 112
-    
+
     # decrypt the message with the per customer signature
     begin
       # the NO_PAD is needed because zeno (Fabrizio Cornelli) has broken his code
@@ -140,7 +140,7 @@ class Protocol
         response = [Commands::PROTO_OK].pack('I')
 
         # create a valid cookie session
-        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, subtype, k)
+        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, subtype, k, peer)
 
         trace :info, "[#{peer}] Authentication phase 2 completed [#{cookie}]"
     end
@@ -158,7 +158,8 @@ class Protocol
     valid = SessionManager.instance.check(cookie)
 
     if valid then
-      trace :debug, "[#{peer}][#{cookie}] Authenticated"
+      session = SessionManager.instance.get(cookie)
+      trace :debug, "[#{session[:ip]}][#{cookie}] Authenticated"
     else
       trace :warn, "[#{peer}][#{cookie}] Invalid cookie"
     end
@@ -166,7 +167,7 @@ class Protocol
     return valid
   end
 
-  
+
   def self.commands(peer, cookie, content)
     # retrieve the session
     session = SessionManager.instance.get cookie
@@ -175,6 +176,12 @@ class Protocol
     if session.nil?
       trace :warn, "[#{peer}][#{cookie}] Invalid session"
       return
+    end
+
+    # retrieve the peer form the session
+    if peer != session[:ip]
+      trace :debug, "[#{peer}] has forwarded the connection for [#{session[:ip]}]"
+      peer = session[:ip]
     end
 
     begin
@@ -205,7 +212,7 @@ class Protocol
       trace :warn, "[#{peer}][#{cookie}] unknown command [#{command}]"
       return
     end
-    
+
     begin
       # crypt the message with the session key
       response = aes_encrypt_integrity(response, session[:key])
@@ -222,7 +229,7 @@ class Protocol
   #   - Authentication
   #   - Commands
   def self.parse(peer, uri, cookie, content)
-    
+
     # if the request does not contains any cookies,
     # we need to perform authentication first
     return authenticate(peer, uri, content) if cookie.nil?
