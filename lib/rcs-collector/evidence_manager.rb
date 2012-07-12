@@ -54,7 +54,7 @@ class EvidenceManager
 
       db.close
     rescue Exception => e
-      trace :warn, "Cannot insert into the repository: #{e.message}"
+      trace :warn, "Cannot insert into the repository: [#{session[:instance]}]: #{e.class} #{e.message}"
     end
   end
   
@@ -70,7 +70,7 @@ class EvidenceManager
       db.execute("UPDATE info SET sync_status = #{SYNC_TIMEOUTED} WHERE sync_status = #{SYNC_IN_PROGRESS};")
       db.close
     rescue Exception => e
-      trace :warn, "Cannot update the repository: #{e.message}"
+      trace :warn, "Cannot update the repository: [#{session[:instance]}]: #{e.class} #{e.message}"
     end
     trace :info, "[#{session[:instance]}] Sync has been timeouted"
   end
@@ -87,22 +87,27 @@ class EvidenceManager
       db.execute("UPDATE info SET sync_status = #{status};")
       db.close
     rescue Exception => e
-      trace :warn, "Cannot update the repository: #{e.message}"
+      trace :warn, "Cannot update the repository: [#{session[:instance]}]: #{e.class} #{e.message}"
     end
 
   end
 
   def sync_timeout_all
     begin
+      current = ''
       Dir[REPO_DIR + '/*'].each do |e|
+        current = e
         db = SQLite.open(e)
         # update only if the status in IN_PROGRESS
         # this will prevent erroneous overwrite of the IDLE status
         db.execute("UPDATE info SET sync_status = #{SYNC_TIMEOUTED} WHERE sync_status = #{SYNC_IN_PROGRESS};")
         db.close
       end
+    rescue SQLite3::NotADatabaseException
+      trace :warn, "Corrupted repository [#{current}], deleting it..."
+      FileUtils.rm_rf current
     rescue Exception => e
-      trace :warn, "Cannot update the repository: #{e.message}"
+      trace :warn, "Cannot update the repository: [#{current}]: #{e.class} #{e.message}"
     end
   end
 
