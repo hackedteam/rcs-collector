@@ -140,7 +140,7 @@ class Protocol
         response = [Commands::PROTO_OK].pack('I')
 
         # create a valid cookie session
-        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, subtype, k)
+        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, subtype, k, peer)
 
         trace :info, "[#{peer}] Authentication phase 2 completed [#{cookie}]"
     end
@@ -175,6 +175,12 @@ class Protocol
     if session.nil?
       trace :warn, "[#{peer}][#{cookie}] Invalid session"
       return
+    end
+
+    # retrieve the peer form the session
+    if peer != session[:ip]
+      trace :info, "The session is forwarded by [#{peer}] for [#{session[:ip]}]"
+      peer = session[:ip]
     end
 
     begin

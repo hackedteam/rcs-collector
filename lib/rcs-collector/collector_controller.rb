@@ -15,6 +15,9 @@ module Collector
 class CollectorController < RESTController
   
   def get
+    # get the peer ip address if it was forwarded by a proxy
+    peer = http_get_forwarded_peer(@request[:headers])
+    @request[:peer] = peer unless peer.nil?
     # serve the requested file
     return http_get_file(@request[:headers], @request[:uri])
   rescue Exception => e

@@ -15,7 +15,7 @@ class TestSessions < Test::Unit::TestCase
   # Called before every test method runs. Can be used
   # to set up fixture information.
   def setup
-    @cookie = SessionManager.instance.create(1, "BUILD", "INSTANCE", "TYPE", "KEY")
+    @cookie = SessionManager.instance.create(1, "BUILD", "INSTANCE", "TYPE", "KEY", "127.0.0.1")
   end
 
   # Called after every test method runs. Can be used to tear
