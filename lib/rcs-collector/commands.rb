@@ -59,7 +59,7 @@ module Commands
     user_id, device_id, source_id = message.unpascalize_ary
 
     # if the source id cannot be determined by the client, set it to the ip address
-    source_id = peer if source_id.eql? ''
+    source_id = peer if source_id.eql? '' or source_id.eql? 'Unknown'
 
     trace :info, "[#{peer}][#{session[:cookie]}] Identification: #{version} '#{user_id}' '#{device_id}' '#{source_id}'"
 

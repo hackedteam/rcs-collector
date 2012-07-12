@@ -114,7 +114,11 @@ class RESTController
     unless @params.has_key? '_id'
       @params['_id'] = @request[:uri_params].first unless @request[:uri_params].first.nil?
     end
-    
+
+    # get the peer ip address if it was forwarded by a proxy
+    peer = http_get_forwarded_peer(@request[:headers])
+    @request[:peer] = peer unless peer.nil?
+
     # GO!
     response = send(@request[:action])
     
@@ -147,6 +151,19 @@ class RESTController
       when 'PUSH'
         return :push
     end
+  end
+
+  # return the content of the X-Forwarded-For header
+  def http_get_forwarded_peer(headers)
+    # extract the XFF
+    xff = headers[:x_forwarded_for]
+    # no header
+    return nil if xff.nil?
+    # split the peers list
+    peers = xff.split(',')
+    trace :info, "[#{@request[:peer]}] has forwarded the connection for [#{peers.first}]"
+    # we just want the first peer that is the original one
+    return peers.first
   end
 
 end # RCS::Collector::RESTController
