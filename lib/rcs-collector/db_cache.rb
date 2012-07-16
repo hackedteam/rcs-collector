@@ -330,8 +330,6 @@ class DBCache
   def self.new_upgrade(bid, flavor="")
     return {}, 0 unless File.exist?(CACHE_FILE)
 
-    trace :debug, "new_upgrade flavor: #{flavor}"
-    
     begin
       db = SQLite.open CACHE_FILE
     
