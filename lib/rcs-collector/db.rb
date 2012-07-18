@@ -172,11 +172,11 @@ class DB
     return false
   end
 
-  def update_status(component, ip, status, message, stats, nc = false)
+  def update_status(component, ip, status, message, stats, type, version)
     return unless @available
 
     trace :debug, "[#{component}]: #{status} #{message} #{stats}"
-    db_rest_call :status_update, component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu], nc
+    db_rest_call :status_update, component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu], type, version
   end
 
   def factory_key_of(build_id)

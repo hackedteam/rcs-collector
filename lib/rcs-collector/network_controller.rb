@@ -160,6 +160,9 @@ class NetworkController
             trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
           end
 
+          # add the version to the results
+          result << ver
+
         when NCProto::PROTO_LOG
           time, type, desc = proto.log
           # we have to be fast here, we cannot insert them directly in the db
@@ -209,7 +212,7 @@ class NetworkController
   end
 
 
-  def self.report_status(elem, status, message, disk=0, cpu=0, pcpu=0)
+  def self.report_status(elem, status, message, disk=0, cpu=0, pcpu=0, version=0)
 
     if elem['type'] == 'remote' then
       component = "RCS::ANON::" + elem['name']
@@ -225,7 +228,7 @@ class NetworkController
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.instance.update_status component, elem['address'], status, message, stats, internal_component
+    DB.instance.update_status component, elem['address'], status, message, stats, internal_component, version
   end
 
   
@@ -244,7 +247,7 @@ class NetworkController
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.instance.update_status component, ip, status, message, stats, 'nc'
+    DB.instance.update_status component, ip, status, message, stats, 'nc', $version
   end
 
 end
