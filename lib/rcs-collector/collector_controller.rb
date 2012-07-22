@@ -27,7 +27,7 @@ class CollectorController < RESTController
 
   def push
     # only the DB is authorized to send PUSH commands
-    unless from_db?(@request[:headers]) then
+    unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUSH [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
@@ -38,8 +38,12 @@ class CollectorController < RESTController
   end
 
   def put
+    # get the peer ip address if it was forwarded by a proxy
+    peer = http_get_forwarded_peer(@request[:headers])
+    @request[:peer] = peer unless peer.nil?
+
     # only the DB is authorized to send PUT commands
-    unless from_db?(@request[:headers]) then
+    unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUT [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
@@ -50,7 +54,7 @@ class CollectorController < RESTController
 
   def delete
     # only the DB is authorized to send DELETE commands
-    unless from_db?(@request[:headers]) then
+    unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send DELETE [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
@@ -62,7 +66,7 @@ class CollectorController < RESTController
     # every request received are forwarded externally like a proxy
 
     # only the DB is authorized to send PROXY commands
-    unless from_db?(@request[:headers]) then
+    unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PROXY [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
@@ -71,10 +75,8 @@ class CollectorController < RESTController
   end
 
   def post
-    # get the peer ip address if it was forwarded by a proxy
-    peer = http_get_forwarded_peer(@request[:headers]) || @request[:peer]
     # the REST protocol for synchronization
-    content, content_type, cookie = Protocol.parse peer, @request[:uri], @request[:cookie], @request[:content]
+    content, content_type, cookie = Protocol.parse @request[:peer], @request[:uri], @request[:cookie], @request[:content]
     return decoy_page if content.nil?
     return ok(content, {content_type: content_type, cookie: cookie})
   end
@@ -94,12 +96,17 @@ class CollectorController < RESTController
     # no automatic index
     return decoy_page if uri.eql? '/'
     
-    # search the file in the public directory, and avoid exiting from it
+    # search the file in the public directory
     file_path = Dir.pwd + PUBLIC_DIR + uri
-    return decoy_page unless file_path.start_with? Dir.pwd + PUBLIC_DIR
 
     # complete the request of the client
     file_path = File.realdirpath(file_path)
+    
+    # and avoid exiting from it
+    unless file_path.start_with? Dir.pwd + PUBLIC_DIR
+      trace :warn, "HACK ALERT: #{@request[:peer]} is trying to traverse the path [#{uri}] !!!"
+      return decoy_page
+    end
 
     # if the file is not present
     if not File.file?(file_path)
@@ -133,19 +140,6 @@ class CollectorController < RESTController
     body += "<p>The document has moved <a href=\"#{file}\">here</a>.</p>"
     body += "</body></html>"
     return redirect(body, {location: file})
-  end
-
-  # return the content of the X-Forwarded-For header
-  def http_get_forwarded_peer(headers)
-    # extract the XFF
-    xff = headers[:x_forwarded_for]
-    # no header
-    return nil if xff.nil?
-    # split the peers list
-    peers = xff.split(',')
-    trace :info, "[#{@request[:peer]}] has forwarded the connection for [#{peers.first}]"
-    # we just want the first peer that is the original one
-    return peers.first
   end
 
   # save a file in the /public directory

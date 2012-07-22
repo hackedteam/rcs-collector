@@ -54,7 +54,7 @@ class EvidenceManager
 
       db.close
     rescue Exception => e
-      trace :warn, "Cannot insert into the repository: #{e.message}"
+      trace :warn, "Cannot insert into the repository: [#{session[:instance]}]: #{e.class} #{e.message}"
     end
   end
   
@@ -70,7 +70,7 @@ class EvidenceManager
       db.execute("UPDATE info SET sync_status = #{SYNC_TIMEOUTED} WHERE sync_status = #{SYNC_IN_PROGRESS};")
       db.close
     rescue Exception => e
-      trace :warn, "Cannot update the repository: #{e.message}"
+      trace :warn, "Cannot update the repository: [#{session[:instance]}]: #{e.class} #{e.message}"
     end
     trace :info, "[#{session[:instance]}] Sync has been timeouted"
   end
@@ -87,22 +87,27 @@ class EvidenceManager
       db.execute("UPDATE info SET sync_status = #{status};")
       db.close
     rescue Exception => e
-      trace :warn, "Cannot update the repository: #{e.message}"
+      trace :warn, "Cannot update the repository: [#{session[:instance]}]: #{e.class} #{e.message}"
     end
 
   end
 
   def sync_timeout_all
     begin
+      current = ''
       Dir[REPO_DIR + '/*'].each do |e|
+        current = e
         db = SQLite.open(e)
         # update only if the status in IN_PROGRESS
         # this will prevent erroneous overwrite of the IDLE status
         db.execute("UPDATE info SET sync_status = #{SYNC_TIMEOUTED} WHERE sync_status = #{SYNC_IN_PROGRESS};")
         db.close
       end
+    rescue SQLite3::NotADatabaseException
+      trace :warn, "Corrupted repository [#{current}], deleting it..."
+      FileUtils.rm_rf current
     rescue Exception => e
-      trace :warn, "Cannot update the repository: #{e.message}"
+      trace :warn, "Cannot update the repository: [#{current}]: #{e.class} #{e.message}"
     end
   end
 
@@ -116,7 +121,7 @@ class EvidenceManager
       db.execute("UPDATE info SET sync_status = #{SYNC_IDLE};")
       db.close
     rescue Exception => e
-      trace :warn, "Cannot update the repository: #{e.message}"
+      trace :warn, "Cannot update the repository [#{session[:instance]}]: #{e.class} #{e.message}"
     end
     trace :info, "[#{session[:instance]}] Sync ended"
   end
@@ -132,7 +137,7 @@ class EvidenceManager
       db.execute("INSERT INTO evidence (size, content) VALUES (#{size}, ? );", SQLite.blob(content))
       db.close
     rescue Exception => e
-      trace :warn, "Cannot insert into the repository: #{e.message}"
+      trace :warn, "Cannot insert into the repository [#{session[:instance]}]: #{e.class} #{e.message}"
       raise "Cannot save evidence"
     end
   end
@@ -149,7 +154,7 @@ class EvidenceManager
       db.close
       return ret.first.first
     rescue Exception => e
-      trace :warn, "Cannot read from the repository: #{e.message} [#{e.class}]"
+      trace :warn, "Cannot read from the repository [#{instance}]: #{e.class} #{e.message}"
       return nil
     end
   end
@@ -164,7 +169,7 @@ class EvidenceManager
       ret = db.execute("DELETE FROM evidence WHERE id=#{id};")
       db.close
     rescue Exception => e
-      trace :warn, "Cannot delete from the repository: #{e.message}"
+      trace :warn, "Cannot delete from the repository [#{instance}]: #{e.class} #{e.message}"
     end
   end
 
@@ -190,7 +195,7 @@ class EvidenceManager
       db.close
       return ret.first
     rescue Exception => e
-      trace :warn, "Cannot read from the repository: #{e.message}"
+      trace :warn, "Cannot read from the repository [#{instance}]: #{e.class} #{e.message}"
     end
   end
 
@@ -205,7 +210,7 @@ class EvidenceManager
       db.close
       return ret
     rescue Exception => e
-      trace :warn, "Cannot read from the repository: #{e.message}"
+      trace :warn, "Cannot read from the repository [#{instance}]: #{e.class} #{e.message}"
     end
   end
   
@@ -214,19 +219,14 @@ class EvidenceManager
     path = REPO_DIR + '/' + instance
     return [] unless File.exist?(path)
 
-    # delete file if empty
-    if File.size(path) == 0
-      FileUtils.rm_rf path if File.size(path) == 0
-      return []
-    end
-    
     begin
       db = SQLite.open(path)
       ret = db.execute("SELECT id FROM evidence;")
       db.close
       return ret.flatten
     rescue Exception => e
-      trace :warn, "Cannot read from the repository: #{e.message}"
+      trace :warn, "Cannot read from the repository [#{instance}]: #{e.class} #{e.message}"
+      return []
     end
   end
 
@@ -237,17 +237,32 @@ class EvidenceManager
 
     # delete file if empty
     if File.size(path) == 0
+      trace :warn, "Corrupted repository [#{instance}], deleting it..."
       FileUtils.rm_rf path if File.size(path) == 0
       return
     end
+
+    # skip small files
+    return if File.size(path) < 50_000
 
     begin
       db = SQLite.open(path)
       db.execute("VACUUM;")
       db.close
+    rescue SQLite3::NotADatabaseException
+      trace :warn, "Corrupted repository [#{instance}], deleting it..."
+      FileUtils.rm_rf path
     rescue Exception => e
-      trace :warn, "Cannot compact the repository: #{e.message}"
+      trace :warn, "Cannot compact the repository [#{instance}]: #{e.class} #{e.message}"
     end
+  end
+
+  def purge(instance)
+    entry = instance_info(instance)
+    evidence = evidence_info(instance)
+    # IN_PROGRESS sync must be preserved
+    # evidences must be preserved
+    File.delete(REPO_DIR + '/' + instance) if entry['sync_status'] != SYNC_IN_PROGRESS and evidence.length == 0
   end
 
   def create_repository(session)
@@ -306,11 +321,7 @@ class EvidenceManager
     # delete all the instance with zero evidence pending and not in progress
     if options[:purge] then
       instances.each do |e|
-        entry = instance_info(e)
-        evidence = evidence_info(e)
-        # IN_PROGRESS sync must be preserved
-        # evidences must be preserved
-        File.delete(REPO_DIR + '/' + e) if entry['sync_status'] != SYNC_IN_PROGRESS and evidence.length == 0
+        purge(e)
       end
     end
 

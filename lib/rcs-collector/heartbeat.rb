@@ -45,7 +45,7 @@ class HeartBeat
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.instance.update_status component, ip, status, message, stats, 'collector'
+    DB.instance.update_status component, ip, status, message, stats, 'collector', $version
   end
 end
 

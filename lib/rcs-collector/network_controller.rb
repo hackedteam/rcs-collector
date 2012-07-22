@@ -91,12 +91,16 @@ class NetworkController
 
   def self.check_element(element)
 
+    # TODO: remove in 8.3
+    # be sure to have the network certificate
+    DB.instance.get_network_cert(Config.instance.file('rcs-network')) unless File.exist? Config.instance.file('rcs-network.pem')
+
     # socket for the communication
     socket = TCPSocket.new(element['address'], element['port'])
 
     # ssl encryption stuff
     ssl_context = OpenSSL::SSL::SSLContext.new()
-    ssl_context.cert = OpenSSL::X509::Certificate.new(File.read(Config.instance.file('DB_CERT')))
+    ssl_context.cert = OpenSSL::X509::Certificate.new(File.read(Config.instance.file('rcs-network.pem')))
     #ssl_context.key = OpenSSL::PKey::RSA.new(File.open("keys/MyCompanyClient.key"))
     ssl_socket = OpenSSL::SSL::SSLSocket.new(socket, ssl_context)
     ssl_socket.sync_close = true
@@ -149,11 +153,15 @@ class NetworkController
           trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
 
           # version check for incompatibility
+          # TODO: check this for 8.2.0
           if ver.to_i < MIN_VERSION
             result[0] = 'ERROR'
             result[1] = "Version too old, please update the component."
             trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
           end
+
+          # add the version to the results
+          result << ver
 
         when NCProto::PROTO_LOG
           time, type, desc = proto.log
@@ -204,7 +212,7 @@ class NetworkController
   end
 
 
-  def self.report_status(elem, status, message, disk=0, cpu=0, pcpu=0)
+  def self.report_status(elem, status, message, disk=0, cpu=0, pcpu=0, version=0)
 
     if elem['type'] == 'remote' then
       component = "RCS::ANON::" + elem['name']
@@ -220,7 +228,7 @@ class NetworkController
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.instance.update_status component, elem['address'], status, message, stats, internal_component
+    DB.instance.update_status component, elem['address'], status, message, stats, internal_component, version
   end
 
   
@@ -239,7 +247,7 @@ class NetworkController
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.instance.update_status component, ip, status, message, stats, 'nc'
+    DB.instance.update_status component, ip, status, message, stats, 'nc', $version
   end
 
 end

