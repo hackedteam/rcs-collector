@@ -249,7 +249,7 @@ class CollectorController < RESTController
     if user_agent['BlackBerry']    
       major = 4
       minor = 5
-      ver_tuple = user_agent.scan(/Version\/(\d+)\.(\d+)/).flatten
+      ver_tuple = user_agent.scan(/\/(\d+)\.(\d+)\.\d+/).flatten
       major, minor = ver_tuple unless ver_tuple.empty?
       if major.to_i >= 5
         version = "5.0"
