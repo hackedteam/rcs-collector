@@ -264,6 +264,21 @@ class DB_rest
     end
   end
 
+  def agent_ghost(build_id, instance_id)
+    begin
+      ret = rest_call('GET', "/agent/ghost/#{build_id}-#{instance_id}")
+
+      if ret.kind_of? Net::HTTPNotFound then
+        return nil
+      end
+
+      return ret.body
+    rescue Exception => e
+      trace :error, "Error calling agent_ghost: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
   def new_conf(bid)
     begin
       ret = rest_call('GET', "/agent/config/#{bid}")
