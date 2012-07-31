@@ -228,6 +228,19 @@ class DB
     db_rest_call :agent_uninstall, agent_id
   end
 
+  def ghost_agent(build_id, instance_id)
+    return nil unless @available
+
+    id = build_id.to_i
+    build_id = "RCS_%010d" % id
+
+    trace :info, "Request for a ghost agent: #{build_id} (#{instance_id})"
+
+    content = db_rest_call :agent_ghost, build_id, instance_id
+
+    return content
+  end
+
   def sync_start(session, version, user, device, source, time)
     # database is down, continue
     return unless @available
