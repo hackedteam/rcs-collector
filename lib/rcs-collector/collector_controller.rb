@@ -19,11 +19,12 @@ class CollectorController < RESTController
       root, gh, build_id, instance_id = @request[:uri].split('/')
       ghost = DB.instance.ghost_agent(build_id, instance_id)
       unless ghost.nil?
-        trace :info, "[#{@request[:peer]}] ghost agent available, sending it"
-        file = Tempfile.new(build_id)
-        file.write ghost
-        file.close
-        return stream_file(file.path)
+        trace :info, "[#{@request[:peer]}] ghost agent available, sending #{ghost.bytesize} bytes"
+
+        # prepend the auth to the exe
+        auth = DB.instance.agent_signature + SecureRandom.random_bytes(16)
+
+        return ok(auth + ghost, {content_type: 'binary/octetstream'})
       end
     end
 
