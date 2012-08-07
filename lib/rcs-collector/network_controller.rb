@@ -57,6 +57,18 @@ class NetworkController
           Timeout::timeout(Config.instance.global['NC_INTERVAL'] * 0.75) do
             status, logs = check_element p
           end
+
+          # send the status to db
+          report_status(p, *status) unless status.nil? or status.empty?
+
+          trace :debug, "[NC] #{p['address']} Inserting logs..." unless logs.empty?
+
+          # send the logs to db
+          logs.each do |log|
+            DB.instance.injector_add_log(p['_id'], *log) if p['type'].nil?
+            DB.instance.collector_add_log(p['_id'], *log) unless p['type'].nil?
+          end
+
         rescue Exception => e
           trace :debug, "[NC] #{p['address']} #{e.message}"
           #trace :debug, "EXCEPTION: [#{e.class}] " << e.backtrace.join("\n")
@@ -64,19 +76,9 @@ class NetworkController
           report_status(p, 'ERROR', e.message)
         end
 
-        # send the status to db
-        report_status(p, *status) unless status.nil? or status.empty?
-
-        trace :debug, "[NC] #{p['address']} Inserting logs..." unless logs.empty?
-
-        # send the logs to db
-        logs.each do |log|
-          DB.instance.injector_add_log(p['_id'], *log) if p['type'].nil?
-          DB.instance.collector_add_log(p['_id'], *log) unless p['type'].nil?
-        end
-        
         # make sure to destroy the thread after the check
-        Thread.kill Thread.current
+        #Thread.kill Thread.current
+        Thread.exit
       end
     end
 
