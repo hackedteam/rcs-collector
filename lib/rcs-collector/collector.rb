@@ -42,6 +42,9 @@ class Application
     Dir::mkdir(Dir.pwd + '/log') if not File.directory?(Dir.pwd + '/log')
     Dir::mkdir(Dir.pwd + '/log/err') if not File.directory?(Dir.pwd + '/log/err')
 
+    # remove the old static decoy page
+    FileUtils.rm_rf(Dir.pwd + '/config/decoy.html') if File.exist?(Dir.pwd + '/config/decoy.html')
+
     # initialize the tracing facility
     begin
       trace_init typ, ty

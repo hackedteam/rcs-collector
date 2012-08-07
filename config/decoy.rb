@@ -12,16 +12,23 @@ class DecoyPage
 
   def self.create(request)
 
+    ###############################################################
     # you can inspect the request headers to reply with different
     # pages based on the requester address or destination hostname
-    #puts request.inspect
+    # uncomment the line below to check how the hash is made up
+    ###############################################################
+    #trace :info, "Request parameters: " + request.inspect
 
-    # google redirect
+    ####################################
+    # Example: google redirection page
+    ####################################
     #page = "<html> <head>" +
     #       "<meta http-equiv=\"refresh\" content=\"0;url=http://www.google.com\">" +
     #       "</head> </html>"
 
-    # standard apache not found document
+    ###############################################
+    # Example: standard apache not found document
+    ###############################################
     page = "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">" +
           "<html><head>" +
           "<title>404 Not Found</title>" +
