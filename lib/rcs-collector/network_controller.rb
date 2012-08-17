@@ -52,9 +52,9 @@ class NetworkController
         status = []
         logs = []
         begin
-          # three quarters of the interval check is a good compromise for timeout
+          # interval check minus 5 seconds is a good compromise for timeout
           # we are sure that the operations will be finished before the next check
-          Timeout::timeout(Config.instance.global['NC_INTERVAL'] * 0.75) do
+          Timeout::timeout(Config.instance.global['NC_INTERVAL'] - 5) do
             status, logs = check_element p
           end
 
@@ -97,6 +97,8 @@ class NetworkController
     # be sure to have the network certificate
     DB.instance.get_network_cert(Config.instance.file('rcs-network')) unless File.exist? Config.instance.file('rcs-network.pem')
 
+    trace :debug, "[NC] connecting to #{element['address']}:#{element['port']}"
+
     # socket for the communication
     socket = TCPSocket.new(element['address'], element['port'])
 
@@ -111,11 +113,15 @@ class NetworkController
     # the exceptions will be caught from the caller
     ssl_socket.connect
 
+    trace :debug, "[NC] #{element['address']} connected"
+
     # create a new NC protocol
     proto = NCProto.new(ssl_socket)
 
     # authenticate with the component
     raise 'Cannot authenticate' unless proto.login(DB.instance.network_signature)
+
+    trace :debug, "[NC] #{element['address']} login"
 
     result = []
     logs = []
@@ -182,6 +188,8 @@ class NetworkController
     # close the connection
     ssl_socket.close
 
+    trace :debug, "[NC] #{element['address']} disconnected"
+
     return result, logs
   end
 
@@ -224,7 +232,7 @@ class NetworkController
       internal_component = 'injector'
     end
 
-    trace :info, "[NC] [#{component}] #{elem['address']} #{status}"
+    trace :info, "[NC] [#{component}] #{elem['address']} #{status} #{message}"
 
     # create the stats hash
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
