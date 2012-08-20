@@ -87,11 +87,21 @@ class CollectorController < RESTController
     return proxy_request(@request)
   end
 
+  def watchdog
+    trace :debug, "#{@request[:peer]} watchdog #{$watchdog.locked?} [#{@request[:uri]}]"
+    return bad_request if @request[:uri] != @request[:peer]
+    return ok("#{$version}", {content_type: "text/html"}) if $watchdog.lock
+  end
+
   def post
     # the REST protocol for synchronization
     content, content_type, cookie = Protocol.parse @request[:peer], @request[:uri], @request[:cookie], @request[:content]
     return decoy_page if content.nil?
     return ok(content, {content_type: content_type, cookie: cookie})
+  end
+
+  def bad
+    return bad_request
   end
 
   #
