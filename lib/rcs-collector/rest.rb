@@ -125,9 +125,8 @@ class RESTController
     peer = http_get_forwarded_peer(@request[:headers])
     @request[:peer] = peer unless peer.nil?
 
-    # GO!
     response = send(@request[:action])
-    
+
     return decoy_page if response.nil?
     return response
   rescue Exception => e
@@ -156,6 +155,10 @@ class RESTController
         return :proxy
       when 'PUSH'
         return :push
+      when 'WATCHDOG'
+        return :watchdog
+      else
+        return :bad
     end
   end
 

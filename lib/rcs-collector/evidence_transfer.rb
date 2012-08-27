@@ -43,8 +43,18 @@ class EvidenceTransfer
             # get all the ids of the evidence for this instance
             evidences = EvidenceManager.instance.evidence_ids(instance)
 
+            # get the info from the instance
+            info = EvidenceManager.instance.instance_info instance
+            raise "Cannot read info for #{instance}" if info.nil?
+
             # compact the database if there are no evidence
-            EvidenceManager.instance.compact(instance) if evidences.empty?
+            EvidenceManager.instance.compact(instance) if evidences.empty? and info['sync_status'] != EvidenceManager::SYNC_IN_PROGRESS
+
+            # try to purge repositories that are too old (15 days)
+            if Time.now.getutc.to_i - info['sync_time'] > 15*86400
+              trace :info, "Auto purging old repo [#{instance}]"
+              EvidenceManager.instance.purge(instance)
+            end
 
             # only perform the job if we have something to transfer
             unless evidences.empty?

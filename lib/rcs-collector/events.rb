@@ -69,55 +69,63 @@ class HTTPHandler < EM::HttpServer::Server
     # update the connection statistics
     StatsManager.instance.add conn: 1
 
-    responder = nil
+    $watchdog.synchronize do
 
-    # Block which fulfills the request
-    operation = proc do
+      responder = nil
 
-      trace :debug, "[#{@peer}] QUE: [#{@http_request_method}] #{@http_request_uri} #{@http_query_string} (#{Time.now - @request_time})" if Config.instance.global['PERF']
+      # Block which fulfills the request
+      operation = proc do
 
-      generation_time = Time.now
-      
-      begin
-        # parse all the request params
-        request = prepare_request @http_request_method, @http_request_uri, @http_query_string, @http_content, @http, @peer
+        trace :debug, "[#{@peer}] QUE: [#{@http_request_method}] #{@http_request_uri} #{@http_query_string} (#{Time.now - @request_time})" if Config.instance.global['PERF']
 
-        # get the correct controller
-        controller = CollectorController.new
-        controller.request = request
+        generation_time = Time.now
 
-        # do the dirty job :)
-        responder = controller.act!
-        
-        # create the response object to be used in the EM::defer callback
-        reply = responder.prepare_response(self, request)
+        begin
+          raise "invalid http protocol" if @http_protocol != 'HTTP/1.1' and @http_protocol != 'HTTP/1.0'
 
-        # keep the size of the reply to be used in the closing method
-        @response_size = reply.content ? reply.content.bytesize : 0
-        trace :debug, "[#{@peer}] GEN: [#{request[:method]}] #{request[:uri]} #{request[:query]} (#{Time.now - generation_time}) #{@response_size.to_s_bytes}" if Config.instance.global['PERF']
-        
-        reply
-      rescue Exception => e
-        trace :error, e.message
-        trace :fatal, "EXCEPTION(#{e.class}): " + e.backtrace.join("\n")
+          # parse all the request params
+          request = prepare_request @http_request_method, @http_request_uri, @http_query_string, @http_content, @http, @peer
 
-        responder = RESTResponse.new(500, e.message)
-        reply = responder.prepare_response(self, request)
-        reply
+          # get the correct controller
+          controller = CollectorController.new
+          controller.request = request
+
+          # do the dirty job :)
+          responder = controller.act!
+
+          # create the response object to be used in the EM::defer callback
+          reply = responder.prepare_response(self, request)
+
+          # keep the size of the reply to be used in the closing method
+          @response_size = reply.content ? reply.content.bytesize : 0
+          trace :debug, "[#{@peer}] GEN: [#{request[:method]}] #{request[:uri]} #{request[:query]} (#{Time.now - generation_time}) #{@response_size.to_s_bytes}" if Config.instance.global['PERF']
+
+          reply
+        rescue Exception => e
+          trace :error, e.message
+          trace :fatal, "EXCEPTION(#{e.class}): " + e.backtrace.join("\n")
+
+          responder = RESTResponse.new(500, e.message)
+          reply = responder.prepare_response(self, {})
+          reply
+        end
+
       end
 
-    end
-    
-    # Callback block to execute once the request is fulfilled
-    response = proc do |reply|
-    	reply.send_response
-      
-       # keep the size of the reply to be used in the closing method
-      @response_size = reply.headers['Content-length'] || 0
+      # Callback block to execute once the request is fulfilled
+      response = proc do |reply|
+        reply.send_response
+
+         # keep the size of the reply to be used in the closing method
+        @response_size = reply.headers['Content-length'] || 0
+      end
+
+
+      # Let the thread pool handle request
+      EM.defer(operation, response)
+
     end
 
-    # Let the thread pool handle request
-    EM.defer(operation, response)
   end
 
 end #HTTPHandler

