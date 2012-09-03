@@ -103,10 +103,10 @@ module Commands
       available += [PROTO_UPGRADE].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New upgrade"
     end
-    #if DB.instance.new_exec? session[:bid]
-    #  available += [PROTO_EXEC].pack('I')
-    #  trace :info, "[#{peer}][#{session[:cookie]}] Available: New commands exec"
-    #end
+    if DB.instance.new_exec? session[:bid]
+      available += [PROTO_EXEC].pack('I')
+      trace :info, "[#{peer}][#{session[:cookie]}] Available: New commands exec"
+    end
     if DB.instance.new_downloads? session[:bid]
       available += [PROTO_DOWNLOAD].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New downloads"
