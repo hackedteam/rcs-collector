@@ -25,8 +25,6 @@ class DB_rest
 
     verify_mode = Config.instance.global['SSL_VERIFY'] ? OpenSSL::SSL::VERIFY_PEER : OpenSSL::SSL::VERIFY_NONE
 
-    puts "verify mode: #{verify_mode}"
-
     # the HTTP connection object
     @http = PersistentHTTP.new(
               :name         => 'PersistentToDB',

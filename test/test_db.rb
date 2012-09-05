@@ -194,13 +194,13 @@ class TestDB < Test::Unit::TestCase
 
   def test_new_upgrade
     assert_true DB.instance.new_upgrade?(1)
-    upg, left = DB.instance.new_upgrade(1)
+    upg, left = DB.instance.new_upgrade(1, '')
     # we have two fake uploads
     assert_equal 1, left
     assert_equal "upgrade1", upg[:filename]
     assert_equal "upgrade content 1", upg[:content]
     # get the second one
-    upg, left = DB.instance.new_upgrade(1)
+    upg, left = DB.instance.new_upgrade(1, '')
     assert_equal 0, left
     assert_equal "upgrade2", upg[:filename]
     assert_equal "upgrade content 2", upg[:content]
@@ -208,7 +208,7 @@ class TestDB < Test::Unit::TestCase
     DB_mockup_rest.failure = true
     assert_false DB.instance.new_upgrade?(1)
     assert_false DB.instance.connected?
-    upg, left = DB.instance.new_upgrade(1)
+    upg, left = DB.instance.new_upgrade(1, '')
     assert_equal nil, upg
   end
 

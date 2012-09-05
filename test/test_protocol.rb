@@ -60,7 +60,7 @@ class TestProtocol < Test::Unit::TestCase
 
   def setup
     DB.instance.instance_variable_set(:@agent_signature, Digest::MD5.digest('test-signature'))
-    DB.instance.instance_variable_set(:@factory_keys, {"RCS_BUILD-TEST" => 'test-class-key'})
+    DB.instance.instance_variable_set(:@factory_keys, {"RCS_9999999999" => 'test-class-key'})
   end
 
   def test_invalid_auth
@@ -84,10 +84,10 @@ class TestProtocol < Test::Unit::TestCase
     # Crypt_C ( Kd, NonceDevice, BuildId, InstanceId, SubType, sha1 ( BuildId, InstanceId, SubType, Cb ) )
     kd = "\x01" * 16
     nonce = "\x02" * 16
-    build = "RCS_BUILD-TEST".ljust(16, "\x00")
+    build = "RCS_9999999999".ljust(16, "\x00")
     instance = "\x03" * 20
     type = "TEST".ljust(16, "\x00")
-    sha = Digest::SHA1.digest(build + instance + type + DB.instance.factory_key_of('RCS_BUILD-TEST'))
+    sha = Digest::SHA1.digest(build + instance + type + DB.instance.factory_key_of('RCS_9999999999'))
     message = kd + nonce + build + instance + type + sha
     message = aes_encrypt(message, DB.instance.agent_signature)
 
@@ -101,7 +101,7 @@ class TestProtocol < Test::Unit::TestCase
     ks = aes_decrypt(content.slice!(0..31), DB.instance.agent_signature)
     # calculate the session key ->  K = sha1(Cb || Ks || Kd)
     # we use a schema like PBKDF1
-    k = Digest::SHA1.digest(DB.instance.factory_key_of('RCS_BUILD-TEST') + ks + kd)
+    k = Digest::SHA1.digest(DB.instance.factory_key_of('RCS_9999999999') + ks + kd)
     snonce = aes_decrypt(content, k)
 
     # check if the nonce is equal in the response
@@ -123,7 +123,6 @@ class TestProtocol < Test::Unit::TestCase
 
     content, type, rcookie = Protocol.commands('test-peer', cookie, enc)
 
-    assert_nil rcookie
     assert_equal "application/octet-stream", type
 
     assert_nothing_raised do
@@ -147,7 +146,6 @@ class TestProtocol < Test::Unit::TestCase
 
     content, type, rcookie = Protocol.commands('test-peer', cookie, enc)
 
-    assert_nil rcookie
     assert_equal "application/octet-stream", type
 
     assert_nothing_raised do
@@ -172,7 +170,6 @@ class TestProtocol < Test::Unit::TestCase
       message = [cmd].pack('I')
       enc = aes_encrypt_integrity(message, key)
       content, type, rcookie = Protocol.commands('test-peer', cookie, enc)
-      assert_nil rcookie
       assert_equal "application/octet-stream", type
       assert_nothing_raised do
         resp = aes_decrypt_integrity(content, key)
@@ -190,7 +187,6 @@ class TestProtocol < Test::Unit::TestCase
 
     enc = aes_encrypt_integrity(message, key)
     content, type, rcookie = Protocol.commands('test-peer', cookie, enc)
-    assert_nil rcookie
     assert_equal "application/octet-stream", type
     assert_nothing_raised do
       resp = aes_decrypt_integrity(content, key)
