@@ -4,6 +4,7 @@
 
 # relatives
 require_relative 'rest_response'
+require_relative '../../config/decoy'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -33,18 +34,23 @@ class RESTController
   # display a fake page in case someone is trying to connect to the collector
   # with a browser or something else
   def http_decoy_page
-    # default decoy page
+    # default decoy page, in case someone mess with the dynamic script
+    code = STATUS_OK
     page = "<html> <head>" +
            "<meta http-equiv=\"refresh\" content=\"0;url=http://www.google.com\">" +
            "</head> </html>"
-    
-    # custom decoy page
-    file_path = Dir.pwd + "/config/decoy.html"
-    page = File.read(file_path) if File.exist?(file_path)
+    options = {content_type: 'text/html'}
 
-    trace :info, "[#{@request[:peer]}] Decoy page displayed"
+    begin
+      code, page, options = DecoyPage.create @request
+    rescue Exception => e
+      trace :error, "Error creating decoy page: #{e.message}"
+      trace :fatal, e.backtrace.join("\n")
+    end
 
-    return page
+    trace :info, "[#{@request[:peer]}] Decoy page displayed [#{code}] #{options.inspect}"
+
+    return code, page, options
   end
 
   def ok(*args)
@@ -52,7 +58,7 @@ class RESTController
   end
   
   def decoy_page(callback=nil)
-    ok(http_decoy_page, {content_type: 'text/html'}, callback)
+    RESTResponse.new *http_decoy_page, callback
   end
   
   def not_found(message='', callback=nil)
@@ -119,9 +125,8 @@ class RESTController
     peer = http_get_forwarded_peer(@request[:headers])
     @request[:peer] = peer unless peer.nil?
 
-    # GO!
     response = send(@request[:action])
-    
+
     return decoy_page if response.nil?
     return response
   rescue Exception => e
@@ -150,6 +155,10 @@ class RESTController
         return :proxy
       when 'PUSH'
         return :push
+      when 'WATCHDOG'
+        return :watchdog
+      else
+        return :bad
     end
   end
 

