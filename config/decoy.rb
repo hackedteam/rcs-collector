@@ -1,6 +1,8 @@
 require 'securerandom'
+require 'rcs-common/trace'
 
 class DecoyPage
+  extend RCS::Tracer
 
   HTTP_STATUS_OK = 200
   HTTP_STATUS_REDIRECT = 302
