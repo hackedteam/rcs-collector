@@ -167,7 +167,7 @@ class Protocol
   end
 
   # Authentication phase
-  # ->  Base64 ( Crypt_C ( Pver, Kd, sha(Kc | Kd), BuildId, InstanceId, Platform ) )
+  # ->  Base64 ( Crypt_S ( Pver, Kd, sha(Kc | Kd), BuildId, InstanceId, Platform ) )
   # <-  Base64 ( Crypt_C ( Ks, sha(K), Response ) )  |  SetCookie ( SessionCookie )
   def self.authenticate_scout(peer, uri, content)
     trace :info, "[#{peer}] Authentication scout required for (#{content.length.to_s} bytes)..."
@@ -251,7 +251,7 @@ class Protocol
 
     scout = message.slice!(0).unpack('C')
     trace :debug, "[#{peer}] Auth -- scout: " << scout.to_s
-    #TODO: propagate the SCOUT flag
+    platform += "-SCOUT" if scout.first == 1
 
     flags = message.slice!(0).unpack('C')
     trace :debug, "[#{peer}] Auth -- flags: " << flags.to_s
