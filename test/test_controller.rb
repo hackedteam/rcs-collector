@@ -59,12 +59,11 @@ class TestParser < Test::Unit::TestCase
 
     c = Classy.new
     # ask for 'test', we should receive the test.app file
-    content, type = c.http_get_file(@headers, "/test")
+    content = c.http_get_file(@headers, "/test")
 
     File.delete(Dir.pwd + RCS::Collector::PUBLIC_DIR + '/test.app')
 
-    assert_equal 'this is a test app', content
-    assert_equal 'binary/octet-stream', type
+    assert_equal 302, content.status
   end
 
   def test_parser_put_file
@@ -73,10 +72,10 @@ class TestParser < Test::Unit::TestCase
     test_content = 'this is a test'
 
     # this should create the file
-    ret, type = c.http_put_file(test_file, test_content)
+    content = c.http_put_file(test_file, test_content)
 
-    assert_equal 'OK', ret
-    assert_equal 'text/html', type
+    assert_equal 200, content.status
+    assert_equal 'text/html', content.content_type
     assert_true File.exist?(Dir.pwd + RCS::Collector::PUBLIC_DIR + test_file)
     assert_equal test_content, File.read(Dir.pwd + RCS::Collector::PUBLIC_DIR + test_file)
     
@@ -91,10 +90,9 @@ class TestParser < Test::Unit::TestCase
     test_content = 'this is a test'
 
     # this should create the file
-    ret, type = c.http_put_file(test_dir + test_file, test_content)
+    content = c.http_put_file(test_dir + test_file, test_content)
 
-    assert_equal 'OK', ret
-    assert_equal 'text/html', type
+    assert_equal 200, content.status
     assert_true File.exist?(Dir.pwd + RCS::Collector::PUBLIC_DIR + test_dir + test_file)
     assert_equal test_content, File.read(Dir.pwd + RCS::Collector::PUBLIC_DIR + test_dir + test_file)
 
