@@ -104,7 +104,9 @@ class DB_rest
       content = {:bid => session[:bid],
                  :ident => session[:ident],
                  :instance => session[:instance],
-                 :subtype => session[:subtype],
+                 :platform => session[:platform],
+                 :demo => session[:demo],
+                 :scout => session[:scout],
                  :version => version,
                  :user => user,
                  :device => device,
@@ -124,7 +126,9 @@ class DB_rest
       content = {:bid => session[:bid],
                  :ident => session[:ident],
                  :instance => session[:instance],
-                 :subtype => session[:subtype],
+                 :platform => session[:platform],
+                 :demo => session[:demo],
+                 :scout => session[:scout],
                  :version => version,
                  :user => user,
                  :device => device,
@@ -224,9 +228,9 @@ class DB_rest
   end
 
   # agent identify
-  def agent_status(build_id, instance_id, subtype)
+  def agent_status(build_id, instance_id, platform, demo, scout)
     begin
-      request = {:ident => build_id, :instance => instance_id, :subtype => subtype}
+      request = {:ident => build_id, :instance => instance_id, :platform => platform, :demo => demo, :scout => scout}
       ret = rest_call('GET', '/agent/status/?' + CGI.encode_query(request))
       
       return DB::NO_SUCH_AGENT, 0 if ret.kind_of? Net::HTTPNotFound

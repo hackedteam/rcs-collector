@@ -69,7 +69,7 @@ class EvidenceTransfer
               sess = info.symbolize
 
               # ask the database the id of the agent
-              status, agent_id = DB.instance.agent_status(sess[:ident], sess[:instance], sess[:subtype])
+              status, agent_id = DB.instance.agent_status(sess[:ident], sess[:instance], sess[:platform], sess[:demo], sess[:scout])
               sess[:bid] = agent_id
               raise "agent _id cannot be ZERO" if agent_id == 0
 

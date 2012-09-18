@@ -55,7 +55,7 @@ class DB_mockup_rest
     raise if @@failure
     return {'BUILD001' => 'secret class key', 'BUILD002' => "another secret"}
   end
-  def agent_status(build_id, instance_id, subtype)
+  def agent_status(build_id, instance_id, platform, demo, scout)
     raise if @@failure
     # return status, bid
     return DB::ACTIVE_AGENT, 1
@@ -153,13 +153,13 @@ class TestDB < Test::Unit::TestCase
   end
 
   def test_agent_status
-    assert_equal [DB::ACTIVE_AGENT, 1], DB.instance.agent_status('BUILD001', 'inst', 'type')
+    assert_equal [DB::ACTIVE_AGENT, 1], DB.instance.agent_status('BUILD001', 'inst', 'type', false, false)
     # during the db failure, we must be able to continue
     DB_mockup_rest.failure = true
-    assert_equal [DB::UNKNOWN_AGENT, 0], DB.instance.agent_status('BUILD001', 'inst', 'type')
+    assert_equal [DB::UNKNOWN_AGENT, 0], DB.instance.agent_status('BUILD001', 'inst', 'type', false, false)
     assert_false DB.instance.connected?
     # now the layer is aware of the failure
-    assert_equal [DB::UNKNOWN_AGENT, 0], DB.instance.agent_status('BUILD001', 'inst', 'type')
+    assert_equal [DB::UNKNOWN_AGENT, 0], DB.instance.agent_status('BUILD001', 'inst', 'type', false, false)
   end
 
   def test_new_conf
