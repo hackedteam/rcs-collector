@@ -92,11 +92,6 @@ class NetworkController
 
 
   def self.check_element(element)
-
-    # TODO: remove in 8.3
-    # be sure to have the network certificate
-    DB.instance.get_network_cert(Config.instance.file('rcs-network')) unless File.exist? Config.instance.file('rcs-network.pem')
-
     trace :debug, "[NC] connecting to #{element['address']}:#{element['port']}"
 
     # socket for the communication
