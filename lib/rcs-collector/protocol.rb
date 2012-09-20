@@ -176,7 +176,7 @@ class Protocol
     trace :info, "[#{peer}] Authentication scout required for (#{content.length.to_s} bytes)..."
 
     # remove the base64 container
-    resp = Base64.decode64(content)
+    resp = Base64.strict_decode64(content)
 
     # align to the multiple of 16
     resp, hasRand = normalize(resp)
@@ -301,7 +301,7 @@ class Protocol
     enc_msg += SecureRandom.random_bytes(rand(128..1024))
 
     # add the base64 container
-    enc_msg = Base64.encode64(enc_msg)
+    enc_msg = Base64.strict_encode64(enc_msg)
 
     return enc_msg, 'application/octet-stream', cookie
   end

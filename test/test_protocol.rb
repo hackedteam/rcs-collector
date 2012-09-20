@@ -122,7 +122,7 @@ class TestProtocol < Test::Unit::TestCase
     message = pver + kd + sha + build + instance + platform
     message = aes_encrypt(message, DB.instance.agent_signature, PAD_NOPAD)
     message += SecureRandom.random_bytes(rand(128..1024))
-    message = Base64.encode64(message)
+    message = Base64.strict_encode64(message)
 
     content, type, cookie = Protocol.authenticate('test-peer', 'test-uri', message)
 
@@ -130,7 +130,7 @@ class TestProtocol < Test::Unit::TestCase
     assert_kind_of String, cookie
 
     # Base64 ( Crypt_C ( Ks, sha(K), Response ) )
-    content = Base64.decode64(content)
+    content = Base64.strict_decode64(content)
 
     # normalize to 16 block
     newlen = content.length - (content.length % 16)
