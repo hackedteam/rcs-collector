@@ -125,6 +125,10 @@ class NetworkController
       command = proto.get_command
       # parse the commands
       case command
+        when NCProto::PROTO_CERT
+          trace :info, "[NC] #{element['address']} is requesting the NC Certificate for setup"
+          proto.cert
+
         when NCProto::PROTO_VERSION
           ver = proto.version
           trace :info, "[NC] #{element['address']} is version #{ver}"

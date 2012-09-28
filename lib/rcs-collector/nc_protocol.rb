@@ -20,6 +20,7 @@ class NCProto
   PROTO_LOG     = 0x000F0007	# Logs from the component
   PROTO_VERSION = 0x000F0008	# Version information
   PROTO_UPGRADE = 0x000F0009	# auto-upgrade command
+  PROTO_CERT    = 0x000F000A	# request for the certificate (first-time setup)
 
   HEADER_LENGTH = 8 # two int
 
@@ -113,6 +114,18 @@ class NCProto
     header = [PROTO_NO].pack('I')
     header += [0].pack('I')
     @socket.write header
+  end
+
+  def cert
+    # read the cert
+    content = File.open(Config.instance.file('rcs-network.pem'), 'rb') {|f| f.read}
+    # len of the file
+    message = [content.size].pack('I')
+
+    # send the CERT command
+    header = [PROTO_CERT].pack('I')
+    header += [message.length].pack('I')
+    @socket.write header + message + content
   end
 
   def upgrade(content)
