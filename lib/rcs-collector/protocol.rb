@@ -102,7 +102,7 @@ class Protocol
 
     # this class does not exist
     if conf_key.nil?
-      trace :warn, "[#{peer}] Factory key not found"
+      trace :warn, "[#{peer}] Factory key #{build_id_real} not found"
       return
     end
 
@@ -221,7 +221,7 @@ class Protocol
 
     # this class does not exist
     if conf_key.nil?
-      trace :warn, "[#{peer}] Factory key not found"
+      trace :warn, "[#{peer}] Factory key #{build_id_real} not found"
       return
     end
 
