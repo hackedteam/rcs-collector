@@ -87,6 +87,9 @@ class Application
       # do not continue if we don't have the global agent signature
       end while DB.instance.agent_signature.nil?
 
+      # upgrade current repositories to the latest schema
+      EvidenceManager.instance.upgrade_all
+
       # if some instance are still in SYNC_IN_PROGRESS status, reset it to
       # SYNC_TIMEOUT. we are starting now, so no valid session can exist
       EvidenceManager.instance.sync_timeout_all

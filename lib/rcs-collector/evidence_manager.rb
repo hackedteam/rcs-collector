@@ -45,7 +45,9 @@ class EvidenceManager
       db = SQLite.open(file_from_session(session))
       db.execute("UPDATE info SET ident = '#{session[:ident]}',
                                   instance = '#{session[:instance]}',
-                                  subtype = '#{session[:subtype]}',
+                                  platform = '#{session[:platform]}',
+                                  demo = #{session[:demo] ? 1 : 0},
+                                  scout = #{session[:scout] ? 1 : 0},
                                   version = #{version},
                                   user = '#{user}',
                                   device = '#{device}',
@@ -337,7 +339,9 @@ class EvidenceManager
     # the schema of repository
     schema = ["CREATE TABLE IF NOT EXISTS info (ident CHAR(16),
                                                 instance CHAR(40),
-                                                subtype CHAR(16),
+                                                platform CHAR(16),
+                                                demo INT,
+                                                scout INT,
                                                 version INT,
                                                 user CHAR(256),
                                                 device CHAR(256),
@@ -357,7 +361,7 @@ class EvidenceManager
         count = db.execute("SELECT COUNT(*) from info;")
         # only the first time
         if count.first.first == 0
-          db.execute("INSERT INTO info VALUES ('', '', '', 0, '', '', '', 0, 0);")
+          db.execute("INSERT INTO info VALUES ('', '', '', 0, 0, 0, '', '', '', 0, 0);")
         end
       rescue Exception => e
         trace :error, "Cannot execute the statement : #{e.message}"
@@ -369,6 +373,74 @@ class EvidenceManager
     db.close
 
     return true
+  end
+
+  def upgrade_repository(path)
+    # ensure the repository directory is present
+    Dir::mkdir(REPO_DIR) if not File.directory?(REPO_DIR)
+
+    # create the repository
+    begin
+      db = SQLite.open(path)
+
+      # get the old values
+      db.results_as_hash = true
+      ret = db.execute("SELECT * FROM info;")
+      ret = ret.first
+
+      # already in the new format
+      return if ret['platform']
+
+      # delete the old table, we cannot use ALTER TABLE since sqlite does not allow
+      # renaming of columns
+      db.execute "DROP TABLE info"
+      db.close
+
+      session = {:ident => ret['ident'], :instance => ret['instance']}
+
+      # recreate the info table
+      create_repository(session)
+
+      # calculate the demo
+      demo = ret['subtype'].end_with?('-DEMO') ? 1 : 0
+      ret['subtype'].gsub!(/-DEMO/, '')
+
+      db = SQLite.open(path)
+      db.execute("UPDATE info SET ident = '#{ret['ident']}',
+                                  instance = '#{ret['instance']}',
+                                  platform = '#{ret['subtype']}',
+                                  demo = #{demo},
+                                  scout = 0,
+                                  version = #{ret['version']},
+                                  user = '#{ret['user']}',
+                                  device = '#{ret['device']}',
+                                  source = '#{ret['source']}',
+                                  sync_time = #{ret['sync_time']},
+                                  sync_status = #{ret['sync_status']};")
+
+      db.close
+    rescue Exception => e
+      trace :error, "Problems upgrading the repository file: #{e.message}"
+      trace :error, e.backtrace.join("\n")
+      return false
+    end
+
+    return true
+  end
+
+  def upgrade_all
+    begin
+      current = ''
+      Dir[REPO_DIR + '/*'].each do |e|
+        current = e
+        upgrade_repository(e)
+      end
+    rescue SQLite3::NotADatabaseException
+      trace :warn, "Corrupted repository [#{current}], deleting it..."
+      FileUtils.rm_rf current
+    rescue Exception => e
+      trace :warn, "Cannot update the repository: [#{current}]: #{e.class} #{e.message}"
+    end
   end
 
   def run(options)
@@ -412,7 +484,7 @@ class EvidenceManager
     # print the table header
     puts
     puts table_line
-    puts '|' + 'instance'.center(55) + '|' + 'subtype'.center(12) + '|' +
+    puts '|' + 'instance'.center(55) + '|' + 'platform'.center(12) + '|' +
          'last sync time'.center(25) + '|' + 'status'.center(13) + '|' +
          'logs'.center(6) + '|' + 'size'.center(12) + '|'
     puts table_line
@@ -433,7 +505,11 @@ class EvidenceManager
         size = 0
       end
 
-      puts "|#{e['ident']}_#{e['instance']}|#{e['subtype'].slice(0..11).center(12)}| #{time} |#{status.center(13)}|#{count.rjust(5)} |#{size.to_s_bytes.rjust(11)} |"
+      platform = e['platform']
+      platform += "*" if e['demo'] == 1
+      platform.prepend("@") if e['scout'] == 1
+
+      puts "|#{e['ident']}_#{e['instance']}|#{platform.slice(0..11).center(12)}| #{time} |#{status.center(13)}|#{count.rjust(5)} |#{size.to_s_bytes.rjust(11)} |"
     end
     
     # print the table footer

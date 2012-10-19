@@ -67,9 +67,11 @@ class EvidenceTransfer
               # we are doing this hack since we are passing information taken from the store
               # and passing them as they were a session
               sess = info.symbolize
+              sess[:demo] = (sess[:demo] == 1) ? true : false
+              sess[:scout] = (sess[:scout] == 1) ? true : false
 
               # ask the database the id of the agent
-              status, agent_id = DB.instance.agent_status(sess[:ident], sess[:instance], sess[:subtype])
+              status, agent_id = DB.instance.agent_status(sess[:ident], sess[:instance], sess[:platform], sess[:demo], sess[:scout])
               sess[:bid] = agent_id
               raise "agent _id cannot be ZERO" if agent_id == 0
 

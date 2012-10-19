@@ -22,7 +22,7 @@ class SessionManager
     @sessions = {}
   end
 
-  def create(bid, ident, instance, subtype, k, ip)
+  def create(bid, ident, instance, platform, demo, scout, k, ip)
 
     # create a new random cookie
     #cookie = SecureRandom.random_bytes(8).unpack('H*').first
@@ -30,14 +30,16 @@ class SessionManager
 
     # backward compatibility fix because SYMBIAN 7.x has an internal buffer of 32 chars
     # Giovanna owes me a beer... :)
-    cookie = cookie.slice(0..25) if subtype == 'SYMBIAN'
+    cookie = cookie.slice(0..25) if platform == 'SYMBIAN'
 
     # store the sessions
     @semaphore.synchronize do
       @sessions[cookie] = {:bid => bid,
                            :ident => ident,
                            :instance => instance,
-                           :subtype => subtype,
+                           :platform => platform,
+                           :demo => demo,
+                           :scout => scout,
                            :key => k,
                            :cookie => cookie,
                            :ip => ip,

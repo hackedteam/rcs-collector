@@ -206,14 +206,14 @@ class DB
   end
 
   # returns ALWAYS the status of an agent
-  def agent_status(build_id, instance_id, subtype)
+  def agent_status(build_id, instance_id, platform, demo, scout)
     # if the database has gone, reply with a fake response in order for the sync to continue
     return DB::UNKNOWN_AGENT, 0 unless @available
 
     trace :debug, "Asking the status of [#{build_id}] to the db"
 
     # ask the database the status of the agent
-    status, bid = db_rest_call :agent_status, build_id, instance_id, subtype
+    status, bid = db_rest_call :agent_status, build_id, instance_id, platform, demo, scout
 
     trace :info, "Status of [#{build_id}_#{instance_id}] is #{status}"
 

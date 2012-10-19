@@ -211,6 +211,8 @@ class CollectorController < RESTController
             z.extract(f, f_path)
           end
         end
+        # no need to keep the zip file in the repo
+        FileUtils.rm_rf output
       end
 
     rescue Exception => e

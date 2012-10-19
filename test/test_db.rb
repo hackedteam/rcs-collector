@@ -55,7 +55,7 @@ class DB_mockup_rest
     raise if @@failure
     return {'BUILD001' => 'secret class key', 'BUILD002' => "another secret"}
   end
-  def agent_status(build_id, instance_id, subtype)
+  def agent_status(build_id, instance_id, platform, demo, scout)
     raise if @@failure
     # return status, bid
     return DB::ACTIVE_AGENT, 1
@@ -153,13 +153,13 @@ class TestDB < Test::Unit::TestCase
   end
 
   def test_agent_status
-    assert_equal [DB::ACTIVE_AGENT, 1], DB.instance.agent_status('BUILD001', 'inst', 'type')
+    assert_equal [DB::ACTIVE_AGENT, 1], DB.instance.agent_status('BUILD001', 'inst', 'type', false, false)
     # during the db failure, we must be able to continue
     DB_mockup_rest.failure = true
-    assert_equal [DB::UNKNOWN_AGENT, 0], DB.instance.agent_status('BUILD001', 'inst', 'type')
+    assert_equal [DB::UNKNOWN_AGENT, 0], DB.instance.agent_status('BUILD001', 'inst', 'type', false, false)
     assert_false DB.instance.connected?
     # now the layer is aware of the failure
-    assert_equal [DB::UNKNOWN_AGENT, 0], DB.instance.agent_status('BUILD001', 'inst', 'type')
+    assert_equal [DB::UNKNOWN_AGENT, 0], DB.instance.agent_status('BUILD001', 'inst', 'type', false, false)
   end
 
   def test_new_conf
@@ -194,13 +194,13 @@ class TestDB < Test::Unit::TestCase
 
   def test_new_upgrade
     assert_true DB.instance.new_upgrade?(1)
-    upg, left = DB.instance.new_upgrade(1)
+    upg, left = DB.instance.new_upgrade(1, '')
     # we have two fake uploads
     assert_equal 1, left
     assert_equal "upgrade1", upg[:filename]
     assert_equal "upgrade content 1", upg[:content]
     # get the second one
-    upg, left = DB.instance.new_upgrade(1)
+    upg, left = DB.instance.new_upgrade(1, '')
     assert_equal 0, left
     assert_equal "upgrade2", upg[:filename]
     assert_equal "upgrade content 2", upg[:content]
@@ -208,7 +208,7 @@ class TestDB < Test::Unit::TestCase
     DB_mockup_rest.failure = true
     assert_false DB.instance.new_upgrade?(1)
     assert_false DB.instance.connected?
-    upg, left = DB.instance.new_upgrade(1)
+    upg, left = DB.instance.new_upgrade(1, '')
     assert_equal nil, upg
   end
 

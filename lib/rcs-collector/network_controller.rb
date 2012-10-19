@@ -92,11 +92,6 @@ class NetworkController
 
 
   def self.check_element(element)
-
-    # TODO: remove in 8.3
-    # be sure to have the network certificate
-    DB.instance.get_network_cert(Config.instance.file('rcs-network')) unless File.exist? Config.instance.file('rcs-network.pem')
-
     trace :debug, "[NC] connecting to #{element['address']}:#{element['port']}"
 
     # socket for the communication
@@ -130,6 +125,10 @@ class NetworkController
       command = proto.get_command
       # parse the commands
       case command
+        when NCProto::PROTO_CERT
+          trace :info, "[NC] #{element['address']} is requesting the NC Certificate for setup"
+          proto.cert
+
         when NCProto::PROTO_VERSION
           ver = proto.version
           trace :info, "[NC] #{element['address']} is version #{ver}"
