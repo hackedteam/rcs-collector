@@ -20,7 +20,7 @@ class NetworkController
   extend RCS::Tracer
 
   # the minimum requested version of a component in order to work
-  MIN_VERSION = 2012091201
+  MIN_VERSION = 2012102901
   
   def self.check
 
@@ -160,7 +160,7 @@ class NetworkController
           trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
 
           # version check for incompatibility
-          # TODO: check this for 8.2.0
+          # TODO: check this for release
           if ver.to_i < MIN_VERSION and element['type'].nil?
             result[0] = 'ERROR'
             result[1] = "Version too old, please update the component."
