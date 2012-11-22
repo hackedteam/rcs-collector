@@ -303,6 +303,8 @@ class CollectorController < RESTController
     # the format is:  /METHOD/protocol/host/url
     # e.g.: POST/http/www.googleapis.com/maps/v2...
 
+    puts request.inspect
+
     params = request[:uri].split('/')
     params.shift
     method = params.shift
@@ -327,7 +329,7 @@ class CollectorController < RESTController
       when 'GET'
         resp = http.get(url)
       when 'POST'
-        resp = http.post(url, request[:content])
+        resp = http.post(url, request[:content], {"Content-Type" => request[:headers][:content_type]})
     end
 
     return server_error(resp.body) unless resp.kind_of? Net::HTTPSuccess
