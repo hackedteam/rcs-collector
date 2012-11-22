@@ -303,8 +303,6 @@ class CollectorController < RESTController
     # the format is:  /METHOD/protocol/host/url
     # e.g.: POST/http/www.googleapis.com/maps/v2...
 
-    puts request.inspect
-
     params = request[:uri].split('/')
     params.shift
     method = params.shift
