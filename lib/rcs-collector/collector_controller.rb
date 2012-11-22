@@ -322,7 +322,8 @@ class CollectorController < RESTController
 
     http = Net::HTTP.new(host, port)
     http.use_ssl = (port == 443)
-
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    
     case method
       when 'GET'
         resp = http.get(url)
