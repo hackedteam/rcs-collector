@@ -300,22 +300,35 @@ class CollectorController < RESTController
 
   def proxy_request(request)
     # split the request to create the real proxied request
-    # the format is:  /METHOD/host/url
+    # the format is:  /METHOD/protocol/host/url
+    # e.g.: POST/http/www.googleapis.com/maps/v2...
+
     params = request[:uri].split('/')
     params.shift
     method = params.shift
+    proto = params.shift
     host = params.shift
     url = '/' + params.join('/')
     url += '?' + request[:query] if request[:query]
 
-    trace :debug, "Proxying (#{method}): host: #{host} url: #{url}"
-    http = Net::HTTP.new(host, 80)
+    port = case proto
+             when 'http'
+              80
+             when 'https'
+              443
+           end
 
+    trace :debug, "Proxying #{proto} (#{method}): host: #{host}:#{port} url: #{url}"
+
+    http = Net::HTTP.new(host, port)
+    http.use_ssl = (port == 443)
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    
     case method
       when 'GET'
         resp = http.get(url)
       when 'POST'
-        resp = http.post(url, request[:content])
+        resp = http.post(url, request[:content], {"Content-Type" => request[:headers][:content_type]})
     end
 
     return server_error(resp.body) unless resp.kind_of? Net::HTTPSuccess
