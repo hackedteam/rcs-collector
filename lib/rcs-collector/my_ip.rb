@@ -17,7 +17,10 @@ class MyIp
     address = ''
     
     Timeout::timeout(2) do
-      address = open("http://automation.whatismyip.com/n09230945.asp") {|f| f.read}
+      # http://automation.whatismyip.com/n09230945.asp  (does not work anymore)
+      # curl ifconfig.me
+      # curl icanhazip.com
+      address = open("http://bot.whatismyipaddress.com") {|f| f.read}
     end
 
     trace :info, "External ip address is: #{address}"
