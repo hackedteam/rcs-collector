@@ -150,7 +150,7 @@ class Events
         SystemStatus.my_status = SystemStatus::OK
 
         # start the HTTP server
-        if Config.instance.global['COLL_ENABLED'] then
+        if Config.instance.global['COLL_ENABLED']
           EM::start_server("0.0.0.0", port, HTTPHandler)
           trace :info, "Listening on port #{port}..."
 
@@ -169,7 +169,7 @@ class Events
         end
 
         # set up the network checks (the interval is in the config)
-        if Config.instance.global['NC_ENABLED'] then
+        if Config.instance.global['NC_ENABLED']
           # first heartbeat and checks
           EM.defer(proc{ NetworkController.check })
           # subsequent checks
@@ -179,7 +179,7 @@ class Events
       end
     rescue Exception => e
       # bind error
-      if e.message.eql? 'no acceptor' then
+      if e.message.eql? 'no acceptor'
         trace :fatal, "Cannot bind port #{port}"
         return 1
       end

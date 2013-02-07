@@ -240,7 +240,7 @@ class DB_rest
 
       bid = status['_id']
 
-      return DB::DELETED_AGENT, bid if status['deleted'] == true
+      return DB::DELETED_AGENT, bid if status['deleted']
 
       case status['status']
         when 'OPEN'

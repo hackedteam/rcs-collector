@@ -132,7 +132,7 @@ class CollectorController < RESTController
     end
 
     # if the file is not present
-    if not File.file?(file_path)
+    unless File.file?(file_path)
       # appent the extension for the arch of the requester
       arch_specific_file = uri + ext
 

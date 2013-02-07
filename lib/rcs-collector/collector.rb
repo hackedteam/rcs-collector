@@ -28,7 +28,7 @@ class Application
   def run(options)
 
     # if we can't find the trace config file, default to the system one
-    if File.exist? 'trace.yaml' then
+    if File.exist? 'trace.yaml'
       typ = Dir.pwd
       ty = 'trace.yaml'
     else
@@ -79,7 +79,7 @@ class Application
         # this case should happen only the first time we connect to the db
         # after the first successful connection, the cache will get populated
         # and even if the db is down we can continue
-        if DB.instance.agent_signature.nil? then
+        if DB.instance.agent_signature.nil?
           trace :info, "Empty global signature, cannot continue. Waiting 10 seconds and retry..."
           sleep 10
         end

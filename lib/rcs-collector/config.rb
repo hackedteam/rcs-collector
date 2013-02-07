@@ -53,22 +53,22 @@ class Config
       return false
     end
 
-    if not @global['DB_CERT'].nil? then
-      if not File.exist?(Config.instance.file('DB_CERT')) then
+    unless @global['DB_CERT'].nil? then
+      unless File.exist?(Config.instance.file('DB_CERT'))
         trace :fatal, "Cannot open certificate file [#{@global['DB_CERT']}]"
         return false
       end
     end
 
-    if not @global['DB_SIGN'].nil? then
-      if not File.exist?(Config.instance.file('DB_SIGN')) then
+    unless @global['DB_SIGN'].nil? then
+      unless File.exist?(Config.instance.file('DB_SIGN'))
         trace :fatal, "Cannot open signature file [#{@global['DB_SIGN']}]"
         return false
       end
     end
 
     # to avoid problems with checks too frequent
-    if (@global['HB_INTERVAL'] and @global['HB_INTERVAL'] < 10) or (@global['NC_INTERVAL'] and @global['NC_INTERVAL'] < 10) then
+    if (@global['HB_INTERVAL'] and @global['HB_INTERVAL'] < 10) or (@global['NC_INTERVAL'] and @global['NC_INTERVAL'] < 10)
       trace :fatal, "Interval too short, please increase it"
       return false
     end
@@ -154,11 +154,11 @@ class Config
       # login
       account = {:user => user, :pass => pass }
       resp = http.request_post('/auth/login', account.to_json, nil)
-      unless resp['Set-Cookie'].nil?
-        cookie = resp['Set-Cookie']
-      else
+      if resp['Set-Cookie'].nil?
         puts "Invalid authentication"
         return nil
+      else
+        cookie = resp['Set-Cookie']
       end
       
       # get the signature or the cert

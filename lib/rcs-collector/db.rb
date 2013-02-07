@@ -75,7 +75,7 @@ class DB
   def connect!
     trace :info, "Checking the DB connection [#{@host}]..."
     
-    if @db_rest.login(@username, @password) then
+    if @db_rest.login(@username, @password)
       @available = true
       trace :info, "Connected to [#{@host}]"
     else
@@ -121,7 +121,7 @@ class DB
 
   def cache_init
     # if the db is available, clear the cache and populate it again
-    if @available then
+    if @available
       # get the global signature (per customer) for all the agents
       bck_sig = db_rest_call :agent_signature
       @agent_signature = Digest::MD5.digest bck_sig unless bck_sig.nil?
@@ -155,7 +155,7 @@ class DB
 
     # the db is not available
     # check if the cache already exists and has some entries
-    if DBCache.length > 0 then
+    if DBCache.length > 0
       trace :info, "Loading the DB cache..."
 
       # populate the memory cache from the permanent one
@@ -191,7 +191,7 @@ class DB
     key = db_rest_call :factory_keys, build_id
 
     # save the factory key in the cache (memory and permanent)
-    if not key.nil? and not key.empty? then
+    if not key.nil? and not key.empty?
       @factory_keys[build_id] = key[build_id]
 
       # store it in the permanent cache
@@ -369,7 +369,7 @@ class DB
     DBCache.del_upgrade bid, upgrade[:id]
 
     # delete from the db only if all the file have been transmitted
-    if left == 0 then
+    if left == 0
       DBCache.del_upgrade bid
       db_rest_call :del_upgrade, bid if @available
     end
