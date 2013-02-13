@@ -25,6 +25,7 @@ class DBCache
     # the schema of the persistent cache
     schema = ["CREATE TABLE agent_signature (signature CHAR(32))",
               "CREATE TABLE network_signature (signature CHAR(32))",
+              "CREATE TABLE check_signature (signature CHAR(32))",
               "CREATE TABLE factory_keys (id CHAR(16), key CHAR(32))",
               "CREATE TABLE configs (bid CHAR(32), config BLOB)",
               "CREATE TABLE uploads (bid CHAR(32), uid CHAR(32), filename TEXT, content BLOB)",
@@ -130,6 +131,39 @@ class DBCache
     begin
       db = SQLite.open CACHE_FILE
       row = db.execute("SELECT signature FROM network_signature;")
+      signature = row.first.first
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    return signature
+  end
+
+  ##############################################
+  # CHECK SIGNATURE
+  ##############################################
+
+  def self.check_signature=(sig)
+    # ensure the db was already created, otherwise create it
+    create! unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite.open CACHE_FILE
+      db.execute("DELETE FROM check_signature;")
+      db.execute("INSERT INTO check_signature VALUES ('#{sig}');")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot save the cache: #{e.message}"
+    end
+  end
+
+  def self.check_signature
+    return nil unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite.open CACHE_FILE
+      row = db.execute("SELECT signature FROM check_signature;")
       signature = row.first.first
       db.close
     rescue Exception => e
