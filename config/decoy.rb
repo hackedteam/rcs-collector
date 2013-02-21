@@ -38,7 +38,7 @@ class DecoyPage
           "<h1>Not Found</h1>" +
           "<p>The requested URL #{request[:uri]} was not found on this server.</p>" +
           "<hr>" +
-          "<address>Apache/2.4.1 (Unix) OpenSSL/1.0.0g Server at #{request[:headers][:host]} Port 80</address>" +
+          "<address>Apache/2.4.3 (Unix) OpenSSL/1.0.0g Server at #{request[:headers][:host]} Port 80</address>" +
           "</body></html>"
 
     return HTTP_STATUS_NOT_FOUND, page, {content_type: 'text/html'}

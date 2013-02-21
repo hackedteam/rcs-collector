@@ -151,7 +151,7 @@ module SQLite_Java
     res = statement.executeQuery(query)
     meta = res.getMetaData()
 
-    while (res.next)
+    while res.next
       row = @result_as_hash ? {} : []
 
       # inspect the columns (starting from 1... java)

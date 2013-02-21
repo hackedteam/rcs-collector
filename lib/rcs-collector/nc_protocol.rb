@@ -96,7 +96,7 @@ class NCProto
 
   def config(content)
     # the element have a new config
-    unless content.nil? then
+    unless content.nil?
       # retro compatibility (260 byte array for the name)
       message = "config".ljust(260, "\x00")
       # len of the file
@@ -130,7 +130,7 @@ class NCProto
 
   def upgrade(content)
     # the element have a new upgrade package
-    unless content.nil? then
+    unless content.nil?
       # retro compatibility (260 byte array for the name)
       message = "upgrade.tar.gz".ljust(260, "\x00")
       # len of the file

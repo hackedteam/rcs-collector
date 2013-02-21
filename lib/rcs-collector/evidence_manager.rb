@@ -455,9 +455,9 @@ class EvidenceManager
     entries = []
 
     # we want just one instance
-    if options[:instance] then
+    if options[:instance]
       entry = instance_info(options[:instance])
-      if entry.nil? then
+      if entry.nil?
         puts "\nERROR: Invalid instance"
         return 1
       end
@@ -467,7 +467,7 @@ class EvidenceManager
       # take the info from all the instances
       instances.each do |e|
         entry = instance_info(e)
-        unless entry.nil? then
+        unless entry.nil?
           entry[:evidence] = evidence_info(e)
           entries << entry
         end
@@ -517,7 +517,7 @@ class EvidenceManager
     puts
 
     # detailed information only if one instance was specified
-    if options[:instance] then
+    if options[:instance]
       entry.delete(:evidence)
       # cleanup the duplicates
       entry.delete_if { |key, value| key.class != String }

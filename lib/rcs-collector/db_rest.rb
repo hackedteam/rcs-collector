@@ -212,6 +212,17 @@ class DB_rest
     end
   end
 
+  def check_signature
+    begin
+      ret = rest_call('GET', '/signature/check')
+      sign = JSON.parse(ret.body)['value']
+      return sign
+    rescue Exception => e
+      trace :error, "Error calling check_signature: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
   # used to authenticate the agents
   def factory_keys(ident = '')
     begin
@@ -240,7 +251,7 @@ class DB_rest
 
       bid = status['_id']
 
-      return DB::DELETED_AGENT, bid if status['deleted'] == true
+      return DB::DELETED_AGENT, bid if status['deleted']
 
       case status['status']
         when 'OPEN'

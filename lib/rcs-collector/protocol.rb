@@ -45,7 +45,7 @@ class Protocol
     return unless (112..112+16).include? content.length
 
     # normalize message, chopping random extra data, smaller than 16 bytes
-    content, hasRandBlock = normalize(content)    
+    content, has_rand_block = normalize(content)
     trace :debug, "[#{peer}] Auth packet size is #{content.length.to_s} bytes"
     
     # decrypt the message with the per customer signature
@@ -112,7 +112,7 @@ class Protocol
     trace :debug, "[#{peer}] Auth -- sha_check: " << sha_check.unpack('H*').to_s
 
     # identification failed
-    unless sha.eql? sha_check then
+    unless sha.eql? sha_check
       trace :warn, "[#{peer}] Invalid identification"
       return
     end
@@ -164,7 +164,7 @@ class Protocol
 
     # complete the message for the agent
     message += aes_encrypt(nonce + response, k) 
-    message += randblock() if hasRandBlock
+    message += randblock() if has_rand_block
 
     return message, 'application/octet-stream', cookie
   end
@@ -179,7 +179,7 @@ class Protocol
     resp = Base64.strict_decode64(content)
 
     # align to the multiple of 16
-    resp, hasRand = normalize(resp)
+    resp, has_rand = normalize(resp)
 
     begin
       # decrypt the message
@@ -231,7 +231,7 @@ class Protocol
     trace :debug, "[#{peer}] Auth -- sha_check: " << sha_check.unpack('H*').to_s
 
     # identification failed
-    unless sha.eql? sha_check then
+    unless sha.eql? sha_check
       trace :warn, "[#{peer}] Invalid identification"
       return
     end
@@ -311,7 +311,7 @@ class Protocol
     # check if the cookie was created correctly and if it is still valid
     valid = SessionManager.instance.check(cookie)
 
-    if valid then
+    if valid
       session = SessionManager.instance.get(cookie)
       trace :debug, "[#{session[:ip]}][#{cookie}] Authenticated"
     else
@@ -338,7 +338,7 @@ class Protocol
     end
     
     # normalize message
-    content, hasRandBlock = normalize(content)
+    content, has_rand_block = normalize(content)
 
     begin
       # decrypt the message
@@ -362,11 +362,11 @@ class Protocol
     command = command.unpack('I').first.to_i
 
     # invoke the right method for parsing
-    if not Commands::LOOKUP[command].nil? then
-      response = self.send Commands::LOOKUP[command], peer, session, message
-    else
+    if Commands::LOOKUP[command].nil?
       trace :warn, "[#{peer}][#{cookie}] unknown command [#{command}]"
       return
+    else
+      response = self.send Commands::LOOKUP[command], peer, session, message
     end
 
     begin
@@ -377,7 +377,7 @@ class Protocol
       return
     end
 
-    response += randblock() if hasRandBlock
+    response += randblock() if has_rand_block
     
     return response, 'application/octet-stream', cookie
   end
@@ -390,10 +390,10 @@ class Protocol
   # normalize a message, cutting at the shorter size multiple of 16
   def self.normalize(content)
     newlen = content.length - (content.length % 16)
-    hasRandBlock = newlen != content.length
+    has_rand_block = newlen != content.length
     
     content = content[0..(newlen -1)]
-    return content, hasRandBlock
+    return content, has_rand_block
   end
   
   # the protocol is parsed here

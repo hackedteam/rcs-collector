@@ -51,6 +51,10 @@ class DB_mockup_rest
     raise if @@failure
     return "test-network-signature"
   end
+  def check_signature
+    raise if @@failure
+    return "test-check-signature"
+  end
   def factory_keys
     raise if @@failure
     return {'BUILD001' => 'secret class key', 'BUILD002' => "another secret"}

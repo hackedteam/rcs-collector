@@ -17,8 +17,14 @@ class MyIp
     address = ''
     
     Timeout::timeout(2) do
-      address = open("http://automation.whatismyip.com/n09230945.asp") {|f| f.read}
+      # http://automation.whatismyip.com/n09230945.asp  (does not work anymore)
+      # curl ifconfig.me
+      # curl icanhazip.com
+      address = open("http://bot.whatismyipaddress.com") {|f| f.read}
     end
+
+    # check if it's a valid ip address
+    return '' if /(?:[0-9]{1,3}\.){3}[0-9]{1,3}/.match(address).nil?
 
     trace :info, "External ip address is: #{address}"
     return address

