@@ -87,6 +87,9 @@ class Application
       # do not continue if we don't have the global agent signature
       end while DB.instance.agent_signature.nil?
 
+      # be sure to have the network certificate
+      DB.instance.get_network_cert(Config.instance.file('rcs-network')) unless File.exist? Config.instance.file('rcs-network.pem')
+
       # upgrade current repositories to the latest schema
       EvidenceManager.instance.upgrade_all
 
