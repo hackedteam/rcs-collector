@@ -19,8 +19,9 @@ module Collector
 class NetworkController
   extend RCS::Tracer
 
+  # TODO: check this for release
   # the minimum requested version of a component in order to work
-  MIN_VERSION = 2013031101
+  MIN_INJECTOR_VERSION = 2013031101
   
   def self.check
 
@@ -159,9 +160,8 @@ class NetworkController
           result = proto.monitor
           trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
 
-          # version check for incompatibility
-          # TODO: check this for release
-          if ver.to_i < MIN_VERSION and element['type'].nil?
+          # version check for incompatibility (only for injectors)
+          if ver.to_i < MIN_INJECTOR_VERSION and element['type'].nil?
             result[0] = 'ERROR'
             result[1] = "Version too old, please update the component."
             trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
