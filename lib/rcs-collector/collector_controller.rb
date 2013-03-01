@@ -51,10 +51,6 @@ class CollectorController < RESTController
   end
 
   def put
-    # get the peer ip address if it was forwarded by a proxy
-    peer = http_get_forwarded_peer(@request[:headers])
-    @request[:peer] = peer unless peer.nil?
-
     # only the DB is authorized to send PUT commands
     unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUT [#{@request[:uri]}] commands!!!"
@@ -76,14 +72,13 @@ class CollectorController < RESTController
   end
 
   def proxy
-    # every request received are forwarded externally like a proxy
-
     # only the DB is authorized to send PROXY commands
     unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PROXY [#{@request[:uri]}] commands!!!"
       return decoy_page
     end
 
+    # every request received are forwarded externally like a proxy
     return proxy_request(@request)
   end
 
@@ -96,7 +91,7 @@ class CollectorController < RESTController
 
   def post
     # the REST protocol for synchronization
-    content, content_type, cookie = Protocol.parse @request[:peer], @request[:uri], @request[:cookie], @request[:content]
+    content, content_type, cookie = Protocol.parse @request[:peer], @request[:uri], @request[:cookie], @request[:content], @request[:anon_version]
     return decoy_page if content.nil?
     return ok(content, {content_type: content_type, cookie: cookie})
   end

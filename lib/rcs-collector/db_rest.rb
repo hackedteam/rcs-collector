@@ -244,26 +244,27 @@ class DB_rest
       request = {:ident => build_id, :instance => instance_id, :platform => platform, :demo => demo, :scout => scout}
       ret = rest_call('GET', '/agent/status/?' + CGI.encode_query(request))
       
-      return DB::NO_SUCH_AGENT, 0 if ret.kind_of? Net::HTTPNotFound
-      return DB::UNKNOWN_AGENT, 0 unless ret.kind_of? Net::HTTPOK
+      return {status: DB::NO_SUCH_AGENT, id: 0, good: false} if ret.kind_of? Net::HTTPNotFound
+      return {status: DB::UNKNOWN_AGENT, id: 0, good: false} unless ret.kind_of? Net::HTTPOK
 
       status = JSON.parse(ret.body)
 
-      bid = status['_id']
+      aid = status['_id']
+      good = status['good']
 
-      return DB::DELETED_AGENT, bid if status['deleted']
+      return {status: DB::DELETED_AGENT, id: aid, good: good} if status['deleted']
 
       case status['status']
         when 'OPEN'
-          return DB::ACTIVE_AGENT, bid
+          return {status: DB::ACTIVE_AGENT, id: aid, good: good}
         when 'QUEUED'
-              return DB::QUEUED_AGENT, bid
+          return {status: DB::QUEUED_AGENT, id: aid, good: good}
         when 'CLOSED'
-          return DB::CLOSED_AGENT, bid
+          return {status: DB::CLOSED_AGENT, id: aid, good: good}
       end
     rescue Exception => e
       trace :error, "Error calling agent_status: #{e.class} #{e.message}"
-      return DB::UNKNOWN_AGENT, 0
+      return {status: DB::UNKNOWN_AGENT, id: 0, good: false}
     end
   end
 
