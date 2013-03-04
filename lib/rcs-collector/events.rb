@@ -81,7 +81,7 @@ class HTTPHandler < EM::HttpServer::Server
         generation_time = Time.now
 
         begin
-          raise "invalid http protocol" if @http_protocol != 'HTTP/1.1' and @http_protocol != 'HTTP/1.0'
+          raise "Invalid http protocol (#{@http_protocol})" if @http_protocol != 'HTTP/1.1' and @http_protocol != 'HTTP/1.0'
 
           # parse all the request params
           request = prepare_request @http_request_method, @http_request_uri, @http_query_string, @http_content, @http, @peer
@@ -105,7 +105,7 @@ class HTTPHandler < EM::HttpServer::Server
           trace :error, e.message
           trace :fatal, "EXCEPTION(#{e.class}): " + e.backtrace.join("\n")
 
-          responder = RESTResponse.new(500, e.message)
+          responder = RESTResponse.new(RESTController::STATUS_BAD_REQUEST)
           reply = responder.prepare_response(self, {})
           reply
         end

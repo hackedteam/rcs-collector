@@ -1,6 +1,10 @@
 require 'securerandom'
 require 'rcs-common/trace'
 
+class FakeServer
+  SERVER_STRING = "Apache/2.4.4 (Unix) OpenSSL/1.0.0g"
+end
+
 class DecoyPage
   extend RCS::Tracer
 
@@ -31,17 +35,41 @@ class DecoyPage
     ###############################################
     # Example: standard apache not found document
     ###############################################
-    page = "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">" +
-          "<html><head>" +
-          "<title>404 Not Found</title>" +
-          "</head><body>" +
-          "<h1>Not Found</h1>" +
-          "<p>The requested URL #{request[:uri]} was not found on this server.</p>" +
-          "<hr>" +
-          "<address>Apache/2.4.3 (Unix) OpenSSL/1.0.0g Server at #{request[:headers][:host]} Port 80</address>" +
-          "</body></html>"
+    page = "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n" +
+          "<html><head>\n" +
+          "<title>404 Not Found</title>\n" +
+          "</head><body>\n" +
+          "<h1>Not Found</h1>\n" +
+          "<p>The requested URL #{request[:uri]} was not found on this server.</p>\n" +
+          "<hr>\n" +
+          "<address>#{FakeServer::SERVER_STRING} Server at #{request[:headers][:host]} Port 80</address>\n" +
+          "</body></html>\n"
 
     return HTTP_STATUS_NOT_FOUND, page, {content_type: 'text/html'}
+  end
+
+end
+
+class BadRequestPage
+  extend RCS::Tracer
+
+  def self.create(request)
+
+    ###############################################
+    # Example: standard apache bad request document
+    ###############################################
+    page = "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n" +
+          "<html><head>\n" +
+          "<title>400 Bad Request</title>\n" +
+          "</head><body>\n" +
+          "<h1>Bad Request</h1>\n" +
+          "<p>Your browser sent a request that this server could not understand.<br />\n" +
+          "</p>\n" +
+          "<hr>\n" +
+          "<address>#{FakeServer::SERVER_STRING} Server at #{request[:headers][:host]} Port 80</address>\n" +
+          "</body></html>\n"
+
+    return page, {content_type: 'text/html'}
   end
 
 end

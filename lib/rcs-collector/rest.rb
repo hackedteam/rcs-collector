@@ -23,6 +23,7 @@ class RESTController
   STATUS_BAD_REQUEST = 400
   STATUS_NOT_FOUND = 404
   STATUS_NOT_AUTHORIZED = 403
+  STATUS_METHOD_NOT_ALLOWED = 405
   STATUS_CONFLICT = 409
   STATUS_SERVER_ERROR = 500
   
@@ -53,6 +54,22 @@ class RESTController
     return code, page, options
   end
 
+  def http_bad_request
+    # default decoy page, in case someone mess with the dynamic script
+    page = ''
+    options = {content_type: 'text/html'}
+    begin
+      page, options = BadRequestPage.create @request
+    rescue Exception => e
+      trace :error, "Error creating decoy page: #{e.message}"
+      trace :fatal, e.backtrace.join("\n")
+    end
+
+    trace :info, "[#{@request[:peer]}] Bad request: #{@request.inspect}"
+
+    return page, options
+  end
+
   def ok(*args)
     RESTResponse.new STATUS_OK, *args
   end
@@ -74,12 +91,16 @@ class RESTController
     RESTResponse.new(STATUS_NOT_AUTHORIZED, message, {}, callback)
   end
 
+  def method_not_allowed(message='', callback=nil)
+    RESTResponse.new(STATUS_METHOD_NOT_ALLOWED, message, {}, callback)
+  end
+
   def conflict(message='', callback=nil)
     RESTResponse.new(STATUS_CONFLICT, message, {}, callback)
   end
 
   def bad_request(message='', callback=nil)
-    RESTResponse.new(STATUS_BAD_REQUEST, message, {}, callback)
+    RESTResponse.new STATUS_BAD_REQUEST, *http_bad_request, callback
   end
 
   def server_error(message='', callback=nil)
@@ -110,8 +131,8 @@ class RESTController
   end
   
   def act!
-    # check we have a valid session and an action
-    return decoy_page if @request[:action].nil?
+    # check we have a valid action
+    return bad_request if @request[:action].nil?
     
     # make a copy of the params, handy for access and mongoid queries
     # consolidate URI parameters
@@ -160,8 +181,10 @@ class RESTController
         return :push
       when 'WATCHDOG'
         return :watchdog
+      when 'OPTIONS', 'TRACE', 'CONNECT'
+        return :method_not_allowed
       else
-        return :bad
+        return :bad_request
     end
   end
 

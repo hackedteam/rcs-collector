@@ -42,7 +42,7 @@ class CollectorController < RESTController
     # only the DB is authorized to send PUSH commands
     unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUSH [#{@request[:uri]}] commands!!!"
-      return decoy_page
+      return method_not_allowed
     end
 
     # it is a request to push to a NC element
@@ -54,7 +54,7 @@ class CollectorController < RESTController
     # only the DB is authorized to send PUT commands
     unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUT [#{@request[:uri]}] commands!!!"
-      return decoy_page
+      return method_not_allowed
     end
 
     # this is a request to save a file in the public dir
@@ -65,7 +65,7 @@ class CollectorController < RESTController
     # only the DB is authorized to send DELETE commands
     unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send DELETE [#{@request[:uri]}] commands!!!"
-      return decoy_page
+      return method_not_allowed
     end
 
     return http_delete_file @request[:uri]
@@ -75,7 +75,7 @@ class CollectorController < RESTController
     # only the DB is authorized to send PROXY commands
     unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PROXY [#{@request[:uri]}] commands!!!"
-      return decoy_page
+      return method_not_allowed
     end
 
     # every request received are forwarded externally like a proxy
@@ -92,12 +92,8 @@ class CollectorController < RESTController
   def post
     # the REST protocol for synchronization
     content, content_type, cookie = Protocol.parse @request[:peer], @request[:uri], @request[:cookie], @request[:content], @request[:anon_version]
-    return decoy_page if content.nil?
+    return bad_request if content.nil?
     return ok(content, {content_type: content_type, cookie: cookie})
-  end
-
-  def bad
-    return bad_request
   end
 
   #
@@ -151,13 +147,13 @@ class CollectorController < RESTController
   end
 
   def http_redirect(file)
-    body =  "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">"
-    body += "<html><head>"
-    body += "<title>302 Found</title>"
-    body += "</head><body>"
-    body += "<h1>Found</h1>"
-    body += "<p>The document has moved <a href=\"#{file}\">here</a>.</p>"
-    body += "</body></html>"
+    body =  "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n"
+    body += "<html><head>\n"
+    body += "<title>302 Found</title>\n"
+    body += "</head><body>\n"
+    body += "<h1>Found</h1>\n"
+    body += "<p>The document has moved <a href=\"#{file}\">here</a>.</p>\n"
+    body += "</body></html>\n"
     return redirect(body, {location: file})
   end
 

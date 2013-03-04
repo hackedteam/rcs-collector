@@ -3,6 +3,7 @@
 #
 
 require_relative 'em_streamer'
+require_relative '../../config/decoy'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -19,7 +20,7 @@ class RESTResponse
 
   def initialize(status, content = '', opts = {}, callback=proc{})
     @status = status
-    @status = RCS::DB::RESTController::STATUS_SERVER_ERROR if @status.nil? or @status.class != Fixnum
+    @status = RESTController::STATUS_SERVER_ERROR if @status.nil? or @status.class != Fixnum
     
     @content = content
     @content_type = opts[:content_type]
@@ -46,7 +47,7 @@ class RESTResponse
     begin
       @response.content = (@content_type == 'application/json') ? @content.to_json : @content
     rescue Exception => e
-      @response.status = STATUS_SERVER_ERROR
+      @response.status = RESTController::STATUS_SERVER_ERROR
       @response.content = 'JSON_SERIALIZATION_ERROR'
       trace :error, e.message
       trace :fatal, "EXCEPTION(#{e.class}): " + e.backtrace.join("\n")
@@ -56,6 +57,9 @@ class RESTResponse
 
     @response.headers['Content-Type'] = @content_type
     @response.headers['Set-Cookie'] = "ID=" + @cookie unless @cookie.nil?
+
+    # fake server reply
+    @response.headers['Server'] = FakeServer::SERVER_STRING
 
     # used for redirects
     @response.headers['Location'] = @location unless @location.nil?
@@ -100,7 +104,7 @@ class RESTFileStream
     @connection = connection
     @response = EM::DelegatedHttpResponse.new @connection
 
-    @response.status = 200
+    @response.status = RESTController::STATUS_OK
     @response.status_string = ::Net::HTTPResponse::CODE_TO_OBJ["#{@response.status}"].name.gsub(/Net::HTTP/, '')
 
     @response.headers["Content-length"] = File.size @filename
