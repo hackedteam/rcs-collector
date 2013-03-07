@@ -122,6 +122,8 @@ module Commands
     # prepare the response
     response = command + [tot].pack('I') + time + [available.length / 4].pack('I') + available
 
+    trace :info, "[#{peer}][#{session[:cookie]}] Identification end: #{version} '#{user_id}' '#{device_id}' '#{source_id}'"
+
     return response
   end
 
