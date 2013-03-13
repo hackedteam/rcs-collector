@@ -137,7 +137,7 @@ class CollectorController < RESTController
 
     trace :info, "[#{@request[:peer]}][#{os}] serving #{file_path} (#{File.size(file_path)}) #{content_type}"
 
-    return stream_file(File.realdirpath(file_path))
+    return stream_file(File.realdirpath(file_path), proc {FileUtils.rm_rf(File.realdirpath(file_path))})
   end
 
   def http_redirect(file)
