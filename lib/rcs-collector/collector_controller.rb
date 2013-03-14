@@ -21,6 +21,7 @@ class CollectorController < RESTController
   end
 
   def head
+    trace :info, "[#{@request[:peer]}] HEAD public request #{@request[:uri]}"
     get
   end
 
@@ -141,8 +142,15 @@ class CollectorController < RESTController
   end
 
   def delete_after_serve(file, os)
-    FileUtils.rm_rf(file)
+    File.unlink(file)
     trace :info, "[#{@request[:peer]}][#{os}] served and deleted #{file}"
+  rescue Errno::EACCES
+    trace :warn, "[#{@request[:peer]}][#{os}] retrying to delete #{file}"
+    # if the file is still in use (fucking windows) retry every 0.5 seconds for at least 100 times
+    sleep 0.5
+    retry if _r = (_r || 0) + 1 and _r < 100
+  rescue Exception => e
+    trace :error, "[#{@request[:peer]}][#{os}]: #{e.class} #{e.message}"
   end
 
   def http_redirect(file)
