@@ -137,7 +137,12 @@ class CollectorController < RESTController
 
     trace :info, "[#{@request[:peer]}][#{os}] serving #{file_path} (#{File.size(file_path)}) #{content_type}"
 
-    return stream_file(File.realdirpath(file_path), proc {FileUtils.rm_rf(File.realdirpath(file_path))})
+    return stream_file(File.realdirpath(file_path), proc {delete_after_serve(File.realdirpath(file_path), os)})
+  end
+
+  def delete_after_serve(file, os)
+    FileUtils.rm_rf(file)
+    trace :info, "[#{@request[:peer]}][#{os}] served and deleted #{file}"
   end
 
   def http_redirect(file)

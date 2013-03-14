@@ -50,8 +50,8 @@ module EventMachine
               @connection.send_data(@file_io.read( len ))
             end
           else
-            succeed
             @file_io.close
+            succeed
             break
           end
         end
