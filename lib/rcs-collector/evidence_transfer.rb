@@ -73,7 +73,6 @@ class EvidenceTransfer
               # ask the database the id of the agent
               status, agent_id = DB.instance.agent_status(sess[:ident], sess[:instance], sess[:platform], sess[:demo], sess[:scout])
               sess[:bid] = agent_id
-              raise "agent _id cannot be ZERO" if agent_id == 0
 
               case status
                 when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
@@ -84,6 +83,7 @@ class EvidenceTransfer
                 when DB::QUEUED_AGENT, DB::UNKNOWN_AGENT
                   trace :warn, "[#{instance}] was queued, not transferring evidence"
                 when DB::ACTIVE_AGENT
+                  raise "agent _id cannot be ZERO" if agent_id == 0
                   # update the status in the db if it was offline when syncing
                   DB.instance.sync_update sess, info['version'], info['user'], info['device'], info['source'], info['sync_time']
 

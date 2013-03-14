@@ -20,7 +20,7 @@ class NetworkController
   extend RCS::Tracer
 
   # TODO: check this for release
-  # the minimum requested version of a component in order to work
+  # the minimum requested version of a Network Injector in order to work
   MIN_INJECTOR_VERSION = 2013031101
   
   def self.check

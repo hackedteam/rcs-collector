@@ -218,17 +218,16 @@ class DB
   # returns ALWAYS the status of an agent
   def agent_status(build_id, instance_id, platform, demo, scout)
     # if the database has gone, reply with a fake response in order for the sync to continue
-    return DB::UNKNOWN_AGENT, 0 unless @available
+    return DB::UNKNOWN_AGENT, 0, false unless @available
 
     trace :debug, "Asking the status of [#{build_id}] to the db"
 
     # ask the database the status of the agent
-    status, bid = db_rest_call :agent_status, build_id, instance_id, platform, demo, scout
+    agent = db_rest_call :agent_status, build_id, instance_id, platform, demo, scout
 
-    trace :info, "Status of [#{build_id}_#{instance_id}] is #{status}"
+    trace :info, "Status of [#{build_id}_#{instance_id}] is #{agent[:status]} (#{agent[:good] ? 'good' : 'bad'})"
 
-    # if status is nil, the db down. btw we must not fail, fake the reply
-    return (status.nil?) ? [DB::UNKNOWN_AGENT, 0] : [status, bid]
+    return [agent[:status], agent[:id], agent[:good]]
   end
 
   def agent_uninstall(agent_id)
@@ -236,19 +235,6 @@ class DB
     return unless @available
 
     db_rest_call :agent_uninstall, agent_id
-  end
-
-  def ghost_agent(build_id, instance_id)
-    return nil unless @available
-
-    id = build_id.to_i
-    build_id = "RCS_%010d" % id
-
-    trace :info, "Request for a ghost agent: #{build_id} (#{instance_id})"
-
-    content = db_rest_call :agent_ghost, build_id, instance_id
-
-    return content
   end
 
   def sync_start(session, version, user, device, source, time)

