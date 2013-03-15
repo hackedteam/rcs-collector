@@ -84,7 +84,7 @@ class CollectorController < RESTController
   def post
     # the REST protocol for synchronization
     content, content_type, cookie = Protocol.parse @request[:peer], @request[:uri], @request[:cookie], @request[:content], @request[:anon_version]
-    return bad_request if content.nil?
+    return decoy_page if content.nil?
     return ok(content, {content_type: content_type, cookie: cookie})
   end
 
