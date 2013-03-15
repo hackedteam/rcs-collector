@@ -17,12 +17,17 @@ class CollectorController < RESTController
     # serve the requested file
     return http_get_file(@request[:headers], @request[:uri])
   rescue Exception => e
+    trace :error, "HTTP GET: " + e.message
     return decoy_page
   end
 
   def head
     trace :info, "[#{@request[:peer]}] HEAD public request #{@request[:uri]}"
-    get
+    # serve the requested file
+    return http_get_file(@request[:headers], @request[:uri], false)
+  rescue Exception => e
+    trace :error, "HTTP HEAD: " + e.message
+    return decoy_page
   end
 
   def push
@@ -88,7 +93,7 @@ class CollectorController < RESTController
   #
 
   # returns the content of a file in the public directory
-  def http_get_file(headers, uri)
+  def http_get_file(headers, uri, delete=true)
 
     # retrieve the Operating System and app specific extension of the requester
     os, ext = http_get_os(headers)
@@ -138,7 +143,7 @@ class CollectorController < RESTController
 
     trace :info, "[#{@request[:peer]}][#{os}] serving #{file_path} (#{File.size(file_path)}) #{content_type}"
 
-    return stream_file(File.realdirpath(file_path), proc {delete_after_serve(File.realdirpath(file_path), os)})
+    return stream_file(File.realdirpath(file_path), proc {delete_after_serve(File.realdirpath(file_path), os) if delete})
   end
 
   def delete_after_serve(file, os)
