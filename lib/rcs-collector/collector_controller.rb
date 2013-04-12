@@ -148,15 +148,18 @@ class CollectorController < RESTController
 
   def delete_after_serve(file, os)
     return if Config.instance.global['DONT_DELETE_AFTER_SERVE']
-    File.unlink(file)
-    trace :info, "[#{@request[:peer]}][#{os}] served and deleted #{file}"
-  rescue Errno::EACCES
-    trace :warn, "[#{@request[:peer]}][#{os}] retrying to delete #{file}"
-    # if the file is still in use (fucking windows) retry every 0.5 seconds for at least 100 times
-    sleep 0.5
-    retry if _r = (_r || 0) + 1 and _r < 100
-  rescue Exception => e
-    trace :error, "[#{@request[:peer]}][#{os}]: #{e.class} #{e.message}"
+    Thread.new do
+      begin
+        File.unlink(file)
+        trace :info, "[#{@request[:peer]}][#{os}] served and deleted #{file}"
+      rescue Errno::EACCES
+        trace :warn, "[#{@request[:peer]}][#{os}] retrying to delete #{file}"
+        # if the file is still in use (fucking windows) retry for at least 100 times
+        retry if _r = (_r || 0) + 1 and _r < 100
+      rescue Exception => e
+        trace :error, "[#{@request[:peer]}][#{os}]: #{e.class} #{e.message}"
+      end
+    end
   end
 
   def http_redirect(file)
