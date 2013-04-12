@@ -190,13 +190,13 @@ class Protocol
   def self.authenticate_scout(peer, uri, content, anon_version)
     trace :info, "[#{peer}] Authentication scout required for (#{content.length.to_s} bytes)..."
 
-    # remove the base64 container
-    resp = Base64.strict_decode64(content)
-
-    # align to the multiple of 16
-    resp, has_rand = normalize(resp)
-
     begin
+      # remove the base64 container
+      resp = Base64.strict_decode64(content)
+
+      # align to the multiple of 16
+      resp, has_rand = normalize(resp)
+
       # decrypt the message
       message = aes_decrypt(resp, DB.instance.agent_signature, RCS::Crypt::PAD_NOPAD)
     rescue Exception => e
