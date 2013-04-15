@@ -155,6 +155,7 @@ class CollectorController < RESTController
       rescue Errno::EACCES
         trace :warn, "[#{@request[:peer]}][#{os}] retrying to delete #{file}"
         # if the file is still in use (fucking windows) retry for at least 100 times
+        sleep 0.5
         retry if _r = (_r || 0) + 1 and _r < 100
       rescue Exception => e
         trace :error, "[#{@request[:peer]}][#{os}]: #{e.class} #{e.message}"
