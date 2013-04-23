@@ -16,10 +16,10 @@ task :default => :test
 def execute(message)
   print message + '...'
   STDOUT.flush
-  if block_given? then
-    yield
-  end
-  puts ' ok'
+  yield if block_given?
+  puts 'ok'
+rescue Exception => e
+  puts "error: #{e.message}"
 end
 
 
@@ -83,7 +83,7 @@ task :protect do
     # we have to change the current dir, otherwise rubyencoder
     # will recreate the lib/rcs-collector structure under rcs-collector-release
     Dir.chdir "lib/rcs-collector/"
-    system "#{RUBYENC} -o ../rcs-collector-release --ruby 1.9.2 *.rb"
+    system("#{RUBYENC} -o ../rcs-collector-release --ruby 1.9.2 *.rb") || raise("Econding failed.")
     Dir.chdir "../.."
   end
 end
