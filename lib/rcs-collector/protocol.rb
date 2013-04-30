@@ -27,7 +27,7 @@ class Protocol
   extend RCS::Collector::Commands
 
   MIN_ANON_VERSION = '2013031101'
-  PLATFORMS = ["WINDOWS", "WINMO", "OSX", "IOS", "BLACKBERRY", "SYMBIAN", "ANDROID", "LINUX"]
+  PLATFORMS = ["WINDOWS", "WINMO", "OSX", "IOS", "BLACKBERRY", "SYMBIAN", "ANDROID", "LINUX", "WINPHONE"]
 
   def self.authenticate(peer, uri, content, anon_version)
     # choose between the correct authentication to use based on the packet size
