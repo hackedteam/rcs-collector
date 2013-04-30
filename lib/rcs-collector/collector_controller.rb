@@ -150,6 +150,7 @@ class CollectorController < RESTController
     return if Config.instance.global['DONT_DELETE_AFTER_SERVE']
     Thread.new do
       begin
+        sleep 10
         File.unlink(file)
         trace :info, "[#{@request[:peer]}][#{os}] served and deleted #{file}"
       rescue Errno::EACCES
