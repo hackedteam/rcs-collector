@@ -292,7 +292,7 @@ class Protocol
     # bad and good -> NOT OK
     # this is done to prevent compromised agent to sync on new (good) anons
     if (good ^ (anon_version >= MIN_ANON_VERSION))
-      trace :warn, "Agent trying to sync on wrong anon (#{good}, #{anon_version})"
+      trace :warn, "[#{peer}] Agent trying to sync on wrong anon (#{good}, #{anon_version})"
       return
     end
 
