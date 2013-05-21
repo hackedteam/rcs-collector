@@ -36,7 +36,7 @@ class EvidenceTransfer
 
       # for each instance get the ids we have and send them
       EvidenceManager.instance.instances.each do |instance|
-        # one thread per instance, but check if an instance is already under processing
+        # one thread per instance, but check if an instance is already processing
         @threads[instance] ||= Thread.new do
           begin
 
