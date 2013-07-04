@@ -259,7 +259,7 @@ class CollectorController < RESTController
 
     return 'unknown', '' if user_agent.nil?
 
-    trace :debug, "[#{@request[:peer]}] #{user_agent}"
+    trace :debug, "[#{@request[:peer]}] User Agent: #{user_agent}"
     
     # return the correct type and extension
     return 'osx', '.app' if user_agent['MacOS'] or user_agent['Macintosh']
