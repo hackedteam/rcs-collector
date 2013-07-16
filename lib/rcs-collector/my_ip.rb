@@ -24,7 +24,7 @@ class MyIp
     end
 
     # check if it's a valid ip address
-    return '' if /(?:[0-9]{1,3}\.){3}[0-9]{1,3}/.match(address).nil?
+    return '' if /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.match(address).nil?
 
     trace :info, "External ip address is: #{address}"
     return address
