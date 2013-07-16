@@ -316,7 +316,15 @@ class EvidenceManager
 
   def purge(instance)
     entry = instance_info(instance)
+
+    # delete invalid repos
+    if entry.nil?
+      File.delete(REPO_DIR + '/' + instance)
+      return
+    end
+
     evidence = evidence_info(instance)
+
     # IN_PROGRESS sync must be preserved
     # evidences must be preserved
     File.delete(REPO_DIR + '/' + instance) if entry['sync_status'] != SYNC_IN_PROGRESS and evidence.length == 0
