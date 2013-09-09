@@ -163,6 +163,17 @@ class TestDB < Test::Unit::TestCase
     assert_equal [DB::UNKNOWN_AGENT, 0, false], DB.instance.agent_status('BUILD001', 'inst', 'type', false, false)
   end
 
+  def test_agent_status_with_cache_and_db_offline
+    DB.instance.cache_init
+    DB.instance.instance_variable_set '@available', false
+    assert_equal [DB::UNKNOWN_AGENT, 0, true], DB.instance.agent_status('BUILD001', 'inst', 'type', false, false)
+  end
+
+  def test_agent_status_without_cache_and_db_offline
+    DB.instance.instance_variable_set '@available', false
+    assert_equal [DB::UNKNOWN_AGENT, 0, false], DB.instance.agent_status('BUILD001', 'inst', 'type', false, false)
+  end
+
   def test_new_conf
     assert_true DB.instance.new_conf?(1)
     assert_equal "this is the binary config", DB.instance.new_conf(1)

@@ -224,6 +224,7 @@ class DB
     # if the database has gone, reply with a fake response in order for the sync to continue
     unless @available
       cached_good_value = DBCache.factory_keys[build_id]['good'] rescue false
+      cached_good_value = cached_good_value.to_s == 'true' ? true : false
       return [DB::UNKNOWN_AGENT, 0, cached_good_value]
     end
 
