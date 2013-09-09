@@ -156,10 +156,6 @@ class Protocol
     response = [Commands::PROTO_NO].pack('I')
     # what to do based on the agent status
     case status
-      when DB::UNKNOWN_AGENT
-        # if not sure, close the connection
-        trace :info, "[#{peer}] Unknown agent status, closing..."
-        return
       when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
         response = [Commands::PROTO_UNINSTALL].pack('I')
         trace :info, "[#{peer}] Uninstall command sent (#{status})"
@@ -167,7 +163,7 @@ class Protocol
       when DB::QUEUED_AGENT
         response = [Commands::PROTO_NO].pack('I')
         trace :warn, "[#{peer}] was queued for license limit exceeded"
-      when DB::ACTIVE_AGENT
+      when DB::ACTIVE_AGENT, DB::UNKNOWN_AGENT
         # everything is ok or the db is not connected, proceed
         response = [Commands::PROTO_OK].pack('I')
 

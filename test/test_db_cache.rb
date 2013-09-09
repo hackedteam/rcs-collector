@@ -82,8 +82,8 @@ class TestCache < Test::Unit::TestCase
   end
 
   def test_factory_keys
-    entries = {'BUILD001' => 'secret class key', 'BUILD002' => "another secret"}
-    entry = {'BUILD003' => 'top secret'}
+    entries = {'BUILD001' => {'key' => 'secret class key', 'good' => true}, 'BUILD002' => {'key' => 'another secret', 'good' => true}}
+    entry = {'BUILD003' => {'key' => 'top secret', 'good' => true}}
 
     # since the cache is not initialized,
     # the call should create it and store the value
@@ -97,9 +97,9 @@ class TestCache < Test::Unit::TestCase
     assert_equal 3, DBCache.length
 
     # check the correct values
-    assert_equal "top secret", DBCache.factory_keys['BUILD003']
-    assert_equal "another secret", DBCache.factory_keys['BUILD002']
-    assert_equal "secret class key", DBCache.factory_keys['BUILD001']
+    assert_equal "top secret", DBCache.factory_keys['BUILD003']['key']
+    assert_equal "another secret", DBCache.factory_keys['BUILD002']['key']
+    assert_equal "secret class key", DBCache.factory_keys['BUILD001']['key']
   end
 
   def test_config

@@ -85,7 +85,7 @@ class TestProtocol < Test::Unit::TestCase
     # and mock it for the tests
     DB.instance.instance_variable_set(:@db_rest, DB_mockup_protocol_rest.new)
     DB.instance.instance_variable_set(:@agent_signature, Digest::MD5.digest('test-signature'))
-    DB.instance.instance_variable_set(:@factory_keys, {"RCS_9999999999" => 'test-class-key'})
+    DB.instance.instance_variable_set(:@factory_keys, {"RCS_9999999999" => {'key' => 'test-class-key', 'good' => true}})
     # every test begins with the db connected
     DB_mockup_rest.failure = false
     DB.instance.connect!
