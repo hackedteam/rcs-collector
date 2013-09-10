@@ -199,17 +199,22 @@ class DB
 
     trace :info, "Cache Miss: factory key for #{build_id}, asking to the db..."
 
-    return nil unless @available
-    
+    unless @available
+      trace :warn, "Db unavailable. Cannot retrieve missed key."
+      return nil
+    end
+
     # ask to the db the factory key
     resp = db_rest_call :factory_keys, build_id
 
     # save the factory key in the cache (memory and permanent)
-    if valid_factory_key?(resp)
+    if resp && valid_factory_key?(resp[build_id])
+      trace :info, "Received key for #{build_id}. Saving into cache."
+
       @factory_keys[build_id] = resp[build_id]
 
       # store it in the permanent cache
-      DBCache.add_factory_keys resp
+      DBCache.add_factory_keys(resp)
 
       # return the key
       return Digest::MD5.digest resp[build_id]['key']
