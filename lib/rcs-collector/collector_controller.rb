@@ -5,8 +5,8 @@ require 'rcs-common/mime'
 require 'resolv'
 require 'socket'
 
-require 'zip/zip'
-require 'zip/zipfilesystem'
+require 'zip'
+require 'zip/filesystem'
 
 module RCS
 module Collector
@@ -211,7 +211,7 @@ class CollectorController < RESTController
       # if the file is a zip file, extract it into a subfolder
       if output.end_with?('.zip')
         trace :info, "Extracting #{output}..."
-        Zip::ZipFile.open(output) do |z|
+        Zip::File.open(output) do |z|
           z.each do |f|
             f_path = File.join(File.dirname(output), File.basename(output, '.zip'), f.name)
             trace :info, "Creating #{f_path}"
