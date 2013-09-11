@@ -10,7 +10,7 @@ gem 'eventmachine', ">= 1.0.0.beta.4"
 gem 'em-http-server', ">= 0.1.3"
 gem 'persistent_http'
 gem 'uuidtools'
-gem 'rubyzip'
+gem 'rubyzip', '=0.9.9'
 
 #platforms :ruby do
   gem 'sqlite3'
