@@ -1,3 +1,4 @@
+#encoding: utf-8
 #
 #  Network Controller to update the status of the components in the RCS network
 #
@@ -230,6 +231,8 @@ class NetworkController
       component = "RCS::NIA::" + elem['name']
       internal_component = 'injector'
     end
+
+    message.encode!('UTF-8', 'binary', invalid: :replace, undef: :replace, replace: '')
 
     trace :info, "[NC] [#{component}] #{elem['address']} #{status} #{message}"
 
