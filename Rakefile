@@ -44,10 +44,10 @@ task :unprotect do
     Dir[Dir.pwd + '/lib/rcs-collector-release/*'].each do |f|
       File.delete(f) unless File.directory?(f)
     end
-    Dir[Dir.pwd + '/lib/rcs-collector-release/rgloader/*'].each do |f|
+    Dir[Dir.pwd + '/lib/rgloader/*'].each do |f|
       File.delete(f) unless File.directory?(f)
     end
-    Dir.delete(Dir.pwd + '/lib/rcs-collector-release/rgloader') if File.exist?(Dir.pwd + '/lib/rcs-collector-release/rgloader')
+    Dir.delete(Dir.pwd + '/lib/rgloader') if File.exist?(Dir.pwd + '/lib/rgloader')
     Dir.delete(Dir.pwd + '/lib/rcs-collector-release') if File.exist?(Dir.pwd + '/lib/rcs-collector-release')
   end
 end
