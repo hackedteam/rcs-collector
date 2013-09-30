@@ -57,8 +57,8 @@ case RbConfig::CONFIG['host_os']
     RUBYENCPATH = '/Applications/Development/RubyEncoder.app/Contents/MacOS'
     RUBYENC = "#{RUBYENCPATH}/rgencoder"
   when /mingw/
-    RUBYENCPATH = 'C:/Program Files (x86)/RubyEncoder15'
-    RUBYENC = "\"C:\\Program Files (x86)\\RubyEncoder15\\rgencoder.exe\""
+    RUBYENCPATH = 'C:/Program Files (x86)/RubyEncoder'
+    RUBYENC = "\"C:\\Program Files (x86)\\RubyEncoder\\rgencoder.exe\""
 end
 
 desc "Create the encrypted code for release"
@@ -72,9 +72,9 @@ task :protect do
     RGPATH = RUBYENCPATH + '/Loaders'
     Dir.mkdir(Dir.pwd + '/lib/rgloader')
     files = Dir[RGPATH + '/**/**']
-    # keep only the interesting files (1.9.3 windows, macos)
+    # keep only the interesting files (2.0.x windows, macos)
     files.delete_if {|v| v.match(/bsd/i) or v.match(/linux/i)}
-    files.keep_if {|v| v.match(/193/) or v.match(/loader.rb/) }
+    files.keep_if {|v| v.match(/20/) or v.match(/loader.rb/) }
     files.each do |f|
       FileUtils.cp(f, Dir.pwd + '/lib/rgloader')
     end
@@ -84,7 +84,7 @@ task :protect do
     # we have to change the current dir, otherwise rubyencoder
     # will recreate the lib/rcs-collector structure under rcs-collector-release
     Dir.chdir "lib/rcs-collector/"
-    system("#{RUBYENC} --stop-on-error --encoding UTF-8 -o ../rcs-collector-release --ruby 1.9.3 *.rb") || raise("Econding failed.")
+    system("#{RUBYENC} --stop-on-error --encoding UTF-8 -o ../rcs-collector-release --ruby 2.0.0 *.rb") || raise("Econding failed.")
     Dir.chdir "../.."
   end
 end

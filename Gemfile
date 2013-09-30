@@ -4,9 +4,9 @@ source "http://rubygems.org"
 # Specify your gem's dependencies in rcs-collector.gemspec
 #gemspec
 
-gem "rcs-common", ">= 8.2.0", :path => "../rcs-common"
+gem "rcs-common", ">= 9.0.0", :path => "../rcs-common"
 
-gem 'eventmachine', ">= 1.0.0.beta.4"
+gem 'eventmachine', ">= 1.0.3"
 gem 'em-http-server', ">= 0.1.3"
 gem 'persistent_http'
 gem 'uuidtools'
