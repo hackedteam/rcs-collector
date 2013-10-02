@@ -40,28 +40,20 @@ class EvidenceTransfer
         @threads[instance] ||= Thread.new do
           begin
 
-            # get all the ids of the evidence for this instance
-            evidences = EvidenceManager.instance.evidence_ids(instance)
+            #trace :debug, "Transferring evidence for: #{instance}"
 
             # get the info from the instance
             info = EvidenceManager.instance.instance_info instance
-            raise "Cannot read info for #{instance}" if info.nil?
-
-            # compact the database if there are no evidence
-            EvidenceManager.instance.compact(instance) if evidences.empty? and info['sync_status'] != EvidenceManager::SYNC_IN_PROGRESS
-
-            # try to purge repositories that are too old (15 days)
-            if Time.now.getutc.to_i - info['sync_time'] > 15*86400
-              trace :info, "Auto purging old repo [#{instance}]"
-              EvidenceManager.instance.purge(instance)
+            if info.nil?
+              EvidenceManager.instance.purge(instance, {force: true})
+              raise "Invalid repo, deleting"
             end
+
+            # get all the ids of the evidence for this instance
+            evidences = EvidenceManager.instance.evidence_ids(instance)
 
             # only perform the job if we have something to transfer
             unless evidences.empty?
-
-              # get the info from the instance
-              info = EvidenceManager.instance.instance_info instance
-              raise "Cannot read info for #{instance}" if info.nil?
 
               # make sure that the symbols are present
               # we are doing this hack since we are passing information taken from the store
@@ -76,10 +68,8 @@ class EvidenceTransfer
 
               case status
                 when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
-                  trace :info, "[#{instance}] has status (#{status}) deleting queued evidence"
-                  while (id = evidences.shift)
-                    EvidenceManager.instance.del_evidence(id, instance)
-                  end
+                  trace :info, "[#{instance}] has status (#{status}) deleting repository"
+                  EvidenceManager.instance.purge(instance, {force: true})
                 when DB::QUEUED_AGENT, DB::UNKNOWN_AGENT
                   trace :warn, "[#{instance}] was queued, not transferring evidence"
                 when DB::ACTIVE_AGENT
@@ -98,12 +88,18 @@ class EvidenceTransfer
             trace :error, e.backtrace
           ensure
             # job done, exit
-            @threads[instance] = nil
+            @threads.delete(instance)
+
+            #trace :debug, "Job for #{instance} is over (#{@threads.keys.size} working threads)"
+
             Thread.kill Thread.current
           end
         end
       end
     end
+  rescue Exception => e
+    trace :error, "Evidence transfer error: #{e.message}"
+    retry
   end
 
   def transfer(instance, id, left)
