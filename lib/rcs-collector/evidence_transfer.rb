@@ -40,7 +40,7 @@ class EvidenceTransfer
         # get the info and evidence from the instance
         evidence, info = get_evidence(instance)
 
-        next if evidence.empty?
+        next if evidence.empty? or info.nil?
 
         # one thread per instance, but check if an instance is already processing
         @threads[instance] ||= Thread.new do
@@ -96,10 +96,7 @@ class EvidenceTransfer
 
   def get_evidence(instance)
     info = EvidenceManager.instance.instance_info instance
-    if info.nil?
-      EvidenceManager.instance.purge(instance, {force: true})
-      raise "Invalid repo, deleting #{instance}"
-    end
+    EvidenceManager.instance.purge(instance, {force: true}) if info.nil?
 
     # get all the ids of the evidence for this instance
     evidence = EvidenceManager.instance.evidence_ids(instance)
