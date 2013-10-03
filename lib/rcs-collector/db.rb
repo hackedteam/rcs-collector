@@ -227,13 +227,9 @@ class DB
   # returns ALWAYS the status of an agent
   def agent_status(build_id, instance_id, platform, demo, scout)
     # if the database has gone, reply with a fake response in order for the sync to continue
-    unless @available
-      cached_good_value = DBCache.factory_keys[build_id]['good'] rescue false
-      cached_good_value = cached_good_value.to_s == 'true' ? true : false
-      return [DB::UNKNOWN_AGENT, 0, cached_good_value]
-    end
+    return agent_cached_status(build_id) unless @available
 
-    trace :debug, "Asking the status of [#{build_id}] to the db"
+    trace :debug, "Asking the status of [#{build_id}_#{instance_id}] to the db"
 
     # ask the database the status of the agent
     agent = db_rest_call :agent_status, build_id, instance_id, platform, demo, scout
@@ -241,6 +237,15 @@ class DB
     trace :info, "Status of [#{build_id}_#{instance_id}] is #{agent[:status]} (#{agent[:good] ? 'good' : 'bad'})"
 
     return [agent[:status], agent[:id], agent[:good]]
+  rescue Exception => e
+    trace :info, "Cannot determine status of [#{build_id}_#{instance_id}], getting status from cache"
+    return agent_cached_status(build_id)
+  end
+
+  def agent_cached_status(build_id)
+    cached_good_value = DBCache.factory_keys[build_id]['good'] rescue false
+    cached_good_value = cached_good_value.to_s == 'true' ? true : false
+    return [DB::UNKNOWN_AGENT, 0, cached_good_value]
   end
 
   def agent_uninstall(agent_id)
