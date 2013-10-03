@@ -36,62 +36,54 @@ class EvidenceTransfer
 
       # for each instance get the ids we have and send them
       EvidenceManager.instance.instances.each do |instance|
+
+        # get the info and evidence from the instance
+        evidence, info = get_evidence(instance)
+
+        next if evidence.empty?
+
         # one thread per instance, but check if an instance is already processing
         @threads[instance] ||= Thread.new do
           begin
 
-            #trace :debug, "Transferring evidence for: #{instance}"
+            trace :info, "Transferring evidence for: #{instance}"
 
-            # get the info from the instance
-            info = EvidenceManager.instance.instance_info instance
-            if info.nil?
-              EvidenceManager.instance.purge(instance, {force: true})
-              raise "Invalid repo, deleting"
+            # make sure that the symbols are present
+            # we are doing this hack since we are passing information taken from the store
+            # and passing them as they were a session
+            sess = info.symbolize
+            sess[:demo] = (sess[:demo] == 1) ? true : false
+            sess[:scout] = (sess[:scout] == 1) ? true : false
+
+            # ask the database the id of the agent
+            status, agent_id = DB.instance.agent_status(sess[:ident], sess[:instance], sess[:platform], sess[:demo], sess[:scout])
+            sess[:bid] = agent_id
+
+            case status
+              when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
+                trace :info, "[#{instance}] has status (#{status}) deleting repository"
+                EvidenceManager.instance.purge(instance, {force: true})
+              when DB::QUEUED_AGENT, DB::UNKNOWN_AGENT
+                trace :warn, "[#{instance}] was queued, not transferring evidence"
+              when DB::ACTIVE_AGENT
+                raise "agent _id cannot be ZERO" if agent_id == 0
+                # update the status in the db if it was offline when syncing
+                DB.instance.sync_update sess, info['version'], info['user'], info['device'], info['source'], info['sync_time']
+
+                # transfer all the evidence
+                while (id = evidence.shift)
+                  self.transfer instance, id, evidence.count
+                end
             end
 
-            # get all the ids of the evidence for this instance
-            evidences = EvidenceManager.instance.evidence_ids(instance)
-
-            # only perform the job if we have something to transfer
-            unless evidences.empty?
-
-              # make sure that the symbols are present
-              # we are doing this hack since we are passing information taken from the store
-              # and passing them as they were a session
-              sess = info.symbolize
-              sess[:demo] = (sess[:demo] == 1) ? true : false
-              sess[:scout] = (sess[:scout] == 1) ? true : false
-
-              # ask the database the id of the agent
-              status, agent_id = DB.instance.agent_status(sess[:ident], sess[:instance], sess[:platform], sess[:demo], sess[:scout])
-              sess[:bid] = agent_id
-
-              case status
-                when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
-                  trace :info, "[#{instance}] has status (#{status}) deleting repository"
-                  EvidenceManager.instance.purge(instance, {force: true})
-                when DB::QUEUED_AGENT, DB::UNKNOWN_AGENT
-                  trace :warn, "[#{instance}] was queued, not transferring evidence"
-                when DB::ACTIVE_AGENT
-                  raise "agent _id cannot be ZERO" if agent_id == 0
-                  # update the status in the db if it was offline when syncing
-                  DB.instance.sync_update sess, info['version'], info['user'], info['device'], info['source'], info['sync_time']
-
-                  # transfer all the evidence
-                  while (id = evidences.shift)
-                    self.transfer instance, id, evidences.count
-                  end
-              end
-            end
           rescue Exception => e
             trace :error, "Error processing evidences: #{e.message}"
             trace :error, e.backtrace
           ensure
+            trace :debug, "Job for #{instance} is over (#{@threads.keys.size}/#{Thread.list.count} working threads)"
+
             # job done, exit
             @threads.delete(instance)
-
-            #trace :debug, "Job for #{instance} is over (#{@threads.keys.size} working threads)"
-
             Thread.kill Thread.current
           end
         end
@@ -100,6 +92,19 @@ class EvidenceTransfer
   rescue Exception => e
     trace :error, "Evidence transfer error: #{e.message}"
     retry
+  end
+
+  def get_evidence(instance)
+    info = EvidenceManager.instance.instance_info instance
+    if info.nil?
+      EvidenceManager.instance.purge(instance, {force: true})
+      raise "Invalid repo, deleting #{instance}"
+    end
+
+    # get all the ids of the evidence for this instance
+    evidence = EvidenceManager.instance.evidence_ids(instance)
+
+    return evidence, info
   end
 
   def transfer(instance, id, left)
