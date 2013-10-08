@@ -80,9 +80,6 @@ module Commands
     # response to the request
     command = [PROTO_OK].pack('I')
 
-    # the time of the server to synchronize the clocks
-    time = [now].pack('Q')
-    
     available = ""
     # ask to the db if there are any availables for the agent
     # the results are actually downloaded and saved locally
@@ -115,6 +112,9 @@ module Commands
       available += [PROTO_FILESYSTEM].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New filesystems"
     end
+
+    # the time of the server to synchronize the clocks
+    time = [Time.now.getutc.to_i].pack('Q')
 
     # calculate the total size of the response
     tot = time.length + 4 + available.length
