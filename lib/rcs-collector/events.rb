@@ -43,7 +43,7 @@ class HTTPHandler < EM::HttpServer::Server
     @network_peer = @peer
 
     # timeout on the socket
-    set_comm_inactivity_timeout 30
+    set_comm_inactivity_timeout 300
 
     trace :debug, "Connection from #{@network_peer}:#{@peer_port}"
   end

@@ -278,6 +278,21 @@ class DB_rest
     end
   end
 
+  def agent_availables(session)
+    begin
+      ret = rest_call('GET', "/agent/availables/#{session[:bid]}")
+
+      if ret.kind_of? Net::HTTPNotFound then
+        return []
+      end
+
+      return JSON.parse(ret.body)
+    rescue Exception => e
+      trace :error, "Error calling availables: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
   def new_conf(bid)
     begin
       ret = rest_call('GET', "/agent/config/#{bid}")

@@ -248,6 +248,12 @@ class DB
     return [DB::UNKNOWN_AGENT, 0, cached_good_value]
   end
 
+  def agent_availables(session)
+    return [] unless @available
+
+    db_rest_call :agent_availables, session
+  end
+
   def agent_uninstall(agent_id)
     # database is down, continue
     return unless @available
