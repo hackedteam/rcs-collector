@@ -64,7 +64,7 @@ class Application
 
       begin
         # test the connection to the database
-        if DB.instance.connect! then
+        if DB.instance.connect!(:carrier) then
           trace :info, "Database connection succeeded"
         else
           trace :warn, "Database connection failed, retry..."

@@ -26,6 +26,10 @@ class Network
   
   def self.check
 
+    # if the database connection has gone
+    # try to re-login to the database again
+    DB.instance.connect!(:controller) if not DB.instance.connected?
+
     # retrieve the lists from the db
     elements = DB.instance.proxies
     elements += DB.instance.collectors

@@ -60,9 +60,12 @@ class Application
       # config file parsing
       return 1 unless Config.instance.load_from_file
 
+      # get the external ip address
+      $external_address = MyIp.get
+
       begin
         # test the connection to the database
-        if DB.instance.connect! then
+        if DB.instance.connect!(:collector) then
           trace :info, "Database connection succeeded"
         else
           trace :warn, "Database connection failed, using local cache..."

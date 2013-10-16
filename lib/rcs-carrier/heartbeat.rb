@@ -15,7 +15,7 @@ class HeartBeat
   def self.perform
     # if the database connection has gone
     # try to re-login to the database again
-    DB.instance.connect! if not DB.instance.connected?
+    DB.instance.connect!(:carrier) if not DB.instance.connected?
 
     # still no luck ?  return and wait for the next iteration
     return unless DB.instance.connected?

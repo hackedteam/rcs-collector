@@ -39,9 +39,6 @@ class Application
       #puts "Cannot find 'trace.yaml' using the default one (#{ty})"
     end
 
-    # the global watchdog
-    $watchdog = Mutex.new
-
     # ensure the log directory are present
     Dir::mkdir(Dir.pwd + '/log') if not File.directory?(Dir.pwd + '/log')
     Dir::mkdir(Dir.pwd + '/log/err') if not File.directory?(Dir.pwd + '/log/err')
@@ -64,7 +61,7 @@ class Application
 
       begin
         # test the connection to the database
-        if DB.instance.connect! then
+        if DB.instance.connect!(:controller) then
           trace :info, "Database connection succeeded"
         else
           trace :warn, "Database connection failed, retry..."

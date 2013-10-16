@@ -38,9 +38,6 @@ class DB
     # database address
     @host = Config.instance.global['DB_ADDRESS'].to_s + ":" + Config.instance.global['DB_PORT'].to_s
 
-    # get the external ip address
-    $external_address = MyIp.get
-
     # the version of the collector
     version = File.read(Dir.pwd + '/config/VERSION_BUILD')
 
@@ -53,7 +50,7 @@ class DB
       unique_id = Socket.gethostname
     end
 
-    @username = Digest::MD5.hexdigest(unique_id) + ':' + version + ':' + $external_address
+    @username = Digest::MD5.hexdigest(unique_id) + ':' + version
     # the password is a signature taken from a file
     @password = File.read(Config.instance.file('DB_SIGN'))
 
@@ -75,10 +72,17 @@ class DB
     return @available
   end
 
-  def connect!
+  def connect!(type)
     trace :info, "Checking the DB connection [#{@host}]..."
-    
-    if @db_rest.login(@username, @password)
+
+    case type
+      when :collector
+        @username += ':' + $external_address
+      when :carrier, :controller
+        @username += ':' + type.to_s
+    end
+
+    if @db_rest.login(@username, @password, $version, type)
       @available = true
       trace :info, "Connected to [#{@host}]"
     else
