@@ -97,6 +97,10 @@ class EvidenceTransfer
     retry
   end
 
+  def threads
+    @threads.size
+  end
+
   def get_evidence(instance)
     info = EvidenceManager.instance.instance_info instance
     EvidenceManager.instance.purge(instance, {force: true}) if info.nil?

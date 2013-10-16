@@ -23,10 +23,10 @@ class HeartBeat
     # report our status to the db
     component = "RCS::Carrier"
 
-    # if we are serving agents, report it accordingly
-    # TODO: report the number of repository
-    #message = (active_sessions > 0) ? "Serving #{active_sessions} sessions" : "Idle..."
-    message = "TODO..."
+    # if we are transferring evidences, report it accordingly
+    # the thread count of 2 is the eventmachine reactor + the main thread
+    # all the rest are spawned to transfer evidence
+    message = EvidenceTransfer.instance.threads > 0 ? "Transferring evidence for #{EvidenceTransfer.instance.threads} instances" : "Idle..."
 
     # report our status
     status = SystemStatus.my_status
