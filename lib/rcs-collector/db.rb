@@ -189,26 +189,35 @@ class DB
     db_rest_call :status_update, component, ip, status, message, stats[:disk], stats[:cpu], stats[:pcpu], type, version
   end
 
+  def valid_factory_key?(key)
+    key && key.respond_to?(:[]) && key['key'].to_s.size > 0 && key.has_key?('good')
+  end
+
   def factory_key_of(build_id)
     # if we already have it return otherwise we have to ask to the db
-    return Digest::MD5.digest @factory_keys[build_id] unless @factory_keys[build_id].nil?
+    return Digest::MD5.digest(@factory_keys[build_id]['key']) if valid_factory_key?(@factory_keys[build_id])
 
     trace :info, "Cache Miss: factory key for #{build_id}, asking to the db..."
 
-    return nil unless @available
-    
+    unless @available
+      trace :warn, "Db unavailable. Cannot retrieve missed key."
+      return nil
+    end
+
     # ask to the db the factory key
-    key = db_rest_call :factory_keys, build_id
+    resp = db_rest_call :factory_keys, build_id
 
     # save the factory key in the cache (memory and permanent)
-    if not key.nil? and not key.empty?
-      @factory_keys[build_id] = key[build_id]
+    if resp && valid_factory_key?(resp[build_id])
+      trace :info, "Received key for #{build_id}. Saving into cache."
+
+      @factory_keys[build_id] = resp[build_id]
 
       # store it in the permanent cache
-      DBCache.add_factory_keys key
+      DBCache.add_factory_keys(resp)
 
       # return the key
-      return Digest::MD5.digest @factory_keys[build_id]
+      return Digest::MD5.digest resp[build_id]['key']
     end
 
     # key not found
@@ -218,9 +227,9 @@ class DB
   # returns ALWAYS the status of an agent
   def agent_status(build_id, instance_id, platform, demo, scout)
     # if the database has gone, reply with a fake response in order for the sync to continue
-    return DB::UNKNOWN_AGENT, 0, false unless @available
+    return agent_cached_status(build_id) unless @available
 
-    trace :debug, "Asking the status of [#{build_id}] to the db"
+    trace :debug, "Asking the status of [#{build_id}_#{instance_id}] to the db"
 
     # ask the database the status of the agent
     agent = db_rest_call :agent_status, build_id, instance_id, platform, demo, scout
@@ -228,6 +237,21 @@ class DB
     trace :info, "Status of [#{build_id}_#{instance_id}] is #{agent[:status]} (#{agent[:good] ? 'good' : 'bad'})"
 
     return [agent[:status], agent[:id], agent[:good]]
+  rescue Exception => e
+    trace :info, "Cannot determine status of [#{build_id}_#{instance_id}], getting status from cache"
+    return agent_cached_status(build_id)
+  end
+
+  def agent_cached_status(build_id)
+    cached_good_value = DBCache.factory_keys[build_id]['good'] rescue false
+    cached_good_value = cached_good_value.to_s == 'true' ? true : false
+    return [DB::UNKNOWN_AGENT, 0, cached_good_value]
+  end
+
+  def agent_availables(session)
+    return [] unless @available
+
+    db_rest_call :agent_availables, session
   end
 
   def agent_uninstall(agent_id)

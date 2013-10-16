@@ -26,7 +26,7 @@ class DBCache
     schema = ["CREATE TABLE agent_signature (signature CHAR(32))",
               "CREATE TABLE network_signature (signature CHAR(32))",
               "CREATE TABLE check_signature (signature CHAR(32))",
-              "CREATE TABLE factory_keys (id CHAR(16), key CHAR(32))",
+              "CREATE TABLE factory_keys (id CHAR(16), key CHAR(32), good BOOLEAN)",
               "CREATE TABLE configs (bid CHAR(32), config BLOB)",
               "CREATE TABLE uploads (bid CHAR(32), uid CHAR(32), filename TEXT, content BLOB)",
               "CREATE TABLE upgrade (bid CHAR(32), uid CHAR(32), filename TEXT, content BLOB)",
@@ -183,8 +183,9 @@ class DBCache
 
     begin
       db = SQLite.open CACHE_FILE
-      factory_keys.each_pair do |key, value|
-        db.execute("INSERT INTO factory_keys VALUES ('#{key}','#{value}');")
+      factory_keys.each_pair do |ident, values|
+        key, good = values['key'], values['good']
+        db.execute("INSERT INTO factory_keys VALUES ('#{ident}', '#{key}', '#{good}');")
       end
       db.close
     rescue Exception => e
@@ -200,7 +201,7 @@ class DBCache
       db = SQLite.open CACHE_FILE
       rows = db.execute("SELECT * FROM factory_keys;")
       rows.each do |row|
-        factory_keys[row[0]] = row[1]
+        factory_keys[row[0]] = {'key' => row[1], 'good' => row[2]}
       end
       db.close
     rescue Exception => e

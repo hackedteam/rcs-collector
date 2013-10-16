@@ -90,6 +90,9 @@ class Application
       # be sure to have the network certificate
       DB.instance.get_network_cert(Config.instance.file('rcs-network')) unless File.exist? Config.instance.file('rcs-network.pem')
 
+      # compact or delete old repos
+      EvidenceManager.instance.purge_old_repos
+
       # if some instance are still in SYNC_IN_PROGRESS status, reset it to
       # SYNC_TIMEOUT. we are starting now, so no valid session can exist
       EvidenceManager.instance.sync_timeout_all

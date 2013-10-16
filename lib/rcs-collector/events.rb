@@ -43,7 +43,7 @@ class HTTPHandler < EM::HttpServer::Server
     @network_peer = @peer
 
     # timeout on the socket
-    set_comm_inactivity_timeout 30
+    set_comm_inactivity_timeout 300
 
     trace :debug, "Connection from #{@network_peer}:#{@peer_port}"
   end
@@ -166,6 +166,9 @@ class Events
 
           # calculate and save the stats
           EM::PeriodicTimer.new(60) { EM.defer(proc{ StatsManager.instance.calculate }) }
+
+          # auto purge old repositories every hour
+          EM::PeriodicTimer.new(3600) { EM.defer(proc{ EvidenceManager.instance.purge_old_repos }) }
         end
 
         # set up the network checks (the interval is in the config)

@@ -57,7 +57,7 @@ class DB_mockup_rest
   end
   def factory_keys
     raise if @@failure
-    return {'BUILD001' => 'secret class key', 'BUILD002' => "another secret"}
+    return {'BUILD001' => {'key' => 'secret class key', 'good' => true}, 'BUILD002' => {'key' => 'another secret', 'good' => true}}
   end
   def agent_status(build_id, instance_id, platform, demo, scout)
     return {status: DB::UNKNOWN_AGENT, id: 0, good: false} if @@failure
@@ -160,6 +160,17 @@ class TestDB < Test::Unit::TestCase
     assert_equal [DB::ACTIVE_AGENT, 1, true], DB.instance.agent_status('BUILD001', 'inst', 'type', false, false)
     # during the db failure, we must be able to continue
     DB_mockup_rest.failure = true
+    assert_equal [DB::UNKNOWN_AGENT, 0, false], DB.instance.agent_status('BUILD001', 'inst', 'type', false, false)
+  end
+
+  def test_agent_status_with_cache_and_db_offline
+    DB.instance.cache_init
+    DB.instance.instance_variable_set '@available', false
+    assert_equal [DB::UNKNOWN_AGENT, 0, true], DB.instance.agent_status('BUILD001', 'inst', 'type', false, false)
+  end
+
+  def test_agent_status_without_cache_and_db_offline
+    DB.instance.instance_variable_set '@available', false
     assert_equal [DB::UNKNOWN_AGENT, 0, false], DB.instance.agent_status('BUILD001', 'inst', 'type', false, false)
   end
 
