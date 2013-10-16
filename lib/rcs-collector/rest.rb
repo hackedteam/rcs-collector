@@ -216,7 +216,7 @@ class RESTController
 
 end # RCS::Collector::RESTController
 
-require_relative 'collector_controller'
+require_relative 'http_controller'
 
 end # RCS::Collector
 end # RCS

@@ -4,8 +4,7 @@
 
 # relatives
 require_relative 'heartbeat'
-require_relative 'parser'
-require_relative 'network_controller'
+require_relative 'http_parser'
 require_relative 'sessions'
 require_relative 'statistics'
 
@@ -150,27 +149,27 @@ class Events
         SystemStatus.my_status = SystemStatus::OK
 
         # start the HTTP server
-        if Config.instance.global['COLL_ENABLED']
-          EM::start_server("0.0.0.0", port, HTTPHandler)
-          trace :info, "Listening on port #{port}..."
+        EM::start_server("0.0.0.0", port, HTTPHandler)
+        trace :info, "Listening on port #{port}..."
 
-          # send the first heartbeat to the db, we are alive and want to notify the db immediately
-          # subsequent heartbeats will be sent every HB_INTERVAL
-          HeartBeat.perform
+        # send the first heartbeat to the db, we are alive and want to notify the db immediately
+        # subsequent heartbeats will be sent every HB_INTERVAL
+        HeartBeat.perform
 
-          # set up the heartbeat (the interval is in the config)
-          EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { EM.defer(proc{ HeartBeat.perform }) }
+        # set up the heartbeat (the interval is in the config)
+        EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { EM.defer(proc{ HeartBeat.perform }) }
 
-          # timeout for the sessions (will destroy inactive sessions)
-          EM::PeriodicTimer.new(60) { EM.defer(proc{ SessionManager.instance.timeout }) }
+        # timeout for the sessions (will destroy inactive sessions)
+        EM::PeriodicTimer.new(60) { EM.defer(proc{ SessionManager.instance.timeout }) }
 
-          # calculate and save the stats
-          EM::PeriodicTimer.new(60) { EM.defer(proc{ StatsManager.instance.calculate }) }
+        # calculate and save the stats
+        EM::PeriodicTimer.new(60) { EM.defer(proc{ StatsManager.instance.calculate }) }
 
-          # auto purge old repositories every hour
-          EM::PeriodicTimer.new(3600) { EM.defer(proc{ EvidenceManager.instance.purge_old_repos }) }
-        end
+        # auto purge old repositories every hour
+        EM::PeriodicTimer.new(3600) { EM.defer(proc{ EvidenceManager.instance.purge_old_repos }) }
 
+
+=begin
         # set up the network checks (the interval is in the config)
         if Config.instance.global['NC_ENABLED']
           # first heartbeat and checks
@@ -178,6 +177,7 @@ class Events
           # subsequent checks
           EM::PeriodicTimer.new(Config.instance.global['NC_INTERVAL']) { EM.defer(proc{ NetworkController.check }) }
         end
+=end
 
       end
     rescue Exception => e

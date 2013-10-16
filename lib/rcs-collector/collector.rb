@@ -6,7 +6,6 @@
 require_relative 'events.rb'
 require_relative 'config.rb'
 require_relative 'db.rb'
-require_relative 'evidence_transfer.rb'
 require_relative 'evidence_manager.rb'
 require_relative 'statistics'
 
@@ -44,9 +43,6 @@ class Application
     Dir::mkdir(Dir.pwd + PUBLIC_DIR) if not File.directory?(Dir.pwd + PUBLIC_DIR)
     Dir::mkdir(Dir.pwd + '/log') if not File.directory?(Dir.pwd + '/log')
     Dir::mkdir(Dir.pwd + '/log/err') if not File.directory?(Dir.pwd + '/log/err')
-
-    # remove the old static decoy page
-    FileUtils.rm_rf(Dir.pwd + '/config/decoy.html') if File.exist?(Dir.pwd + '/config/decoy.html')
 
     # initialize the tracing facility
     begin
@@ -87,18 +83,9 @@ class Application
       # do not continue if we don't have the global agent signature
       end while DB.instance.agent_signature.nil?
 
-      # be sure to have the network certificate
-      DB.instance.get_network_cert(Config.instance.file('rcs-network')) unless File.exist? Config.instance.file('rcs-network.pem')
-
-      # compact or delete old repos
-      EvidenceManager.instance.purge_old_repos
-
       # if some instance are still in SYNC_IN_PROGRESS status, reset it to
       # SYNC_TIMEOUT. we are starting now, so no valid session can exist
       EvidenceManager.instance.sync_timeout_all
-
-      # start transfer the collected evidences
-      EvidenceTransfer.instance.start
 
       # enter the main loop (hopefully will never exit from it)
       Events.new.setup Config.instance.global['LISTENING_PORT']
@@ -123,8 +110,3 @@ class Application
 end # Application::
 end # Collector::
 end # RCS::
-
-
-if __FILE__ == $0
-  RCS::Collector::Application.run!(*ARGV)
-end
