@@ -1,0 +1,15 @@
+
+TODO 9.1.x
+
+  split the collector into 3 separate services:
+    - collector
+    - evidence transfer
+    - network controller
+
+  get external ip address in a different place than the db init
+
+  review statistics since are now shared between two service
+
+  rework the login process to the db (count only collectors and not carriers and controllers)
+
+  perform stress test on jruby / mri

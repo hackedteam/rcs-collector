@@ -34,7 +34,6 @@ class Events
         # send the first heartbeat to the db, we are alive and want to notify the db immediately
         # subsequent heartbeats will be sent every HB_INTERVAL
         HeartBeat.perform
-
         # set up the heartbeat (the interval is in the config)
         EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { EM.defer(proc{ HeartBeat.perform }) }
 

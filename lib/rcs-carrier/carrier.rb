@@ -42,7 +42,7 @@ class Application
       #puts "Cannot find 'trace.yaml' using the default one (#{ty})"
     end
 
-    # ensure the public and log directory are present
+    # ensure the log directory are present
     Dir::mkdir(Dir.pwd + '/log') if not File.directory?(Dir.pwd + '/log')
     Dir::mkdir(Dir.pwd + '/log/err') if not File.directory?(Dir.pwd + '/log/err')
 
@@ -100,5 +100,5 @@ class Application
   end
 
 end # Application::
-end # Collector::
+end # Carrier::
 end # RCS::

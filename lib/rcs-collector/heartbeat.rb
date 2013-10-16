@@ -25,8 +25,6 @@ class HeartBeat
 
     # report our status to the db
     component = "RCS::Collector"
-    # used only by NC
-    ip = ''
 
     # retrieve how many session we have
     # this number represents the number of agent that are synchronizing
@@ -45,7 +43,7 @@ class HeartBeat
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.instance.update_status component, ip, status, message, stats, 'collector', $version
+    DB.instance.update_status component, '', status, message, stats, 'collector', $version
   end
 end
 
