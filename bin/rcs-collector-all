@@ -1,0 +1,10 @@
+#!/usr/bin/env ruby
+threads = []
+
+threads << Thread.new { system("./bin/rcs-collector") }
+threads << Thread.new { system("./bin/rcs-carrier") }
+threads << Thread.new { system("./bin/rcs-controller") }
+
+threads.map &:join
+
+puts "Exit!"
