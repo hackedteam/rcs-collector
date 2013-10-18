@@ -41,7 +41,7 @@ class DB_mockup_rest
   end
 
   # mockup methods
-  def login(user, pass); return (@@failure) ? false : true; end
+  def login(user, pass, build, type); return (@@failure) ? false : true; end
   def logout; end
   def agent_signature
     raise if @@failure
@@ -100,9 +100,10 @@ class TestDB < Test::Unit::TestCase
     DB.instance.instance_variable_set(:@db_rest, DB_mockup_rest.new)
     # clear the cache
     DBCache.destroy!
+    $external_address = ''
     # every test begins with the db connected
     DB_mockup_rest.failure = false
-    DB.instance.connect!
+    DB.instance.connect!(:collector)
     assert_true DB.instance.connected?
   end
 
@@ -112,7 +113,7 @@ class TestDB < Test::Unit::TestCase
 
   def test_connect
     DB_mockup_rest.failure = true
-    DB.instance.connect!
+    DB.instance.connect!(:collector)
     assert_false DB.instance.connected?
   end
 
