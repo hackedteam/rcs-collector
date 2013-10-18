@@ -100,7 +100,6 @@ class TestDB < Test::Unit::TestCase
     DB.instance.instance_variable_set(:@db_rest, DB_mockup_rest.new)
     # clear the cache
     DBCache.destroy!
-    $external_address = ''
     # every test begins with the db connected
     DB_mockup_rest.failure = false
     DB.instance.connect!(:collector)

@@ -78,7 +78,7 @@ class DB
     #TODO: remove when native support will be implemented in db
     case type
       when :collector
-        @username += ':' + @build + ':' + $external_address
+        @username += ':' + @build + ':' + ($external_address || '')
       when :carrier, :controller
         @username += ':' + @build + ':' + type.to_s
     end

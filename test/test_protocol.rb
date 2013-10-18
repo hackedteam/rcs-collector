@@ -88,7 +88,6 @@ class TestProtocol < Test::Unit::TestCase
     DB.instance.instance_variable_set(:@factory_keys, {"RCS_9999999999" => {'key' => 'test-class-key', 'good' => true}})
     # every test begins with the db connected
     DB_mockup_rest.failure = false
-    $external_address = ''
     DB.instance.connect!(:collector)
     assert_true DB.instance.connected?
   end
