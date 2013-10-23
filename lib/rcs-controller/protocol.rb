@@ -6,7 +6,7 @@
 require 'rcs-common/trace'
 
 module RCS
-module Collector
+module Controller
 
 class NCProto
   include RCS::Tracer

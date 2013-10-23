@@ -3,9 +3,9 @@
 #
 
 # relatives
-require_relative 'sessions.rb'
-require_relative 'db.rb'
-require_relative 'commands.rb'
+require_relative 'sessions'
+require_relative 'db'
+require_relative 'sync_commands'
 
 # from RCS::Common
 require 'rcs-common/trace'

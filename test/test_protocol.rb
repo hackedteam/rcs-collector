@@ -67,7 +67,7 @@ class DB_mockup_protocol_rest
   end
 
   # mockup methods
-  def login(user, pass); return (@@failure) ? false : true; end
+  def login(user, pass, build, type); return (@@failure) ? false : true; end
   def logout; end
   def agent_status(build_id, instance_id, platform, demo, scout)
     return {status: DB::ACTIVE_AGENT, id: 1, good: false} if instance_id == "0" * 40
@@ -88,7 +88,7 @@ class TestProtocol < Test::Unit::TestCase
     DB.instance.instance_variable_set(:@factory_keys, {"RCS_9999999999" => {'key' => 'test-class-key', 'good' => true}})
     # every test begins with the db connected
     DB_mockup_rest.failure = false
-    DB.instance.connect!
+    DB.instance.connect!(:collector)
     assert_true DB.instance.connected?
   end
 

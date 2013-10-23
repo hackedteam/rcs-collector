@@ -2,15 +2,12 @@
 #  Heartbeat to update the status of the component in the db
 #
 
-# relatives
-require_relative 'sessions.rb'
-
 # from RCS::Common
 require 'rcs-common/trace'
 require 'rcs-common/systemstatus'
 
 module RCS
-module Collector
+module Carrier
 
 class HeartBeat
   extend RCS::Tracer
@@ -18,20 +15,18 @@ class HeartBeat
   def self.perform
     # if the database connection has gone
     # try to re-login to the database again
-    DB.instance.connect!(:collector) if not DB.instance.connected?
+    DB.instance.connect!(:carrier) if not DB.instance.connected?
 
     # still no luck ?  return and wait for the next iteration
     return unless DB.instance.connected?
 
     # report our status to the db
-    component = "RCS::Collector"
+    component = "RCS::Carrier"
 
-    # retrieve how many session we have
-    # this number represents the number of agent that are synchronizing
-    active_sessions = SessionManager.instance.length
-
-    # if we are serving agents, report it accordingly
-    message = (active_sessions > 0) ? "Serving #{active_sessions} sessions" : "Idle..."
+    # if we are transferring evidences, report it accordingly
+    # the thread count of 2 is the eventmachine reactor + the main thread
+    # all the rest are spawned to transfer evidence
+    message = EvidenceTransfer.instance.threads > 0 ? "Transferring evidence for #{EvidenceTransfer.instance.threads} instances" : "Idle..."
 
     # report our status
     status = SystemStatus.my_status
@@ -43,7 +38,7 @@ class HeartBeat
     stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
 
     # send the status to the db
-    DB.instance.update_status component, '', status, message, stats, 'collector', $version
+    DB.instance.update_status component, '', status, message, stats, 'carrier', $version
   end
 end
 

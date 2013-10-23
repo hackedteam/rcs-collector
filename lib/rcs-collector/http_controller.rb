@@ -1,4 +1,4 @@
-require_relative 'protocol'
+require_relative 'sync_protocol'
 
 require 'rcs-common/mime'
 

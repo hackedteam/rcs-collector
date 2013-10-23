@@ -38,12 +38,6 @@ class DB
     # database address
     @host = Config.instance.global['DB_ADDRESS'].to_s + ":" + Config.instance.global['DB_PORT'].to_s
 
-    # get the external ip address
-    $external_address = MyIp.get
-
-    # the version of the collector
-    version = File.read(Dir.pwd + '/config/VERSION_BUILD')
-
     # the username is an unique identifier for each machine.
     # we use the MD5 of the MAC address
     # if mac address is not available, fallback to hostname
@@ -53,9 +47,12 @@ class DB
       unique_id = Socket.gethostname
     end
 
-    @username = Digest::MD5.hexdigest(unique_id) + ':' + version + ':' + $external_address
+    @username = Digest::MD5.hexdigest(unique_id)
     # the password is a signature taken from a file
     @password = File.read(Config.instance.file('DB_SIGN'))
+
+    # the version of the collector
+    @build = File.read(Dir.pwd + '/config/VERSION_BUILD')
 
     # status of the db connection
     @available = false
@@ -75,10 +72,18 @@ class DB
     return @available
   end
 
-  def connect!
+  def connect!(type)
     trace :info, "Checking the DB connection [#{@host}]..."
-    
-    if @db_rest.login(@username, @password)
+
+    #TODO: remove when native support will be implemented in db
+    case type
+      when :collector
+        @username += ':' + @build + ':' + ($external_address || '')
+      when :carrier, :controller
+        @username += ':' + @build + ':' + type.to_s
+    end
+
+    if @db_rest.login(@username, @password, @build, type)
       @available = true
       trace :info, "Connected to [#{@host}]"
     else

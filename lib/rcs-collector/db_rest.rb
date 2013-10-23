@@ -72,10 +72,10 @@ class DB_rest
 
   # log in to the database
   # returns a boolean
-  def login(user, pass)
+  def login(user, pass, version, type)
     begin
       # send the authentication data
-      account = {:user => user, :pass => pass, :version => $version}
+      account = {:user => user, :pass => pass, :version => version, :type => type}
       request = Net::HTTP::Post.new('/auth/login')
       request.body = account.to_json
       resp = @http.request(request)
