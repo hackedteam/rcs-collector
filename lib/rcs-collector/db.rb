@@ -75,13 +75,8 @@ class DB
   def connect!(type)
     trace :info, "Checking the DB connection [#{@host}]..."
 
-    #TODO: remove when native support will be implemented in db
-    case type
-      when :collector
-        @username += ':' + @build + ':' + ($external_address || '')
-      when :carrier, :controller
-        @username += ':' + @build + ':' + type.to_s
-    end
+    # special case for the collector
+    @username += ':' + ($external_address || '') if type.eql? :collector
 
     if @db_rest.login(@username, @password, @build, type)
       @available = true
