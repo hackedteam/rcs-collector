@@ -168,17 +168,6 @@ class Events
         # auto purge old repositories every hour
         EM::PeriodicTimer.new(3600) { EM.defer(proc{ EvidenceManager.instance.purge_old_repos }) }
 
-
-=begin
-        # set up the network checks (the interval is in the config)
-        if Config.instance.global['NC_ENABLED']
-          # first heartbeat and checks
-          EM.defer(proc{ NetworkController.check })
-          # subsequent checks
-          EM::PeriodicTimer.new(Config.instance.global['NC_INTERVAL']) { EM.defer(proc{ NetworkController.check }) }
-        end
-=end
-
       end
     rescue Exception => e
       # bind error

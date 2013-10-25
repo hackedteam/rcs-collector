@@ -28,8 +28,6 @@ class Config
                    'LISTENING_PORT' => 80,
                    'HB_INTERVAL' => 30,
                    'NC_INTERVAL' => 30,
-                   'NC_ENABLED' => true,
-                   'COLL_ENABLED' => true,
                    'RESOLVE_IP' => true,
                    'SSL_VERIFY' => true}
 
@@ -117,8 +115,6 @@ class Config
     @global['LISTENING_PORT'] = options[:port] unless options[:port].nil?
     @global['HB_INTERVAL'] = options[:hb_interval] unless options[:hb_interval].nil?
     @global['NC_INTERVAL'] = options[:nc_interval] unless options[:nc_interval].nil?
-    @global['NC_ENABLED'] = options[:nc_enabled] unless options[:nc_enabled].nil?
-    @global['COLL_ENABLED'] = options[:coll_enabled] unless options[:coll_enabled].nil?
 
     if options[:db_sign]
       sig = get_from_server options[:user], options[:pass], 'server'
@@ -211,18 +207,6 @@ class Config
       end
       opts.on( '-H', '--nc-heartbeat SEC', Integer, 'Time in seconds between two heartbeats to the network components' ) do |sec|
         options[:nc_interval] = sec
-      end
-      opts.on( '-n', '--network', 'Enable the Network Controller' ) do
-        options[:nc_enabled] = true
-      end
-      opts.on( '-N', '--no-network', 'Disable the Network Controller' ) do
-        options[:nc_enabled] = false
-      end
-      opts.on( '-c', '--collector', 'Enable the Collector' ) do
-        options[:coll_enabled] = true
-      end
-      opts.on( '-C', '--no-collector', 'Disable the Collector' ) do
-        options[:coll_enabled] = false
       end
 
       opts.separator ""
