@@ -29,7 +29,8 @@ class DB
   QUEUED_AGENT = 3
   NO_SUCH_AGENT = 4
   UNKNOWN_AGENT = 5
-  
+  INVALID_COOKIE_MESSAGE = '"INVALID_COOKIE"'
+
   attr_reader :agent_signature
   attr_reader :network_signature
   attr_reader :check_signature
