@@ -22,7 +22,7 @@ class NetworkController
 
   # TODO: check this for release
   # the minimum requested version of a Network Injector in order to work
-  MIN_INJECTOR_VERSION = 2013103101
+  MIN_INJECTOR_VERSION = 2013111101
   
   def self.check
 
