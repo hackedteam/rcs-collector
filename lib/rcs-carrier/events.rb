@@ -4,7 +4,7 @@
 
 # relatives
 require_relative 'heartbeat'
-#require_relative 'statistics'
+require_relative 'statistics'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -30,6 +30,9 @@ class Events
 
         # we are alive and ready to party
         SystemStatus.my_status = SystemStatus::OK
+
+        # calculate and save the stats
+        EM::PeriodicTimer.new(60) { EM.defer(proc{ StatsManager.instance.calculate }) }
 
         # send the first heartbeat to the db, we are alive and want to notify the db immediately
         # subsequent heartbeats will be sent every HB_INTERVAL

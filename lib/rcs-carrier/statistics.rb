@@ -1,5 +1,5 @@
 #
-# INPUT statistic manager
+# OUTPUT statistic manager
 #
 
 require 'rcs-common/stats'
@@ -8,7 +8,7 @@ require 'rcs-common/trace'
 require 'singleton'
 
 module RCS
-module Collector
+module Carrier
 
 class StatsManager < Stats
   include Singleton
@@ -17,13 +17,13 @@ class StatsManager < Stats
   def initialize
     # configure the storage statistics
     @sections = {:minutes => 0, :hours => 60, :days => 24, :weeks => 7}
-    @template = {conn: 0, ev_input: 0, ev_input_size: 0}
+    @template = {ev_output: 0, ev_output_size: 0}
 
     # persist the statistics
     @persist = true
 
     # where do we save the stats?
-    @dump_file = Config.instance.file('collector-stats')
+    @dump_file = Config.instance.file('carrier-stats')
 
     # initialize the stats repository
     super
@@ -40,12 +40,6 @@ class StatsManager < Stats
   def calculate
     trace :debug, "Saving statistics: #{@stats[:minutes][:last].first.inspect}"
     super
-
-    puts
-    puts @stats.inspect
-    puts
-    puts @persist
-
     # save the stats in the file
     File.open(@dump_file, 'wb') {|f| f.write Marshal.dump @stats} if @persist
   end
@@ -173,7 +167,7 @@ class StatsManager < Stats
     options = {}
 
     optparse = OptionParser.new do |opts|
-      opts.banner = "Usage: rcs-collector-stats [options] [instance]"
+      opts.banner = "Usage: rcs-carrier-stats [options] [instance]"
 
       opts.on( '-p', '--purge', 'Purge all the stats and restart from ZERO' ) do
         options[:purge] = true
