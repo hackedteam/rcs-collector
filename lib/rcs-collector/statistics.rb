@@ -41,11 +41,6 @@ class StatsManager < Stats
     trace :debug, "Saving statistics: #{@stats[:minutes][:last].first.inspect}"
     super
 
-    puts
-    puts @stats.inspect
-    puts
-    puts @persist
-
     # save the stats in the file
     File.open(@dump_file, 'wb') {|f| f.write Marshal.dump @stats} if @persist
   end
