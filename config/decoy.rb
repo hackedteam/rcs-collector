@@ -73,3 +73,27 @@ class BadRequestPage
   end
 
 end
+
+class NotAllowedPage
+  extend RCS::Tracer
+
+  def self.create(request)
+
+    ###############################################
+    # Example: standard apache bad request document
+    ###############################################
+    page = "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n" +
+          "<html><head>\n" +
+          "<title>405 Method Not Allowed</title>\n" +
+          "</head><body>\n" +
+          "<h1>Method Not Allowed</h1>\n" +
+          "<p>The requested method POST is not allowed for the URL #{request[:uri]}.<br />\n" +
+          "</p>\n" +
+          "<hr>\n" +
+          "<address>#{FakeServer::SERVER_STRING} Server at #{request[:headers][:host]} Port 80</address>\n" +
+          "</body></html>\n"
+
+    return page, {content_type: 'text/html'}
+  end
+
+end
