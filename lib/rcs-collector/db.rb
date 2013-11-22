@@ -301,7 +301,10 @@ class DB
   def get_worker(instance)
     return unless @available
 
-    db_rest_call :get_worker, instance
+    # replace the _ to : in the instance before askig to db (which wants it in that format)
+    mod_instance = instance.dup
+    mod_instance[14] = ':'
+    db_rest_call :get_worker, mod_instance
   end
 
   def new_conf?(bid)

