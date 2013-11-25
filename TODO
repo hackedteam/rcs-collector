@@ -3,6 +3,4 @@ TODO 9.2.x
 
   perform stress test on jruby / mri
 
-  modify carrier to support evidence routing
-
   different decoy on different anon (good/bad)
