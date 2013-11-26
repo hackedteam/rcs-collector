@@ -61,6 +61,9 @@ class RESTResponse
     # fake server reply
     @response.headers['Server'] = FakeServer::SERVER_STRING
 
+    # date header
+    @response.headers['Date'] = Time.now.getutc.strftime("%a, %d %b %Y %H:%M:%S %Z")
+
     # used for redirects
     @response.headers['Location'] = @location unless @location.nil?
 

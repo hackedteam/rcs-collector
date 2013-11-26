@@ -14,6 +14,8 @@ module Collector
 class CollectorController < RESTController
   
   def get
+    return bad_request unless @request[:uri].start_with?('/')
+
     # serve the requested file
     return http_get_file(@request[:headers], @request[:uri])
   rescue Exception => e
@@ -22,6 +24,8 @@ class CollectorController < RESTController
   end
 
   def head
+    return bad_request unless @request[:uri].start_with?('/')
+
     trace :info, "[#{@request[:peer]}] HEAD public request #{@request[:uri]}"
     # serve the requested file
     return http_get_file(@request[:headers], @request[:uri], false)

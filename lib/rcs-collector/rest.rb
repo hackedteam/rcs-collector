@@ -195,7 +195,7 @@ class RESTController
         return :push
       when 'WATCHDOG'
         return :watchdog
-      when 'OPTIONS', 'TRACE', 'CONNECT'
+      when 'OPTIONS', 'TRACE', 'CONNECT', 'PROPFIND', 'TRACK'
         return :method_not_allowed
       else
         return :bad_request

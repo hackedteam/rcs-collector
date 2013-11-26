@@ -79,9 +79,9 @@ class NotAllowedPage
 
   def self.create(request)
 
-    ###############################################
-    # Example: standard apache bad request document
-    ###############################################
+    ######################################################
+    # Example: standard apache method not allowed document
+    ######################################################
     page = "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n" +
           "<html><head>\n" +
           "<title>405 Method Not Allowed</title>\n" +

@@ -56,6 +56,14 @@ class HTTPHandler < EM::HttpServer::Server
     @closed = true
   end
 
+  def http_error_string(code, desc)
+    trace :warn, "HACK ALERT: #{@peer} is sending bad requests: #{@http_headers.inspect}"
+    request = {}
+    request[:headers] = @http
+    page, options = BadRequestPage.create(request)
+    return page
+  end
+
   def process_http_request
     #trace :info, "[#{@peer}] Incoming HTTP Connection"
     size = (@http_content) ? @http_content.bytesize : 0
@@ -80,7 +88,7 @@ class HTTPHandler < EM::HttpServer::Server
         generation_time = Time.now
 
         begin
-          raise "Invalid http protocol (#{@http_protocol})" if @http_protocol != 'HTTP/1.1' and @http_protocol != 'HTTP/1.0'
+          raise "HACK ALERT: #{@peer} Invalid http protocol (#{@http_protocol})" if @http_protocol != 'HTTP/1.1' and @http_protocol != 'HTTP/1.0'
 
           # parse all the request params
           request = prepare_request @http_request_method, @http_request_uri, @http_query_string, @http_content, @http, @peer
@@ -104,7 +112,9 @@ class HTTPHandler < EM::HttpServer::Server
           trace :error, e.message
           trace :fatal, "EXCEPTION(#{e.class}): " + e.backtrace.join("\n")
 
-          responder = RESTResponse.new(RESTController::STATUS_BAD_REQUEST)
+          request = {}
+          request[:headers] = @http
+          responder = RESTResponse.new(RESTController::STATUS_BAD_REQUEST, *BadRequestPage.create(request))
           reply = responder.prepare_response(self, {})
           reply
         end
