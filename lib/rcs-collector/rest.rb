@@ -55,17 +55,31 @@ class RESTController
   end
 
   def http_bad_request
-    # default decoy page, in case someone mess with the dynamic script
     page = ''
     options = {content_type: 'text/html'}
     begin
       page, options = BadRequestPage.create @request
     rescue Exception => e
-      trace :error, "Error creating decoy page: #{e.message}"
+      trace :error, "Error creating bad request page: #{e.message}"
       trace :fatal, e.backtrace.join("\n")
     end
 
     trace :info, "[#{@request[:peer]}] Bad request: #{@request.inspect}"
+
+    return page, options
+  end
+
+  def http_not_allowed_request
+    page = ''
+    options = {content_type: 'text/html'}
+    begin
+      page, options = NotAllowedPage.create @request
+    rescue Exception => e
+      trace :error, "Error creating not allowed page: #{e.message}"
+      trace :fatal, e.backtrace.join("\n")
+    end
+
+    trace :info, "[#{@request[:peer]}] Not allowed request: #{@request.inspect}"
 
     return page, options
   end
@@ -92,7 +106,7 @@ class RESTController
   end
 
   def method_not_allowed(message='', callback=nil)
-    RESTResponse.new(STATUS_METHOD_NOT_ALLOWED, message, {}, callback)
+    RESTResponse.new(STATUS_METHOD_NOT_ALLOWED, *http_not_allowed_request, callback)
   end
 
   def conflict(message='', callback=nil)

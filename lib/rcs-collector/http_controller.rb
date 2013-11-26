@@ -34,7 +34,7 @@ class CollectorController < RESTController
     # only the DB is authorized to send PUSH commands
     unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUSH [#{@request[:uri]}] commands!!!"
-      return method_not_allowed
+      return bad_request
     end
 
     # it is a request to push to a NC element
@@ -67,7 +67,7 @@ class CollectorController < RESTController
     # only the DB is authorized to send PROXY commands
     unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PROXY [#{@request[:uri]}] commands!!!"
-      return method_not_allowed
+      return bad_request
     end
 
     # every request received are forwarded externally like a proxy

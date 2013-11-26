@@ -87,7 +87,7 @@ class NotAllowedPage
           "<title>405 Method Not Allowed</title>\n" +
           "</head><body>\n" +
           "<h1>Method Not Allowed</h1>\n" +
-          "<p>The requested method POST is not allowed for the URL #{request[:uri]}.<br />\n" +
+          "<p>The requested method #{request[:method]} is not allowed for the URL #{request[:uri]}.<br />\n" +
           "</p>\n" +
           "<hr>\n" +
           "<address>#{FakeServer::SERVER_STRING} Server at #{request[:headers][:host]} Port 80</address>\n" +
