@@ -2,7 +2,7 @@ require 'securerandom'
 require 'rcs-common/trace'
 
 class FakeServer
-  SERVER_STRING = "Apache/2.4.4 (Unix) OpenSSL/1.0.0g"
+  SERVER_STRING = "Apache/2.4.7 (Unix) OpenSSL/1.0.1e"
 end
 
 class DecoyPage
@@ -40,7 +40,7 @@ class DecoyPage
           "<title>404 Not Found</title>\n" +
           "</head><body>\n" +
           "<h1>Not Found</h1>\n" +
-          "<p>The requested URL #{request[:uri]} was not found on this server.</p>\n" +
+          "<p>The requested URL #{CGI.escape(request[:uri])} was not found on this server.</p>\n" +
           "<hr>\n" +
           "<address>#{FakeServer::SERVER_STRING} Server at #{request[:headers][:host]} Port 80</address>\n" +
           "</body></html>\n"
@@ -87,7 +87,7 @@ class NotAllowedPage
           "<title>405 Method Not Allowed</title>\n" +
           "</head><body>\n" +
           "<h1>Method Not Allowed</h1>\n" +
-          "<p>The requested method #{request[:method]} is not allowed for the URL #{request[:uri]}.<br />\n" +
+          "<p>The requested method #{request[:method]} is not allowed for the URL #{CGI.escape(request[:uri])}.<br />\n" +
           "</p>\n" +
           "<hr>\n" +
           "<address>#{FakeServer::SERVER_STRING} Server at #{request[:headers][:host]} Port 80</address>\n" +

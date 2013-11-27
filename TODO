@@ -4,3 +4,7 @@ TODO 9.2.x
   perform stress test on jruby / mri
 
   different decoy on different anon (good/bad)
+
+  respond permission denied on invalid POST
+
+  dynamic blacklist for "hack attack"

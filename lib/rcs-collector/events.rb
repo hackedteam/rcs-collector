@@ -57,14 +57,37 @@ class HTTPHandler < EM::HttpServer::Server
   end
 
   def http_error_string(code, desc)
-    trace :warn, "HACK ALERT: #{@peer} is sending bad requests: #{@http_headers.inspect}"
     request = {}
     request[:headers] = @http
+    peer = http_get_forwarded_peer(@http)
+    @peer = peer unless peer.nil?
+
+    trace :warn, "HACK ALERT: #{@peer} is sending bad requests: #{@http_headers.inspect}"
+
     page, options = BadRequestPage.create(request)
     return page
   end
 
+  # return the content of the X-Forwarded-For header
+  def http_get_forwarded_peer(headers)
+    # extract the XFF
+    xff = headers[:x_forwarded_for]
+    # no header
+    return nil if xff.nil?
+    # split the peers list
+    peers = xff.split(',')
+    trace :info, "[#{@peer}] has forwarded the connection for #{peers.inspect}"
+    # we just want the first peer that is the original one
+    return peers.first
+  end
+
   def process_http_request
+
+    # get the peer of the communication
+    # if direct or thru an anonymizer
+    peer = http_get_forwarded_peer(@http)
+    @peer = peer unless peer.nil?
+
     #trace :info, "[#{@peer}] Incoming HTTP Connection"
     size = (@http_content) ? @http_content.bytesize : 0
     trace :debug, "[#{@peer}] REQ: [#{@http_request_method}] #{@http_request_uri} #{@http_query_string} (#{Time.now - @request_time}) #{size.to_s_bytes}"
