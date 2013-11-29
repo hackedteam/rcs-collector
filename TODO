@@ -8,3 +8,8 @@ TODO 9.2.x
   respond permission denied on invalid POST
 
   dynamic blacklist for "hack attack"
+
+TODO FUTURE
+
+  change the NC protocol to use the chain to rerieve the anons status
+
