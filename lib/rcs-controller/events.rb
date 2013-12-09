@@ -20,6 +20,9 @@ module RCS
         EM::run do
           SystemStatus.my_status = SystemStatus::OK
 
+          # first heartbeat and checks (so we don't have to wait 'check_interval' to see the green light on startup)
+          EM.defer(proc{ Network.check })
+
           EM::PeriodicTimer.new(check_interval) { Network.check }
         end
       end
