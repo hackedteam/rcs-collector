@@ -9,9 +9,13 @@ else
   require 'sqlite3'
 end
 
+require 'rcs-common/trace'
 
 # implementation for MRI ruby
 module SQLite_Ruby
+
+  include RCS::Tracer
+  extend RCS::Tracer
 
   def self.included(base)
     base.extend(ClassMethods)
