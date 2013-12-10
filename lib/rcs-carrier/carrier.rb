@@ -40,7 +40,9 @@ module RCS
           EvidenceManager.instance.purge_old_repos
 
           # start the transfer task
-          EvidenceTransfer.instance.start
+          Thread.new { EvidenceTransfer.run }
+
+          sleep 1
 
           # enter the main loop (hopefully will never exit from it)
           Events.new.setup

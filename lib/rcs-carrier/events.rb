@@ -18,37 +18,27 @@ module Carrier
 
 class Events
   include RCS::Tracer
-  
+
   def setup
+    EM.epoll
+    EM.threadpool_size = 10
 
-    # main EventMachine loop
-    begin
-      # all the events are handled here
-      EM::run do
-        # if we have epoll(), prefer it over select()
-        EM.epoll
+    EM::run do
+      # we are alive and ready to party
+      SystemStatus.my_status = SystemStatus::OK
 
-        # we are alive and ready to party
-        SystemStatus.my_status = SystemStatus::OK
+      # calculate and save the stats
+      EM::PeriodicTimer.new(60) { EM.defer { StatsManager.instance.calculate } }
 
-        # calculate and save the stats
-        EM::PeriodicTimer.new(60) { EM.defer(proc{ StatsManager.instance.calculate }) }
+      # send the first heartbeat to the db, we are alive and want to notify the db immediately
+      # subsequent heartbeats will be sent every HB_INTERVAL
+      EM.defer { HeartBeat.perform }
 
-        # send the first heartbeat to the db, we are alive and want to notify the db immediately
-        # subsequent heartbeats will be sent every HB_INTERVAL
-        HeartBeat.perform
-        # set up the heartbeat (the interval is in the config)
-        EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { EM.defer(proc{ HeartBeat.perform }) }
-
-      end
-    rescue Exception => e
-      raise
+      # set up the heartbeat (the interval is in the config)
+      EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { EM.defer { HeartBeat.perform } }
     end
-
   end
-
 end #Events
 
 end #Collector::
 end #RCS::
-
