@@ -77,7 +77,7 @@ class DB
     trace :info, "Checking the DB connection [#{@host}]..."
 
     # special case for the collector
-    @username += ':' + ($external_address || '') if type.eql? :collector
+    @username += ':' + ($external_address || '') if type.eql? :collector and not @username[':']
 
     if @db_rest.login(@username, @password, @build, type)
       @available = true
