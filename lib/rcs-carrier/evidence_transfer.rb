@@ -163,8 +163,6 @@ class EvidenceTransfer
       :verify_mode  => OpenSSL::SSL::VERIFY_NONE
     )
 
-    # TODO: (?) Leaving the Connection header does not create a real persisten connection :( (osx)
-    # full_headers = {'Connection' => 'Keep-Alive'}
     request = Net::HTTP::Post.new("/evidence/#{instance}")
     request.body = evidence
     ret = http.request(request)
@@ -177,7 +175,7 @@ class EvidenceTransfer
     return false, ret.body
   rescue Exception => e
     trace :error, "Error calling send_evidence: #{e.class} #{e.message}"
-    trace :fatal, e.backtrace
+    #trace :fatal, e.backtrace
     raise
   end
 
