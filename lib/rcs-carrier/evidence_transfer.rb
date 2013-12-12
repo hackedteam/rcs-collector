@@ -23,8 +23,11 @@ class EvidenceTransfer
   include Singleton
   include RCS::Tracer
 
+  attr_accessor :status
+
   def initialize
     @workers = {}
+    @status = nil
     @http = {}
     @threads = Hash.new
   end
@@ -85,9 +88,11 @@ class EvidenceTransfer
             end
 
           rescue PersistentHTTP::Error => e
-            trace :error, "Http error with worker: #{e.message}"
+            @status = "Cannot reach worker: #{e.message}"
+            trace :error, @status
           rescue Exception => e
-            trace :error, "Error processing evidences: #{e.class} #{e.message}"
+            @status = "Error processing evidences: #{e.class} #{e.message}"
+            trace :error, @status
           ensure
             trace :debug, "Job for #{instance} is over (#{@threads.keys.size}/#{Thread.list.count} working threads)"
 

