@@ -119,8 +119,10 @@ class Network
     # create a new NC protocol
     proto = NCProto.new(ssl_socket)
 
+    network_signature = DB.instance.network_signature || File.read(Config.instance.file('rcs-network.sig')).strip
+
     # authenticate with the component
-    raise 'Cannot authenticate' unless proto.login(DB.instance.network_signature)
+    raise 'Cannot authenticate' unless proto.login(network_signature)
 
     trace :debug, "[NC] #{element['address']} login"
 
