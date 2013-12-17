@@ -27,6 +27,8 @@ class Events
       # we are alive and ready to party
       SystemStatus.my_status = SystemStatus::OK
 
+      EM.defer { EvidenceTransfer.run }
+
       # calculate and save the stats
       EM::PeriodicTimer.new(60) { EM.defer { StatsManager.instance.calculate } }
 

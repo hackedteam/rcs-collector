@@ -1,51 +1,34 @@
-#
-#  Heartbeat to update the status of the component in the db
-#
-
-# relatives
-require_relative 'sessions.rb'
-
-# from RCS::Common
 require 'rcs-common/trace'
 require 'rcs-common/systemstatus'
+require 'rcs-common/heartbeat'
+
+require_relative 'sessions.rb'
 
 module RCS
-module Collector
+  module Collector
+    class HeartBeat < RCS::HeartBeat::Base
+      component :collector
 
-class HeartBeat
-  extend RCS::Tracer
+      before_heartbeat do
+        # if the database connection has gone
+        # try to re-login to the database again
+        unless DB.instance.connected?
+          trace :debug, "heartbeat: try to reconnecto to rcs-db"
+          DB.instance.connect!(:carrier)
+        end
 
-  def self.perform
-    # if the database connection has gone
-    # try to re-login to the database again
-    DB.instance.connect!(:collector) if not DB.instance.connected?
+        # still no luck ?  return and wait for the next iteration
+        !!DB.instance.connected?
+      end
 
-    # still no luck ?  return and wait for the next iteration
-    return unless DB.instance.connected?
+      def message
+        # retrieve how many session we have
+        # this number represents the number of agent that are synchronizing
+        active_sessions = SessionManager.instance.length
 
-    # report our status to the db
-    component = "RCS::Collector"
-
-    # retrieve how many session we have
-    # this number represents the number of agent that are synchronizing
-    active_sessions = SessionManager.instance.length
-
-    # if we are serving agents, report it accordingly
-    message = (active_sessions > 0) ? "Serving #{active_sessions} sessions" : "Idle..."
-
-    # report our status
-    status = SystemStatus.my_status
-    disk = SystemStatus.disk_free
-    cpu = SystemStatus.cpu_load
-    pcpu = SystemStatus.my_cpu_load(component)
-
-    # create the stats hash
-    stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
-
-    # send the status to the db
-    DB.instance.update_status component, '', status, message, stats, 'collector', $version
+        # if we are serving agents, report it accordingly
+        message = (active_sessions > 0) ? "Serving #{active_sessions} sessions" : "Idle..."
+      end
+    end
   end
 end
-
-end #Collector::
-end #RCS::
