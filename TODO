@@ -1,7 +1,11 @@
 
 TODO 9.2.x
 
-  perform stress test on jruby / mri
+  PUSH from db does not work anymore with the separated controller
+
+  nginx proxy?
+
+  close connection if it's not an anon
 
   different decoy on different anon (good/bad)
 
@@ -10,6 +14,8 @@ TODO 9.2.x
   dynamic blacklist for "hack attack"
 
 TODO FUTURE
+
+  perform stress test on jruby / mri
 
   change the NC protocol to use the chain to rerieve the anons status
 
