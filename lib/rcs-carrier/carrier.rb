@@ -29,8 +29,6 @@ module RCS
       # the main of the collector
       def run(options)
         run_with_rescue do
-          trace_setup
-
           # config file parsing
           return 1 unless Config.instance.load_from_file
 

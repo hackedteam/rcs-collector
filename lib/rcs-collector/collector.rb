@@ -27,8 +27,6 @@ module RCS
       # the main of the collector
       def run(options)
         run_with_rescue do
-          trace_setup
-
           # ensure the public and log directory are present
           Dir::mkdir(Dir.pwd + PUBLIC_DIR) if not File.directory?(Dir.pwd + PUBLIC_DIR)
 
