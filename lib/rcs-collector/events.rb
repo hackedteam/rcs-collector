@@ -7,6 +7,7 @@ require_relative 'heartbeat'
 require_relative 'http_parser'
 require_relative 'sessions'
 require_relative 'statistics'
+require_relative 'firewall'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -163,58 +164,76 @@ class HTTPHandler < EM::HttpServer::Server
 end #HTTPHandler
 
 
-class Events
-  include RCS::Tracer
-  
-  def setup(port = 80)
+class HttpServer
+  extend RCS::Tracer
 
-    # main EventMachine loop
-    begin
-      # all the events are handled here
-      EM::run do
-        # if we have epoll(), prefer it over select()
-        EM.epoll
-
-        # set the thread pool size
-        EM.threadpool_size = 50
-
-        # we are alive and ready to party
-        SystemStatus.my_status = SystemStatus::OK
-
-        # start the HTTP server
-        EM::start_server("0.0.0.0", port, HTTPHandler)
-        trace :info, "Listening on port #{port}..."
-
-        # send the first heartbeat to the db, we are alive and want to notify the db immediately
-        # subsequent heartbeats will be sent every HB_INTERVAL
-        HeartBeat.perform
-
-        # set up the heartbeat (the interval is in the config)
-        EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { EM.defer(proc{ HeartBeat.perform }) }
-
-        # timeout for the sessions (will destroy inactive sessions)
-        EM::PeriodicTimer.new(60) { EM.defer(proc{ SessionManager.instance.timeout }) }
-
-        # calculate and save the stats
-        EM::PeriodicTimer.new(60) { EM.defer(proc{ StatsManager.instance.calculate }) }
-
-        # auto purge old repositories every hour
-        EM::PeriodicTimer.new(3600) { EM.defer(proc{ EvidenceManager.instance.purge_old_repos }) }
-
-      end
-    rescue Exception => e
-      # bind error
-      if e.message.eql? 'no acceptor'
-        trace :fatal, "Cannot bind port #{port}"
-        return 1
-      end
-      raise
-    end
-
+  def self.running?
+    @signature
   end
 
+  def self.start
+    @port = RCS::Collector::Config.instance.global['LISTENING_PORT']
+
+    Firewall.create_default_rules
+
+    trace(:info, "Listening on port #{@port}...")
+    @signature = EM.start_server("0.0.0.0", @port, HTTPHandler)
+  rescue Exception => e
+    trace(:fatal, "Unable to start http server on port #{@port}: #{e.message} #{e.backtrace}")
+    exit!(1)
+  end
+
+  def self.stop
+    return unless @signature
+    trace(:info, "Stopping http server...")
+    EM.stop_server(@signature) if @signature
+    @signature = nil
+  rescue Exception => e
+    trace(:fatal, "Unable to stop http server: #{e.message} #{e.backtrace}")
+    exit!(1)
+  end
+end
+
+
+class Events
+  include RCS::Tracer
+
+  def setup
+    # if we have epoll(), prefer it over select()
+    EM.epoll
+
+    # set the thread pool size
+    EM.threadpool_size = 50
+
+
+    EM::run do
+      # we are alive and ready to party
+      SystemStatus.my_status = SystemStatus::OK
+
+      if !Firewall.developer_machine? and Firewall.disabled?
+        trace(:error, "Firewall is disabled. You must turn it on. The http server will not start.")
+      else
+        HttpServer.start
+      end
+
+      # send the first heartbeat to the db, we are alive and want to notify the db immediately
+      # subsequent heartbeats will be sent every HB_INTERVAL
+      HeartBeat.perform
+
+      # set up the heartbeat (the interval is in the config)
+      EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { EM.defer(proc{ HeartBeat.perform }) }
+
+      # timeout for the sessions (will destroy inactive sessions)
+      EM::PeriodicTimer.new(60) { EM.defer(proc{ SessionManager.instance.timeout }) }
+
+      # calculate and save the stats
+      EM::PeriodicTimer.new(60) { EM.defer(proc{ StatsManager.instance.calculate }) }
+
+      # auto purge old repositories every hour
+      EM::PeriodicTimer.new(3600) { EM.defer(proc{ EvidenceManager.instance.purge_old_repos }) }
+    end
+  end
 end #Events
 
 end #Collector::
 end #RCS::
-

@@ -66,7 +66,7 @@ module RCS
           EvidenceManager.instance.sync_timeout_all
 
           # enter the main loop (hopefully will never exit from it)
-          Events.new.setup Config.instance.global['LISTENING_PORT']
+          Events.new.setup
         end
       end
     end # Application::

