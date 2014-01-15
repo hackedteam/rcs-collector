@@ -29,6 +29,10 @@ module RCS
 
         trace(:info, "Creating default firewall rules...")
 
+        # Delete legacy rules
+        WinFirewall.del_rule("RCS Collector")
+        WinFirewall.del_rule("RCS Database")
+
         rule_name = "#{RULE_PREFIX}coll_to_first_anonym"
         port = Config.instance.global['LISTENING_PORT']
         # TODO: use the addr of the first anonymizer
