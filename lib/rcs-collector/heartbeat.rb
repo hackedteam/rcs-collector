@@ -11,6 +11,8 @@ module RCS
     class HeartBeat < RCS::HeartBeat::Base
       component :collector
 
+      attr_reader :firewall_disabled
+
       before_heartbeat do
         # if the database connection has gone
         # try to re-login to the database again
@@ -19,12 +21,14 @@ module RCS
           DB.instance.connect!(:carrier)
         end
 
+        @firewall_disabled = (!Firewall.developer_machine? and Firewall.disabled?)
+
         # still no luck ?  return and wait for the next iteration
         !!DB.instance.connected?
       end
 
       after_heartbeat do
-        if firewall_disabled?
+        if firewall_disabled
           trace(:error, "Firewall is disabled. You must turn it on. The http server will #{HttpServer.running? ? 'stop now' : 'remain disabled'}")
           HttpServer.stop
         elsif !HttpServer.running?
@@ -32,16 +36,12 @@ module RCS
         end
       end
 
-      def firewall_disabled?
-        @_firewall_disabled ||= (!Firewall.developer_machine? and Firewall.disabled?)
-      end
-
       def status
-        firewall_disabled? ? 'ERROR' : super()
+        firewall_disabled ? 'ERROR' : super()
       end
 
       def message
-        if firewall_disabled?
+        if firewall_disabled
           return "Windows Firewall is disabled"
         end
 
