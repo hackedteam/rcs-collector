@@ -143,6 +143,11 @@ class Protocol
     # ask the database the status of the agent
     status, aid, good = DB.instance.agent_status(build_id_real, instance_id, platform, demo, scout)
 
+    # if the agent was completely removed from the db we don't have the good flag anymore
+    # and the rest call defaults to "bad", but if it's trying to sync on a good anon we
+    # should correctly override it to be able to send the uninstall command
+    good = DBCache.factory_keys[build_id_real]['good'] if status.eql? DB::NO_SUCH_AGENT
+
     # here we have to deny the sync in case the agent and the anon are different:
     # good and good -> ok
     # bad and bad -> ok
@@ -281,6 +286,11 @@ class Protocol
 
     # ask the database the status of the agent
     status, bid, good = DB.instance.agent_status(build_id_real, instance_id, platform, demo, scout)
+
+    # if the agent was completely removed from the db we don't have the good flag anymore
+    # and the rest call defaults to "bad", but if it's trying to sync on a good anon we
+    # should correctly override it to be able to send the uninstall command
+    good = DBCache.factory_keys[build_id_real]['good'] if status.eql? DB::NO_SUCH_AGENT
 
     # here we have to deny the sync in case the agent and the anon are different:
     # good and good -> ok
