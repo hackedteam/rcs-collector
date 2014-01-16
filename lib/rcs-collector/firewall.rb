@@ -44,7 +44,7 @@ module RCS
         port = Config.instance.global['DB_PORT']
         addr = Config.instance.global['DB_ADDRESS']
         WinFirewall.del_rule(rule_name)
-        WinFirewall.add_rule(action: :allow, direction: :out, name: rule_name, remote_port: port, remote_ip: addr, protocol: :tcp)
+        WinFirewall.add_rule(action: :allow, direction: :in, name: rule_name, remote_port: port, remote_ip: addr, protocol: :tcp)
       end
     end
   end
