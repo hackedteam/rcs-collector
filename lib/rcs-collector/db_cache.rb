@@ -32,7 +32,8 @@ class DBCache
               "CREATE TABLE upgrade (bid CHAR(32), uid CHAR(32), filename TEXT, content BLOB)",
               "CREATE TABLE downloads (bid CHAR(32), did CHAR(32), filename TEXT)",
               "CREATE TABLE exec (bid CHAR(32), eid CHAR(32), command TEXT)",
-              "CREATE TABLE filesystems (bid CHAR(32), fid CHAR(32), depth INT, path TEXT)"
+              "CREATE TABLE filesystems (bid CHAR(32), fid CHAR(32), depth INT, path TEXT)",
+              "CREATE TABLE anonymizers (addr CHAR(256))"
              ]
 
     # create all the tables
@@ -73,6 +74,41 @@ class DBCache
 
     return count
   end
+
+
+  ##############################################
+  # first_anonymizer
+  ##############################################
+
+  def self.first_anonymizer=(addr)
+    # ensure the db was already created, otherwise create it
+    create! unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite.open CACHE_FILE
+      db.execute("DELETE FROM anonymizers;")
+      db.execute("INSERT INTO anonymizers VALUES ('#{addr}');")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot save the cache: #{e.message}"
+    end
+  end
+
+  def self.first_anonymizer
+    return nil unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite.open CACHE_FILE
+      row = db.execute("SELECT addr FROM anonymizers;")
+      addr = row.first.first
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    return addr
+  end
+
 
   ##############################################
   # AGENT SIGNATURE

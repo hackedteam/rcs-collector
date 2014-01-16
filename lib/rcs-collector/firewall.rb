@@ -35,8 +35,7 @@ module RCS
 
         rule_name = "#{RULE_PREFIX}coll_to_first_anonym"
         port = Config.instance.global['LISTENING_PORT']
-        # TODO: use the addr of the first anonymizer
-        addr = :any
+        addr = DBCache.first_anonymizer || :any
         WinFirewall.del_rule(rule_name)
         WinFirewall.add_rule(action: :allow, direction: :in, name: rule_name, local_port: port, remote_ip: addr, protocol: :tcp)
 

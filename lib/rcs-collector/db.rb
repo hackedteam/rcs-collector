@@ -142,6 +142,10 @@ class DB
       keys = db_rest_call :factory_keys
       @factory_keys = keys unless keys.nil?
 
+      # get the address of the first (chain) anonymizer
+      first_anonymizer = db_rest_call(:first_anonymizer)
+      @first_anonymizer = first_anonymizer['address'] if first_anonymizer.respond_to?(:[])
+
       # errors while retrieving the data from the db
       return false if bck_sig.nil? or keys.nil? or net_sig.nil? or check_sig.nil?
 
@@ -159,6 +163,11 @@ class DB
       trace :info, "Integrity check signature saved in the DB cache"
       DBCache.add_factory_keys @factory_keys
       trace :info, "#{@factory_keys.length} entries saved in the the DB cache"
+
+      if @first_anonymizer
+        DBCache.first_anonymizer = @first_anonymizer
+        trace :info, "First anonymizer address #{@first_anonymizer} saved in the the DB cache"
+      end
 
       return true
     end

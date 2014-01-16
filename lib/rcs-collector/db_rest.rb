@@ -629,6 +629,13 @@ class DB_rest
     end
   end
 
+  def first_anonymizer
+    ret = rest_call('GET', "/collector/first_anonymizer")
+    JSON.parse(ret.body)
+  rescue Exception => e
+    trace(:error, "Error calling first_anonymizer: #{e.class} #{e.message}")
+    propagate_error e
+  end
 end #
 
 end #Collector::
