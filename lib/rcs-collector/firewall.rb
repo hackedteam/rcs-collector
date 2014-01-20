@@ -31,7 +31,6 @@ module RCS
 
         # Delete legacy rules
         WinFirewall.del_rule("RCS Collector")
-        WinFirewall.del_rule("RCS Database")
 
         WinFirewall.del_rule(/#{RULE_PREFIX}/)
 
