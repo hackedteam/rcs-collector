@@ -2,6 +2,7 @@ require 'rcs-common/trace'
 require 'rcs-common/systemstatus'
 
 require_relative 'network'
+require_relative 'check_anonymizer_server'
 
 require 'eventmachine'
 
@@ -19,6 +20,8 @@ module RCS
 
         EM::run do
           SystemStatus.my_status = SystemStatus::OK
+
+          CheckAnonymizerServer.start
 
           # first heartbeat and checks (so we don't have to wait 'check_interval' to see the green light on startup)
           EM.defer(proc{ Network.check })

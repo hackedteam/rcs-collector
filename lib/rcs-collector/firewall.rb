@@ -33,17 +33,26 @@ module RCS
         WinFirewall.del_rule("RCS Collector")
         WinFirewall.del_rule("RCS Database")
 
+        %i[out in].each do |dir|
+          addr = Config.instance.global['DB_ADDRESS']
+
+          rule_name = "#{RULE_PREFIX}coll_to_db"
+          port = Config.instance.global['DB_PORT']
+          WinFirewall.del_rule(rule_name)
+          WinFirewall.add_rule(action: :allow, direction: dir, name: rule_name, remote_port: port, remote_ip: addr, protocol: :tcp)
+
+          rule_name = "#{RULE_PREFIX}coll_to_worker"
+          port = Config.instance.global['LISTENING_PORT'] - 1
+          WinFirewall.del_rule(rule_name)
+          WinFirewall.add_rule(action: :allow, direction: dir, name: rule_name, local_port: port, remote_ip: addr, protocol: :tcp)
+        end
+
         rule_name = "#{RULE_PREFIX}coll_to_first_anonym"
         port = Config.instance.global['LISTENING_PORT']
-        addr = DBCache.first_anonymizer || :any
+        addr = DBCache.first_anonymizer
+        raise "The first anonymizer address is unknown!" if addr.blank? and !developer_machine?
         WinFirewall.del_rule(rule_name)
         WinFirewall.add_rule(action: :allow, direction: :in, name: rule_name, local_port: port, remote_ip: addr, protocol: :tcp)
-
-        rule_name = "#{RULE_PREFIX}coll_to_db"
-        port = Config.instance.global['DB_PORT']
-        addr = Config.instance.global['DB_ADDRESS']
-        WinFirewall.del_rule(rule_name)
-        WinFirewall.add_rule(action: :allow, direction: :in, name: rule_name, remote_port: port, remote_ip: addr, protocol: :tcp)
       end
     end
   end

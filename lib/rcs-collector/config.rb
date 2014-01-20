@@ -28,6 +28,7 @@ class Config
                    'LISTENING_PORT' => 80,
                    'HB_INTERVAL' => 30,
                    'NC_INTERVAL' => 30,
+                   'CHK_ANON_LISTENING_PORT' => 4499,
                    'RESOLVE_IP' => true,
                    'SSL_VERIFY' => true}
 

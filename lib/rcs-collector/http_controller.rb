@@ -41,9 +41,22 @@ class CollectorController < RESTController
       return bad_request
     end
 
-    # it is a request to push to a NC element
-    content, content_type = NetworkController.push(@request[:uri], @request[:content])
-    return ok(content, {content_type: content_type})
+    # Forward to rcs-controller
+    trace(:debug, "Sending push instruction to the controller...")
+
+    controller_srv_port = Config.instance.global['CHK_ANON_LISTENING_PORT']
+    http = Net::HTTP.new("127.0.0.1", controller_srv_port)
+    # see the timeout around #check_element in rcs-controller
+    http.read_timeout = Config.instance.global['NC_INTERVAL'] - 2
+    resp = http.send_request('PUSH', '/', @request[:uri], {})
+
+    if resp.body == 'OK'
+      trace(:debug, "Network push succeed!")
+    else
+      trace(:error, "Network push failed: [#{resp.code}] #{resp.body}")
+    end
+
+    ok(resp.body, content_type: "text/html")
   end
 
   def put

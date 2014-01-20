@@ -199,32 +199,26 @@ class Network
     return result, logs
   end
 
-  # this method can be executed only by the DB
-  # and it is used to push a config to a network element without
-  # having to wait for the next heartbeat
-  def self.push(host, content)
-    # retrieve the lists from the db
-    elements = DB.instance.proxies
-    elements += DB.instance.collectors
+  # Push a config to a network element
+  def self.push(anon)
+    trace :info, "[NC] PUSHING to #{anon['address']}:#{anon['port']}"
 
-    # keep only the selected host
-    elements.delete_if {|x| x['address'] != host}
-    element = elements.first
+    # contact the anon
+    status, logs = nil
 
-    trace :info, "[NC] PUSHING to #{element['address']}:#{element['port']}"
-
-    begin
-      # contact the element
-      status, logs = check_element element
-      # send the results to db
-      report_status(element, *status) unless status.nil? or status.empty?
-      trace :info, "[NC] PUSHED to #{element['address']}:#{element['port']}"
-    rescue Exception => e
-      trace :warn, "[NC] CANNOT PUSH TO #{element['address']}: #{e.message}"
-      return e.message, "text/html"
+    Timeout::timeout(Config.instance.global['NC_INTERVAL'] - 5) do
+      status, logs = check_element(anon)
     end
 
-    return "OK", "text/html"
+    # send the results to db
+    report_status(anon, *status) unless status.nil? or status.empty?
+    trace :info, "[NC] PUSHED to #{anon['address']}:#{anon['port']}"
+
+    true
+  rescue Exception => e
+    msg = "[NC] CANNOT PUSH TO #{anon['address']}: #{e.message}"
+    trace(:warn, msg)
+    raise(msg)
   end
 
 
