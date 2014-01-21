@@ -43,7 +43,7 @@ module RCS
         rule_name = "#{RULE_PREFIX}db_to_coll"
         port = Config.instance.global['LISTENING_PORT']
         addr = Config.instance.global['DB_ADDRESS']
-        WinFirewall.add_rule(action: :allow, direction: :in, name: rule_name, remote_port: port, remote_ip: addr, protocol: :tcp)
+        WinFirewall.add_rule(action: :allow, direction: :in, name: rule_name, remote_port: :any, local_port: port, remote_ip: addr, protocol: :tcp)
       end
     end
   end
