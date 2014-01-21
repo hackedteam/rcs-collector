@@ -31,6 +31,8 @@ class DB
   UNKNOWN_AGENT = 5
   INVALID_COOKIE_MESSAGE = '"INVALID_COOKIE"'
 
+  AGENT_STATUSES = {active: 0, delete: 1, closed: 2, queued: 3, noagent: 4, unknown: 5}
+
   attr_reader :agent_signature
   attr_reader :network_signature
   attr_reader :check_signature
@@ -246,7 +248,7 @@ class DB
     # ask the database the status of the agent
     agent = db_rest_call :agent_status, build_id, instance_id, platform, demo, level
 
-    trace :info, "Status of [#{build_id}_#{instance_id}] is #{agent[:status]} (#{agent[:good] ? 'good' : 'bad'}, #{level})"
+    trace :info, "Status of [#{build_id}_#{instance_id}] is: #{AGENT_STATUSES.key(agent[:status])}, #{level}, #{agent[:good] ? 'good' : 'bad'}"
 
     return [agent[:status], agent[:id], agent[:good]]
   rescue Exception => e
