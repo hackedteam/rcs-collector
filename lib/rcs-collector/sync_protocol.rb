@@ -136,6 +136,12 @@ class Protocol
     k = Digest::SHA1.digest(conf_key + ks + kd)
     trace :debug, "[#{peer}] Auth -- K: " << k.unpack('H*').to_s
 
+    # don't allow direct sync on collector
+    if anon_version == 0
+      trace :warn, "[#{peer}] Agent trying to sync directly on the collector, closing..."
+      return
+    end
+
     # prepare the response:
     # Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response )
     message = aes_encrypt(ks, DB.instance.agent_signature)
@@ -283,6 +289,12 @@ class Protocol
     # we use a schema like PBKDF1
     k = Digest::SHA1.digest(conf_key + ks + kd)
     trace :debug, "[#{peer}] Auth -- K: " << k.unpack('H*').to_s
+
+    # don't allow direct sync on collector
+    if anon_version == 0
+      trace :warn, "[#{peer}] Agent trying to sync directly on the collector, closing..."
+      return
+    end
 
     # ask the database the status of the agent
     status, bid, good = DB.instance.agent_status(build_id_real, instance_id, platform, demo, scout)
