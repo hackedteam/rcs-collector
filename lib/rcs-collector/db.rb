@@ -143,8 +143,10 @@ class DB
       @factory_keys = keys unless keys.nil?
 
       # get the address of the first (chain) anonymizer
-      first_anonymizer = db_rest_call(:first_anonymizer)
-      @first_anonymizer = first_anonymizer['address'] if first_anonymizer.respond_to?(:[])
+      unless Config.instance.global['COLLECTOR_IS_GOOD']
+        first_anonymizer = db_rest_call(:first_anonymizer)
+        @first_anonymizer = first_anonymizer['address'] if first_anonymizer.respond_to?(:[])
+      end
 
       # errors while retrieving the data from the db
       return false if bck_sig.nil? or keys.nil? or net_sig.nil? or check_sig.nil?
