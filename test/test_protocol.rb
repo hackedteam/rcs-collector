@@ -69,7 +69,7 @@ class DB_mockup_protocol_rest
   # mockup methods
   def login(user, pass, build, type); return (@@failure) ? false : true; end
   def logout; end
-  def agent_status(build_id, instance_id, platform, demo, scout)
+  def agent_status(build_id, instance_id, platform, demo, level)
     return {status: DB::ACTIVE_AGENT, id: 1, good: false} if instance_id == "0" * 40
     return {status: DB::ACTIVE_AGENT, id: 1, good: true}
   end

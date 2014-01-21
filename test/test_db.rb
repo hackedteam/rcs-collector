@@ -59,7 +59,7 @@ class DB_mockup_rest
     raise if @@failure
     return {'BUILD001' => {'key' => 'secret class key', 'good' => true}, 'BUILD002' => {'key' => 'another secret', 'good' => true}}
   end
-  def agent_status(build_id, instance_id, platform, demo, scout)
+  def agent_status(build_id, instance_id, platform, demo, level)
     return {status: DB::UNKNOWN_AGENT, id: 0, good: false} if @@failure
     # return status, bid, good
     return {status: DB::ACTIVE_AGENT, id: 1, good: true}

@@ -64,10 +64,9 @@ class EvidenceTransfer
             # and passing them as they were a session
             sess = info.symbolize
             sess[:demo] = (sess[:demo] == 1) ? true : false
-            sess[:scout] = (sess[:scout] == 1) ? true : false
 
             # ask the database the id of the agent
-            status, agent_id = DB.instance.agent_status(sess[:ident], sess[:instance], sess[:platform], sess[:demo], sess[:scout])
+            status, agent_id = DB.instance.agent_status(sess[:ident], sess[:instance], sess[:platform], sess[:demo], sess[:level])
             sess[:bid] = agent_id
 
             case status

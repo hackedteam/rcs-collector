@@ -47,7 +47,7 @@ class EvidenceManager
                                   instance = '#{session[:instance]}',
                                   platform = '#{session[:platform]}',
                                   demo = #{session[:demo] ? 1 : 0},
-                                  scout = #{session[:scout] ? 1 : 0},
+                                  level = '#{session[:level]}',
                                   version = #{version},
                                   user = '#{user}',
                                   device = '#{device}',
@@ -378,7 +378,7 @@ class EvidenceManager
                                                 instance CHAR(40),
                                                 platform CHAR(16),
                                                 demo INT,
-                                                scout INT,
+                                                level CHAR(16),
                                                 version INT,
                                                 user CHAR(256),
                                                 device CHAR(256),
@@ -476,7 +476,8 @@ class EvidenceManager
 
       platform = e['platform']
       platform += "*" if e['demo'] == 1
-      platform.prepend("@") if e['scout'] == 1
+      platform.prepend("@") if e['level'] == :scout
+      platform.prepend("#") if e['level'] == :soldier
 
       puts "|#{e['ident']}_#{e['instance']}|#{platform.slice(0..11).center(12)}| #{time} |#{status.center(13)}|#{count.rjust(5)} |#{size.to_s_bytes.rjust(11)} |"
     end

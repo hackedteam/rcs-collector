@@ -235,16 +235,16 @@ class DB
   end
 
   # returns ALWAYS the status of an agent
-  def agent_status(build_id, instance_id, platform, demo, scout)
+  def agent_status(build_id, instance_id, platform, demo, level)
     # if the database has gone, reply with a fake response in order for the sync to continue
     return agent_cached_status(build_id) unless @available
 
     trace :debug, "Asking the status of [#{build_id}_#{instance_id}] to the db"
 
     # ask the database the status of the agent
-    agent = db_rest_call :agent_status, build_id, instance_id, platform, demo, scout
+    agent = db_rest_call :agent_status, build_id, instance_id, platform, demo, level
 
-    trace :info, "Status of [#{build_id}_#{instance_id}] is #{agent[:status]} (#{agent[:good] ? 'good' : 'bad'})"
+    trace :info, "Status of [#{build_id}_#{instance_id}] is #{agent[:status]} (#{agent[:good] ? 'good' : 'bad'}, #{level})"
 
     return [agent[:status], agent[:id], agent[:good]]
   rescue Exception => e
