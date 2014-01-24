@@ -42,8 +42,11 @@ module RCS
       end
 
       def self.start
-        listening_port = Config.instance.global['CHK_ANON_LISTENING_PORT']
-        @server_signature ||= EM::start_server(LISTENING_ADDR, listening_port, self)
+        @server_signature ||= begin
+          listening_port = Config.instance.global['CONTROLLER_PORT']
+          trace(:info, "Starting controller http server #{LISTENING_ADDR}:#{listening_port}...")
+          EM::start_server(LISTENING_ADDR, listening_port, self)
+        end
       rescue Exception => ex
         raise("Unable to start CheckAnonymizer server on port #{listening_port}: #{ex.message}")
       end

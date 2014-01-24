@@ -44,7 +44,7 @@ class CollectorController < RESTController
     # Forward to rcs-controller
     trace(:debug, "Sending push instruction to the controller...")
 
-    controller_srv_port = Config.instance.global['CHK_ANON_LISTENING_PORT']
+    controller_srv_port = Config.instance.global['CONTROLLER_PORT']
     http = Net::HTTP.new("127.0.0.1", controller_srv_port)
     # see the timeout around #check_element in rcs-controller
     http.read_timeout = Config.instance.global['NC_INTERVAL'] - 2
