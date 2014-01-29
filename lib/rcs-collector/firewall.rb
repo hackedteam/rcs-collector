@@ -7,7 +7,7 @@ module RCS
       extend self
       extend RCS::Tracer
 
-      RULE_PREFIX = "RCS_FWR_RULE_"
+      RULE_PREFIX = "RCS_FW"
 
       def developer_machine?
         Config.instance.global['COLLECTOR_IS_GOOD']
@@ -34,13 +34,13 @@ module RCS
 
         WinFirewall.del_rule(/#{RULE_PREFIX}/)
 
-        rule_name = "#{RULE_PREFIX}anonym_to_coll"
+        rule_name = "#{RULE_PREFIX} First Anonymizer to Collector"
         port = Config.instance.global['LISTENING_PORT']
         addr = developer_machine? ? :any : DBCache.first_anonymizer
         raise "The first anonymizer address is unknown!" if addr.nil? and !developer_machine?
         WinFirewall.add_rule(action: :allow, direction: :in, name: rule_name, local_port: port, remote_ip: addr, protocol: :tcp)
 
-        rule_name = "#{RULE_PREFIX}db_to_coll"
+        rule_name = "#{RULE_PREFIX} Master to Collector"
         port = Config.instance.global['LISTENING_PORT']
         addr = Config.instance.global['DB_ADDRESS']
         WinFirewall.add_rule(action: :allow, direction: :in, name: rule_name, remote_port: :any, local_port: port, remote_ip: addr, protocol: :tcp)
