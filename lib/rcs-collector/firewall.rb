@@ -36,7 +36,7 @@ module RCS
 
         rule_name = "#{RULE_PREFIX}anonym_to_coll"
         port = Config.instance.global['LISTENING_PORT']
-        addr = DBCache.first_anonymizer
+        addr = developer_machine? ? :any : DBCache.first_anonymizer
         raise "The first anonymizer address is unknown!" if addr.nil? and !developer_machine?
         WinFirewall.add_rule(action: :allow, direction: :in, name: rule_name, local_port: port, remote_ip: addr, protocol: :tcp)
 
