@@ -49,16 +49,21 @@ class DB_rest
       when 'POST'
         request = Net::HTTP::Post.new(uri, full_headers)
         request.body = content
-        @http.request(request)
+        resp = @http.request(request)
       when 'GET'
         request = Net::HTTP::Get.new(uri, full_headers)
-        @http.request(request)
+        resp = @http.request(request)
       #when 'PUT'
       #  @http.request_put(uri, full_headers)
       when 'DELETE'
         request = Net::HTTP::Delete.new(uri, full_headers)
-        @http.request(request)
+        resp = @http.request(request)
     end
+
+    # in case the db has restarted and our cookie is not valid anymore
+    raise "Invalid Cookie" if resp.kind_of? Net::HTTPForbidden
+
+    return resp
   end
 
   # timeout exception propagator
@@ -258,11 +263,6 @@ class DB_rest
       ret = rest_call('GET', '/agent/status/?' + CGI.encode_query(request))
 
       return {status: DB::NO_SUCH_AGENT, id: 0, good: false} if ret.kind_of? Net::HTTPNotFound
-
-      if !ret.kind_of?(Net::HTTPOK) and ret.body == DB::INVALID_COOKIE_MESSAGE
-        raise "The DB is running but an invalid cookie was used to request the agent status"
-      end
-
       return {status: DB::UNKNOWN_AGENT, id: 0, good: false} unless ret.kind_of? Net::HTTPOK
 
       status = JSON.parse(ret.body)

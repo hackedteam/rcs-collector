@@ -29,7 +29,6 @@ class DB
   QUEUED_AGENT = 3
   NO_SUCH_AGENT = 4
   UNKNOWN_AGENT = 5
-  INVALID_COOKIE_MESSAGE = '"INVALID_COOKIE"'
 
   AGENT_STATUSES = {active: 0, delete: 1, closed: 2, queued: 3, noagent: 4, unknown: 5}
 
