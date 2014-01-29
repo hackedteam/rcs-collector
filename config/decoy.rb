@@ -40,7 +40,7 @@ class DecoyPage
           "<title>404 Not Found</title>\n" +
           "</head><body>\n" +
           "<h1>Not Found</h1>\n" +
-          "<p>The requested URL #{CGI.escape(request[:uri])} was not found on this server.</p>\n" +
+          "<p>The requested URL #{CGI.escapeHTML(CGI.unescape(request[:uri]))} was not found on this server.</p>\n" +
           "<hr>\n" +
           "<address>#{FakeServer::SERVER_STRING} Server at #{request[:headers][:host]} Port 80</address>\n" +
           "</body></html>\n"
@@ -87,7 +87,7 @@ class NotAllowedPage
           "<title>405 Method Not Allowed</title>\n" +
           "</head><body>\n" +
           "<h1>Method Not Allowed</h1>\n" +
-          "<p>The requested method #{request[:method]} is not allowed for the URL #{CGI.escape(request[:uri])}.<br />\n" +
+          "<p>The requested method #{request[:method]} is not allowed for the URL #{CGI.escapeHTML(CGI.unescape(request[:uri]))}.<br />\n" +
           "</p>\n" +
           "<hr>\n" +
           "<address>#{FakeServer::SERVER_STRING} Server at #{request[:headers][:host]} Port 80</address>\n" +
