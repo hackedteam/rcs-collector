@@ -252,7 +252,9 @@ class DB
     return [agent[:status], agent[:id], agent[:good]]
   rescue Exception => e
     trace :info, "Cannot determine status of [#{build_id}_#{instance_id}], getting status from cache"
-    return agent_cached_status(build_id)
+    cached = agent_cached_status(build_id)
+    trace :info, "Cached status is: #{AGENT_STATUSES.key(cached[0])}, #{level}, #{cached[2] ? 'good' : 'bad'}"
+    return cached
   end
 
   def agent_cached_status(build_id)
