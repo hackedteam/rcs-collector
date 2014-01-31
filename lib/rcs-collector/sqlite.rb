@@ -47,7 +47,7 @@ module SQLite_Ruby
   def execute(query, bind_vars = [], *args)
     @db.execute(query, bind_vars, args)
   rescue SQLite3::BusyException => e
-    trace :warn, "Cannot execute query because database is busy, retrying. [#{e.message}]"
+    trace :debug, "Cannot execute query because database is busy, retrying. [#{e.message}]"
     trace :debug, "Query was: #{query}"
     sleep 0.1
     retry
