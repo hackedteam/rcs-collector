@@ -237,7 +237,8 @@ class DBCache
       db = SQLite.open CACHE_FILE
       rows = db.execute("SELECT * FROM factory_keys;")
       rows.each do |row|
-        factory_keys[row[0]] = {'key' => row[1], 'good' => row[2]}
+        good = row[2].to_s.downcase == 'true'
+        factory_keys[row[0]] = {'key' => row[1], 'good' => good}
       end
       db.close
     rescue Exception => e
