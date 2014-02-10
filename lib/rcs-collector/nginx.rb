@@ -15,12 +15,15 @@ module RCS
         # TODO: execute: nginx.exe -c #{config_file} -p #{Dir.pwd} -s stop
       end
 
+      def stop!
+        # TODO: execute taskkill /F /IM nginx.exe
+      end
+
       def reload
         # TODO: execute: nginx.exe -c #{config_file} -p #{Dir.pwd} -s reload
       end
 
       def save_config
-        #File.write(Config.instance.file("nginx2.conf"), config)
         File.write(config_file, config)
       end
 
@@ -29,6 +32,7 @@ module RCS
       end
 
       def config_file
+        #Config.instance.file("nginx.conf")
         "config/nginx2.conf"
       end
 
