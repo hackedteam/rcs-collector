@@ -307,8 +307,8 @@ class CollectorController < RESTController
       major, minor = ver_tuple unless ver_tuple.empty?
       if major.to_i == 2
         version = 'v2'
-      elsif major.to_i == 4 and minor.to_i >= 2
-        version = 'jelly'
+      elsif major.to_i == 4 and minor.to_i >= 4
+        version = 'kitkat'
       else
         version = 'default'
       end
