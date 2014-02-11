@@ -1,26 +1,69 @@
-#require_relative 'config'
+
+require 'rcs-common/trace'
+require 'net/http'
+
+require_relative 'config'
 
 module RCS
   module Collector
     module Nginx
       extend self
+      extend RCS::Tracer
 
       @allow = "127.0.0.0/8"
 
       def start
-        # TODO: execute: nginx.exe -c #{config_file} -p #{Dir.pwd}
+        trace :info, "Staring Nginx on port #{Config.instance.global['LISTENING_PORT']}"
+        ret = system "#{nginx_executable} -c #{config_file} -p #{Dir.pwd}"
+        ret or raise("Failed to start nginx process")
       end
 
-      def stop
-        # TODO: execute: nginx.exe -c #{config_file} -p #{Dir.pwd} -s stop
+      def stop(silent = false)
+        trace :info, "Stopping Nginx"
+        ret = system "#{nginx_executable} -c #{config_file} -p #{Dir.pwd} -s stop"
+        return if silent
+        ret or raise("Failed to stop nginx process")
       end
 
       def stop!
-        # TODO: execute taskkill /F /IM nginx.exe
+        stop(true)
+        trace :info, "Hard killing Nginx process (if any)"
+        # ensure the process is not running (kill hard)
+        system "#{kill_command} #{File.basename(nginx_executable)}"
       end
 
       def reload
-        # TODO: execute: nginx.exe -c #{config_file} -p #{Dir.pwd} -s reload
+        trace :info, "Reloading Nginx configuration"
+        ret = system "#{nginx_executable} -c #{config_file} -p #{Dir.pwd} -s reload"
+        ret or raise("Failed to reload nginx configuration")
+      end
+
+      def status
+        http = Net::HTTP.new('127.0.0.1', 80)
+        resp = http.request_get('/nginx_status')
+        return :unknown unless resp.kind_of? Net::HTTPSuccess
+        return :running if resp.body =~ /Active connections/
+      rescue Exception => e
+        trace :debug, "Cannot get Nginx status: #{e.message}"
+        return :error
+      end
+
+      def nginx_executable
+        case RbConfig::CONFIG['host_os']
+          when /darwin/
+            './bin/nginx'
+          when /mingw/
+            'bin\nginx.exe'
+        end
+      end
+
+      def kill_command
+        case RbConfig::CONFIG['host_os']
+          when /darwin/
+            'killall -9'
+          when /mingw/
+            'taskkill /F /IM'
+        end
       end
 
       def save_config
@@ -28,12 +71,12 @@ module RCS
       end
 
       def first_hop=(anon_address)
+        trace :info, "Nginx accepting connection only from #{anon_address}"
         @allow = anon_address
       end
 
       def config_file
-        #Config.instance.file("nginx.conf")
-        "config/nginx2.conf"
+        Config.instance.file("nginx.conf")
       end
 
       def config
@@ -88,7 +131,7 @@ module RCS
       def c_server
         %"
              server {
-                listen        80;
+                listen        #{Config.instance.global['LISTENING_PORT']};
                 server_name   localhost;
                 server_tokens off;
 
@@ -97,9 +140,17 @@ module RCS
                   return 405;
                 }
 
+                # status page
+                location /nginx_status {
+                  stub_status on;
+                  access_log off;
+                  allow 127.0.0.1;
+                  deny all;
+                }
+
                 # Proxy all the request to the collector
                 location / {
-                  proxy_pass        http://localhost:81;
+                  proxy_pass        http://localhost:#{Config.instance.global['LISTENING_PORT'] + 1};
                   proxy_set_header  X-Forwarded-For  $proxy_add_x_forwarded_for;
                   allow #{@allow};
                   deny all;
@@ -112,7 +163,17 @@ module RCS
 end
 
 if __FILE__ == $0
-  #RCS::Collector::Nginx.first_hop = "0.0.0.0/0"
-  puts RCS::Collector::Nginx.config
+  puts RCS::Collector::Nginx.status
+  RCS::Collector::Nginx.stop!
+  #puts RCS::Collector::Nginx.config
+  RCS::Collector::Nginx.first_hop = "1.2.3.4/32"
   RCS::Collector::Nginx.save_config
+  RCS::Collector::Nginx.start
+  gets
+  RCS::Collector::Nginx.first_hop = "0.0.0.0/0"
+  RCS::Collector::Nginx.save_config
+  RCS::Collector::Nginx.reload
+  puts RCS::Collector::Nginx.status
+  gets
+  RCS::Collector::Nginx.stop
 end

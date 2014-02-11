@@ -93,6 +93,7 @@ class CollectorController < RESTController
 
   def watchdog
     trace :debug, "#{@request[:peer]} watchdog #{$watchdog.locked?} [#{@request[:uri]}]"
+    @request[:uri].gsub!("/", '')
     return ok("#{$external_address} #{DB.instance.check_signature}", {content_type: "text/html"}) if @request[:uri].eql? 'CHECK'
     return bad_request if @request[:uri] != @request[:peer]
     return ok("#{$version}", {content_type: "text/html"}) if $watchdog.lock

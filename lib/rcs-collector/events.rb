@@ -8,6 +8,7 @@ require_relative 'http_parser'
 require_relative 'sessions'
 require_relative 'statistics'
 require_relative 'firewall'
+require_relative 'nginx'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -168,7 +169,7 @@ class HttpServer
   extend RCS::Tracer
 
   def self.running?
-    @signature
+    @server_handle
   end
 
   def self.start
@@ -176,22 +177,46 @@ class HttpServer
 
     Firewall.create_default_rules
 
+    if RCS::Collector::Config.instance.global['USE_NGINX']
+      start_nginx
+      # put the ruby server on a different port
+      @port += 1
+    end
+
     trace(:info, "Listening on port #{@port}...")
-    @signature = EM.start_server("0.0.0.0", @port, HTTPHandler)
+    @server_handle = EM.start_server("0.0.0.0", @port, HTTPHandler)
   rescue Exception => e
     trace(:fatal, "Unable to start http server on port #{@port}: #{e.message} #{e.backtrace}")
     exit!(1)
   end
 
   def self.stop
-    return unless @signature
+    return unless @server_handle
+
+    Nginx.stop if RCS::Collector::Config.instance.global['USE_NGINX']
+
     trace(:info, "Stopping http server...")
-    EM.stop_server(@signature) if @signature
-    @signature = nil
+    EM.stop_server(@server_handle) if @server_handle
+    @server_handle = nil
   rescue Exception => e
     trace(:fatal, "Unable to stop http server: #{e.message} #{e.backtrace}")
     exit!(1)
   end
+
+  def self.start_nginx
+    Nginx.first_hop = Config.instance.global['COLLECTOR_IS_GOOD'] ? "0.0.0.0/0" : DBCache.first_anonymizer
+    Nginx.save_config
+    begin
+      Nginx.start
+    rescue Exception => e
+      trace :error, "Cannot start Nginx: #{e.message}"
+      Nginx.stop!
+      sleep 1
+      retry
+    end
+
+  end
+
 end
 
 
