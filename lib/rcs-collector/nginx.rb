@@ -13,6 +13,9 @@ module RCS
       @allow = "127.0.0.0/8"
 
       def start
+        # ensure the temp dir si present
+        Dir::mkdir(Dir.pwd + 'temp') if not File.directory?(Dir.pwd + 'temp')
+
         trace :info, "Staring Nginx on port #{Config.instance.global['LISTENING_PORT']}"
         ret = system "#{nginx_executable} -c #{config_file} -p #{Dir.pwd}"
         ret or raise("Failed to start nginx process")
@@ -122,7 +125,7 @@ module RCS
 
             keepalive_timeout  65;
             gzip  on;
-            client_body_temp_path /tmp;
+            client_body_temp_path temp;
 
             #{c_server}
         }"
