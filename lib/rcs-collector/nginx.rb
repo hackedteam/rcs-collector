@@ -12,18 +12,27 @@ module RCS
 
       @allow = "127.0.0.0/8"
 
+      def prefix
+        @prefix_path ||= File.expand_path("../../..", __FILE__)+"/nginx"
+      end
+
       def start
         # ensure the temp dir si present
         Dir::mkdir(Dir.pwd + 'temp') if not File.directory?(Dir.pwd + 'temp')
 
         trace :info, "Staring Nginx on port #{Config.instance.global['LISTENING_PORT']}"
-        ret = system "#{nginx_executable} -c #{config_file} -p #{Dir.pwd}"
-        ret or raise("Failed to start nginx process")
+
+        cmd = "#{executable} -c #{config_file} -p #{prefix}"
+        cmd = "start #{cmd}" if windows?
+
+        system(cmd) or raise("Failed to start nginx process")
+        puts "done"
       end
 
       def stop(silent = false)
         trace :info, "Stopping Nginx"
-        ret = system "#{nginx_executable} -c #{config_file} -p #{Dir.pwd} -s stop"
+        cmd = "#{executable} -c #{config_file} -p #{prefix} -s stop"
+        ret = system(cmd)
         return if silent
         ret or raise("Failed to stop nginx process")
       end
@@ -32,13 +41,13 @@ module RCS
         stop(true)
         trace :info, "Hard killing Nginx process (if any)"
         # ensure the process is not running (kill hard)
-        system "#{kill_command} #{File.basename(nginx_executable)}"
+        system "#{kill_command} #{File.basename(executable)}"
       end
 
       def reload
         trace :info, "Reloading Nginx configuration"
-        ret = system "#{nginx_executable} -c #{config_file} -p #{Dir.pwd} -s reload"
-        ret or raise("Failed to reload nginx configuration")
+        cmd = "#{executable} -c #{config_file} -p #{prefix} -s reload"
+        system(cmd) or raise("Failed to reload nginx configuration")
       end
 
       def status
@@ -51,22 +60,16 @@ module RCS
         return :error
       end
 
-      def nginx_executable
-        case RbConfig::CONFIG['host_os']
-          when /darwin/
-            './bin/nginx'
-          when /mingw/
-            'bin\nginx.exe'
-        end
+      def executable
+        windows? ? "#{prefix}/nginx.exe" : 'nginx'
+      end
+
+      def windows?
+        RbConfig::CONFIG['host_os'] =~ /mingw/
       end
 
       def kill_command
-        case RbConfig::CONFIG['host_os']
-          when /darwin/
-            'killall -9'
-          when /mingw/
-            'taskkill /F /IM'
-        end
+        windows? ? 'taskkill /F /IM' : 'killall -9'
       end
 
       def save_config
@@ -79,7 +82,7 @@ module RCS
       end
 
       def config_file
-        Config.instance.file("nginx.conf")
+        "#{prefix}/conf/nginx.conf"
       end
 
       def config
@@ -93,8 +96,8 @@ module RCS
       def c_global
         %"
         worker_processes  2;
-        error_log  log/error.log;
-        pid        log/nginx.pid;
+        error_log  #{prefix}/logs/error.log;
+        pid        #{prefix}/logs/nginx.pid;
         "
       end
 
@@ -115,7 +118,7 @@ module RCS
                               '$status $body_bytes_sent \"$http_referer\" '
                               '\"$http_user_agent\" \"$http_x_forwarded_for\"';
 
-            access_log  log/access.log  main;
+            access_log  #{prefix}/logs/access.log  main;
 
             # List of Allowed HTTP methods
             map $request_method $bad_method {
@@ -125,7 +128,7 @@ module RCS
 
             keepalive_timeout  65;
             gzip  on;
-            client_body_temp_path /tmp;
+            client_body_temp_path #{prefix}/temp;
 
             #{c_server}
         }"
@@ -166,17 +169,25 @@ module RCS
 end
 
 if __FILE__ == $0
+   RCS::Collector::Config.instance.load_from_file
+
   puts RCS::Collector::Nginx.status
   RCS::Collector::Nginx.stop!
   #puts RCS::Collector::Nginx.config
   RCS::Collector::Nginx.first_hop = "1.2.3.4/32"
   RCS::Collector::Nginx.save_config
   RCS::Collector::Nginx.start
+
+  print "Press enter to continue"
   gets
+
   RCS::Collector::Nginx.first_hop = "0.0.0.0/0"
   RCS::Collector::Nginx.save_config
   RCS::Collector::Nginx.reload
   puts RCS::Collector::Nginx.status
+
+  print "Press enter to continue"
   gets
+
   RCS::Collector::Nginx.stop
 end
