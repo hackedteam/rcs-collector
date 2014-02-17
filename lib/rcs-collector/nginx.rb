@@ -163,6 +163,8 @@ module RCS
 end
 
 if __FILE__ == $0
+   RCS::Collector::Config.instance.load_from_file
+
   puts RCS::Collector::Nginx.status
   RCS::Collector::Nginx.stop!
   #puts RCS::Collector::Nginx.config
