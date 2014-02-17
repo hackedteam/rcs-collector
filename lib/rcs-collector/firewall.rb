@@ -7,7 +7,7 @@ module RCS
       extend self
       extend RCS::Tracer
 
-      RULE_PREFIX = "RCS_FW"
+      RULE_PREFIX = "RCS_FWC"
 
       def developer_machine?
         Config.instance.global['COLLECTOR_IS_GOOD']
