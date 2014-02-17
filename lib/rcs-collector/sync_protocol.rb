@@ -26,7 +26,7 @@ class Protocol
   extend RCS::Crypt
   extend RCS::Collector::Commands
 
-  MIN_ANON_VERSION = '2013031101'
+  MIN_ANON_VERSION = '2014022401'
   PLATFORMS = ["WINDOWS", "WINMO", "OSX", "IOS", "BLACKBERRY", "SYMBIAN", "ANDROID", "LINUX", "WINPHONE"]
 
   def self.authenticate(peer, uri, content, anon_version)

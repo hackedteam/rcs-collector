@@ -38,7 +38,7 @@ class CollectorController < RESTController
     # only the DB is authorized to send PUSH commands
     unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PUSH [#{@request[:uri]}] commands!!!"
-      return bad_request
+      return method_not_allowed
     end
 
     # Forward to rcs-controller
@@ -84,7 +84,7 @@ class CollectorController < RESTController
     # only the DB is authorized to send PROXY commands
     unless from_db?(@request[:headers])
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send PROXY [#{@request[:uri]}] commands!!!"
-      return bad_request
+      return method_not_allowed
     end
 
     # every request received are forwarded externally like a proxy
@@ -95,7 +95,7 @@ class CollectorController < RESTController
     trace :debug, "#{@request[:peer]} watchdog #{$watchdog.locked?} [#{@request[:uri]}]"
     @request[:uri].gsub!("/", '')
     return ok("#{$external_address} #{DB.instance.check_signature}", {content_type: "text/html"}) if @request[:uri].eql? 'CHECK'
-    return bad_request if @request[:uri] != @request[:peer]
+    return method_not_allowed if @request[:uri] != @request[:peer]
     return ok("#{$version}", {content_type: "text/html"}) if $watchdog.lock
   end
 

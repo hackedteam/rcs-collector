@@ -125,7 +125,7 @@ module RCS
 
             keepalive_timeout  65;
             gzip  on;
-            client_body_temp_path temp;
+            client_body_temp_path /tmp;
 
             #{c_server}
         }"

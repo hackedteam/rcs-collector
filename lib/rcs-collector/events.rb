@@ -58,6 +58,7 @@ class HTTPHandler < EM::HttpServer::Server
     @closed = true
   end
 
+  # override of the em-http-server handler
   def http_error_string(code, desc)
     request = {}
     request[:headers] = @http

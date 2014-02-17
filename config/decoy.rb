@@ -2,7 +2,7 @@ require 'securerandom'
 require 'rcs-common/trace'
 
 class FakeServer
-  SERVER_STRING = "Apache/2.4.7 (Unix) OpenSSL/1.0.1e"
+  SERVER_STRING = "nginx"
 end
 
 class DecoyPage
@@ -15,6 +15,7 @@ class DecoyPage
   HTTP_STATUS_NOT_AUTHORIZED = 403
   HTTP_STATUS_CONFLICT = 409
   HTTP_STATUS_SERVER_ERROR = 500
+  HTTP_STATUS_BAD_GATEWAY = 502
 
   def self.create(request)
 
@@ -25,27 +26,38 @@ class DecoyPage
     ###############################################################
     #trace :info, "Request parameters: " + request.inspect
 
-    ####################################
-    # Example: google redirection page
-    ####################################
-    #page = "<html> <head>" +
-    #       "<meta http-equiv=\"refresh\" content=\"0;url=http://www.google.com\">" +
-    #       "</head> </html>"
-
-    ###############################################
-    # Example: standard apache not found document
-    ###############################################
-    page = "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n" +
+    # Only for old anonymizers DO NOT EDIT!!
+    old = "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n" +
           "<html><head>\n" +
           "<title>404 Not Found</title>\n" +
           "</head><body>\n" +
           "<h1>Not Found</h1>\n" +
-          "<p>The requested URL #{CGI.escapeHTML(CGI.unescape(request[:uri]))} was not found on this server.</p>\n" +
+          "<p>The requested URL #{request[:uri]} was not found on this server.</p>\n" +
           "<hr>\n" +
-          "<address>#{FakeServer::SERVER_STRING} Server at #{request[:headers][:host]} Port 80</address>\n" +
+          "<address>Apache/2.4.7 (Unix) OpenSSL/1.0.1e Server at #{request[:headers][:host]} Port 80</address>\n" +
           "</body></html>\n"
+    return HTTP_STATUS_NOT_FOUND, old, {content_type: 'text/html'} unless request[:anon_version] >= '2014022401'
 
-    return HTTP_STATUS_NOT_FOUND, page, {content_type: 'text/html'}
+    ###############################################
+    # Example: standard nginx not found document
+    ###############################################
+    not_found = "<html>\r\n" +
+           "<head><title>404 Not Found</title></head>\r\n" +
+           "<body bgcolor=\"white\">\r\n" +
+           "<center><h1>404 Not Found</h1></center>\r\n" +
+           "<hr><center>nginx</center>\r\n" +
+           "</body>\r\n" +
+           "</html>\r\n"
+
+    bad_gateway = "<html>\r\n" +
+           "<head><title>502 Bad Gateway</title></head>\r\n" +
+           "<body bgcolor=\"white\">\r\n" +
+           "<center><h1>502 Bad Gateway</h1></center>\r\n" +
+           "<hr><center>nginx</center>\r\n" +
+           "</body>\r\n" +
+           "</html>\r\n"
+
+    return HTTP_STATUS_NOT_FOUND, not_found, {content_type: 'text/html'}
   end
 
 end
@@ -56,18 +68,15 @@ class BadRequestPage
   def self.create(request)
 
     ###############################################
-    # Example: standard apache bad request document
+    # Example: standard nginx bad request document
     ###############################################
-    page = "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n" +
-          "<html><head>\n" +
-          "<title>400 Bad Request</title>\n" +
-          "</head><body>\n" +
-          "<h1>Bad Request</h1>\n" +
-          "<p>Your browser sent a request that this server could not understand.<br />\n" +
-          "</p>\n" +
-          "<hr>\n" +
-          "<address>#{FakeServer::SERVER_STRING} Server at #{request[:headers][:host]} Port 80</address>\n" +
-          "</body></html>\n"
+    page = "<html>\r\n" +
+           "<head><title>400 Bad Request</title></head>\r\n" +
+           "<body bgcolor=\"white\">\r\n" +
+           "<center><h1>400 Bad Request</h1></center>\r\n" +
+           "<hr><center>nginx</center>\r\n" +
+           "</body>\r\n" +
+           "</html>\r\n"
 
     return page, {content_type: 'text/html'}
   end
@@ -80,18 +89,15 @@ class NotAllowedPage
   def self.create(request)
 
     ######################################################
-    # Example: standard apache method not allowed document
+    # Example: standard nginx method not allowed document
     ######################################################
-    page = "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n" +
-          "<html><head>\n" +
-          "<title>405 Method Not Allowed</title>\n" +
-          "</head><body>\n" +
-          "<h1>Method Not Allowed</h1>\n" +
-          "<p>The requested method #{request[:method]} is not allowed for the URL #{CGI.escapeHTML(CGI.unescape(request[:uri]))}.<br />\n" +
-          "</p>\n" +
-          "<hr>\n" +
-          "<address>#{FakeServer::SERVER_STRING} Server at #{request[:headers][:host]} Port 80</address>\n" +
-          "</body></html>\n"
+    page = "<html>\r\n" +
+           "<head><title>405 Not Allowed</title></head>\r\n" +
+           "<body bgcolor=\"white\">\r\n" +
+           "<center><h1>405 Not Allowed</h1></center>\r\n" +
+           "<hr><center>nginx</center>\r\n" +
+           "</body>\r\n" +
+           "</html>\r\n"
 
     return page, {content_type: 'text/html'}
   end

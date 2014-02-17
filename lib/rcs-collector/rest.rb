@@ -26,6 +26,7 @@ class RESTController
   STATUS_METHOD_NOT_ALLOWED = 405
   STATUS_CONFLICT = 409
   STATUS_SERVER_ERROR = 500
+  STATUS_BAD_GATEWAY = 502
   
   # the parameters passed on the REST request
   attr_reader :request
@@ -36,10 +37,14 @@ class RESTController
   # with a browser or something else
   def http_decoy_page
     # default decoy page, in case someone mess with the dynamic script
-    code = STATUS_OK
-    page = "<html> <head>" +
-           "<meta http-equiv=\"refresh\" content=\"0;url=http://www.google.com\">" +
-           "</head> </html>"
+    code = STATUS_BAD_GATEWAY
+    page = "<html>\r\n" +
+           "<head><title>502 Bad Gateway</title></head>\r\n" +
+           "<body bgcolor=\"white\">\r\n" +
+           "<center><h1>502 Bad Gateway</h1></center>\r\n" +
+           "<hr><center>nginx</center>\r\n" +
+           "</body>\r\n" +
+           "</html>\r\n"
     options = {content_type: 'text/html'}
 
     begin

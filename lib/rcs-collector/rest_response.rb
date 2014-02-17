@@ -76,6 +76,9 @@ class RESTResponse
       @response.headers['Connection'] = 'close'
     end
 
+    # force close on errors
+    @response.headers['Connection'] = 'close' unless @status.eql? 200
+
     self
   end
 
