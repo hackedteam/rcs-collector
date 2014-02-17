@@ -74,6 +74,6 @@ public
 .ruby-gemset
 
 # nginx
-nginx/logs/*.log
-nginx/temp/*
-nginx/conf/*.conf
+nginx/logs
+nginx/temp
+nginx/conf
