@@ -72,3 +72,8 @@ public
 
 # RVM gemset
 .ruby-gemset
+
+# nginx
+nginx/logs/*.log
+nginx/temp/*
+nginx/conf/*.conf
