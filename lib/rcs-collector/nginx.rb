@@ -16,11 +16,20 @@ module RCS
         @prefix_path ||= File.expand_path("../../..", __FILE__)+"/nginx"
       end
 
+      def ensure_default_folders
+        %w[logs temp conf].each do |folder|
+          folder = "#{prefix}/#{folder}"
+          Dir.mkdir(folder) unless Dir.exist?(folder)
+        end
+      end
+
       def start
         # ensure the temp dir si present
         Dir::mkdir(Dir.pwd + 'temp') if not File.directory?(Dir.pwd + 'temp')
 
         trace :info, "Staring Nginx on port #{Config.instance.global['LISTENING_PORT']}"
+
+        ensure_default_folders
 
         cmd = "#{executable} -c #{config_file} -p #{prefix}"
         cmd = "start #{cmd}" if windows?
@@ -72,6 +81,7 @@ module RCS
       end
 
       def save_config
+        ensure_default_folders
         File.write(config_file, config)
       end
 
