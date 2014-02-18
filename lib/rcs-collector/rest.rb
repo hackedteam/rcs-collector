@@ -54,6 +54,10 @@ class RESTController
       trace :fatal, e.backtrace.join("\n")
     end
 
+    # sleep a random amount of time
+    # this is done to prevent latency discovery of the anon chain
+    sleep rand
+
     trace :info, "[#{@request[:peer]}] Decoy page displayed [#{code}] #{options.inspect}"
 
     return code, page, options
@@ -69,6 +73,10 @@ class RESTController
       trace :fatal, e.backtrace.join("\n")
     end
 
+    # sleep a random amount of time
+    # this is done to prevent latency discovery of the anon chain
+    sleep rand
+
     trace :info, "[#{@request[:peer]}] Bad request: #{@request.inspect}"
 
     return page, options
@@ -83,6 +91,10 @@ class RESTController
       trace :error, "Error creating not allowed page: #{e.message}"
       trace :fatal, e.backtrace.join("\n")
     end
+
+    # sleep a random amount of time
+    # this is done to prevent latency discovery of the anon chain
+    sleep rand
 
     trace :info, "[#{@request[:peer]}] Not allowed request: #{@request.inspect}"
 

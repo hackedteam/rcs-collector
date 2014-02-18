@@ -26,7 +26,6 @@ module RCS
         cmd = "start #{cmd}" if windows?
 
         system(cmd) or raise("Failed to start nginx process")
-        puts "done"
       end
 
       def stop(silent = false)
