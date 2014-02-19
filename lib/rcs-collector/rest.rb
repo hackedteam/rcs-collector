@@ -4,7 +4,6 @@
 
 # relatives
 require_relative 'rest_response'
-require_relative '../../config/decoy'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -32,73 +31,42 @@ class RESTController
   attr_reader :request
 
   @controllers = {}
-  
-  # display a fake page in case someone is trying to connect to the collector
-  # with a browser or something else
-  def http_decoy_page
-    # default decoy page, in case someone mess with the dynamic script
-    code = STATUS_BAD_GATEWAY
-    page = "<html>\r\n" +
-           "<head><title>502 Bad Gateway</title></head>\r\n" +
-           "<body bgcolor=\"white\">\r\n" +
-           "<center><h1>502 Bad Gateway</h1></center>\r\n" +
-           "<hr><center>nginx</center>\r\n" +
-           "</body>\r\n" +
-           "</html>\r\n"
-    options = {content_type: 'text/html'}
 
-    begin
-      code, page, options = DecoyPage.create @request
-    rescue Exception => e
-      trace :error, "Error creating decoy page: #{e.message}"
-      trace :fatal, e.backtrace.join("\n")
-    end
+  def initialize(connection)
+    @connection = connection
+  end
 
+  def close_connection
+    EventMachine::close_connection @connection, false
+  end
+
+  def sleep_and_close
     # sleep a random amount of time
     # this is done to prevent latency discovery of the anon chain
     sleep rand
 
-    trace :info, "[#{@request[:peer]}] Decoy page displayed [#{code}] #{options.inspect}"
+    # close the connection immediately
+    close_connection
+  end
 
-    return code, page, options
+  # fake page in case someone is trying to connect to the collector
+  # with a browser or something else
+  def http_decoy_page
+    sleep_and_close
+    trace :warn, "[#{@request[:peer]}] Decoy page. Connection closed."
+    return 444, '', {}
   end
 
   def http_bad_request
-    page = ''
-    options = {content_type: 'text/html'}
-    begin
-      page, options = BadRequestPage.create @request
-    rescue Exception => e
-      trace :error, "Error creating bad request page: #{e.message}"
-      trace :fatal, e.backtrace.join("\n")
-    end
-
-    # sleep a random amount of time
-    # this is done to prevent latency discovery of the anon chain
-    sleep rand
-
-    trace :info, "[#{@request[:peer]}] Bad request: #{@request.inspect}"
-
-    return page, options
+    sleep_and_close
+    trace :warn, "[#{@request[:peer]}] Bad request: #{@request.inspect}"
+    return '', {}
   end
 
   def http_not_allowed_request
-    page = ''
-    options = {content_type: 'text/html'}
-    begin
-      page, options = NotAllowedPage.create @request
-    rescue Exception => e
-      trace :error, "Error creating not allowed page: #{e.message}"
-      trace :fatal, e.backtrace.join("\n")
-    end
-
-    # sleep a random amount of time
-    # this is done to prevent latency discovery of the anon chain
-    sleep rand
-
-    trace :info, "[#{@request[:peer]}] Not allowed request: #{@request.inspect}"
-
-    return page, options
+    sleep_and_close
+    trace :warn, "[#{@request[:peer]}] Not allowed request: #{@request.inspect}"
+    return '', {}
   end
 
   def ok(*args)

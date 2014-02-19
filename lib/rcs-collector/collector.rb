@@ -70,10 +70,6 @@ module RCS
         end
       end
 
-      def kill
-        Nginx.stop if RCS::Collector::Config.instance.global['USE_NGINX']
-      end
-
     end # Application::
   end # Collector::
 end # RCS::
