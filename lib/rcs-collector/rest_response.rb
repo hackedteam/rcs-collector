@@ -171,14 +171,8 @@ class RESTFileStream
    		out_ary
     })
 
-    if request[:headers] && request[:headers][:connection] && request[:headers][:connection].downcase == 'keep-alive'
-      # keep the connection open to allow multiple requests on the same connection
-      # this will increase the speed of sync since it decrease the latency on the net
-      @response.keep_connection_open true
-      @response.headers['Connection'] = 'keep-alive'
-    else
-      @response.headers['Connection'] = 'close'
-    end
+    # always close after streaming a file
+    @response.headers['Connection'] = 'close'
 
     self
   end
@@ -194,7 +188,7 @@ class RESTFileStream
   def send_response
     @response.send_headers
     streamer = EventMachine::FilesystemStreamer.new(@connection, @filename, :http_chunks => false )
-    streamer.callback { @callback.call } unless @callback.nil?
+    streamer.callback { EventMachine::close_connection(@connection.signature, true); @callback.call unless @callback.nil? }
   end
 end # RESTFileStream
 
