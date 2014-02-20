@@ -78,7 +78,7 @@ class HTTPHandler < EM::HttpServer::Server
   def http_request_errback(exception)
     http_error_string(500, "Server error")
 
-    trace :warn, "HACK ALERT: #{@peer} something crashed the parser: #{exception.message}"
+    trace :warn, "HACK ALERT: #{@peer} something caused a deep exception: #{exception.message}"
   end
 
   # return the content of the X-Forwarded-For header
