@@ -75,41 +75,6 @@ class DBCache
     return count
   end
 
-
-  ##############################################
-  # first_anonymizer
-  ##############################################
-
-  def self.first_anonymizer=(addr)
-    # ensure the db was already created, otherwise create it
-    create! unless File.exist?(CACHE_FILE)
-
-    begin
-      db = SQLite.open CACHE_FILE
-      db.execute("DELETE FROM anonymizers;")
-      db.execute("INSERT INTO anonymizers VALUES ('#{addr}');")
-      db.close
-    rescue Exception => e
-      trace :warn, "Cannot save the cache: #{e.message}"
-    end
-  end
-
-  def self.first_anonymizer
-    return nil unless File.exist?(CACHE_FILE)
-
-    begin
-      db = SQLite.open CACHE_FILE
-      row = db.execute("SELECT addr FROM anonymizers;")
-      addr = row.first.first
-      db.close
-    rescue Exception => e
-      trace :warn, "Cannot read the cache: #{e.message}"
-    end
-
-    return addr
-  end
-
-
   ##############################################
   # AGENT SIGNATURE
   ##############################################

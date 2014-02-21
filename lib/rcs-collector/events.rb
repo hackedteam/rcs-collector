@@ -197,9 +197,6 @@ class HttpServer
 
   def self.start
     @port = RCS::Collector::Config.instance.global['LISTENING_PORT']
-
-    Firewall.create_default_rules
-
     trace(:info, "Listening on port #{@port}...")
     @server_handle = EM.start_server("0.0.0.0", @port, HTTPHandler)
   rescue Exception => e
@@ -231,15 +228,15 @@ class Events
     # set the thread pool size
     EM.threadpool_size = 50
 
-
     EM::run do
       # we are alive and ready to party
       SystemStatus.my_status = SystemStatus::OK
 
-      if !Firewall.developer_machine? and Firewall.disabled?
-        trace(:error, "Firewall is disabled. You must turn it on. The http server will not start.")
-      else
+      if Firewall.ok?
+        Firewall.create_default_rules
         HttpServer.start
+      else
+        trace(:error, "#{Firewall.error_message}. The http server will not start.")
       end
 
       # send the first heartbeat to the db, we are alive and want to notify the db immediately

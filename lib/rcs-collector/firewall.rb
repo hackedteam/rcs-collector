@@ -9,41 +9,56 @@ module RCS
 
       RULE_PREFIX = "RCS_FWC"
 
-      def developer_machine?
-        Config.instance.global['COLLECTOR_IS_GOOD']
+      def ok?
+        !error_message
       end
 
-      def exists?
-        WinFirewall.exists?
-      end
-
-      def disabled?
-        exists? and (WinFirewall.status == :off)
+      def error_message
+        return nil if !WinFirewall.exists?
+        return nil if developer_machine?
+        return "Firewall must be activated on all profiles" if WinFirewall.status == :off
+        return "Firewall default policy must block incoming connections by default" if !WinFirewall.block_inbound?
+        return "The anonymizers chain is not configured" if !first_anonymizer_address
+        nil
       end
 
       def create_default_rules
-        return unless exists?
-
-        # Do nothing in this case
-        return if developer_machine? and disabled?
+        return if !WinFirewall.exists?
 
         trace(:info, "Creating default firewall rules...")
 
         # Delete legacy rules
         WinFirewall.del_rule("RCS Collector")
 
-        WinFirewall.del_rule(/#{RULE_PREFIX}/)
-
+        # Create the default rules
         rule_name = "#{RULE_PREFIX} First Anonymizer to Collector"
+        WinFirewall.del_rule(rule_name)
         port = Config.instance.global['LISTENING_PORT']
-        addr = developer_machine? ? :any : DBCache.first_anonymizer
-        raise "The first anonymizer address is unknown!" if addr.nil? and !developer_machine?
+        addr = first_anonymizer_address
+        @last_anonymizer_address = addr
+        raise "The first anonymizer address is unknown!" if !addr
         WinFirewall.add_rule(action: :allow, direction: :in, name: rule_name, local_port: port, remote_ip: addr, protocol: :tcp)
 
         rule_name = "#{RULE_PREFIX} Master to Collector"
+        WinFirewall.del_rule(rule_name)
         port = Config.instance.global['LISTENING_PORT']
         addr = Config.instance.global['DB_ADDRESS']
         WinFirewall.add_rule(action: :allow, direction: :in, name: rule_name, remote_port: :any, local_port: port, remote_ip: addr, protocol: :tcp)
+      end
+
+      def first_anonymizer_changed?
+        return false if developer_machine?
+        first_anonymizer_address != @last_anonymizer_address
+      end
+
+      private
+
+      def first_anonymizer_address
+        developer_machine? ? :any : DB.instance.first_anonymizer['address']
+      end
+
+      def developer_machine?
+        Config.instance.global['COLLECTOR_IS_GOOD']
       end
     end
   end

@@ -11,7 +11,7 @@ module RCS
     class HeartBeat < RCS::HeartBeat::Base
       component :collector
 
-      attr_reader :firewall_disabled
+      attr_reader :firewall_error_message
 
       before_heartbeat do
         # if the database connection has gone
@@ -21,28 +21,31 @@ module RCS
           DB.instance.connect!(:collector)
         end
 
-        @firewall_disabled = (!Firewall.developer_machine? and Firewall.disabled?)
+        @firewall_error_message = Firewall.error_message
 
         # still no luck ?  return and wait for the next iteration
         DB.instance.connected?
       end
 
       after_heartbeat do
-        if firewall_disabled
-          trace(:error, "Firewall is disabled. You must turn it on. The http server will #{HttpServer.running? ? 'stop now' : 'remain disabled'}")
+        if firewall_error_message
+          trace(:error, "#{firewall_error_message}. The http server will #{HttpServer.running? ? 'stop now' : 'remain disabled'}")
           HttpServer.stop
         elsif !HttpServer.running?
+          Firewall.create_default_rules
           HttpServer.start
+        elsif Firewall.first_anonymizer_changed?
+          Firewall.create_default_rules
         end
       end
 
       def status
-        return 'ERROR' if firewall_disabled
+        return 'ERROR' if firewall_error_message
         super()
       end
 
       def message
-        return "Windows Firewall is disabled" if firewall_disabled
+        return firewall_error_message if firewall_error_message
 
         # retrieve how many session we have
         # this number represents the number of agent that are synchronizing
