@@ -100,6 +100,25 @@ class Config
   end
 
   def run(options)
+    if options[:alt_log]
+      logfilepath = File.expand_path("../../../log/rcs-collector-config.log", __FILE__)
+
+      @logger = Log4r::Logger.new("migration").tap do |logger|
+        logger.outputters << Log4r::Outputter.stdout
+        puts "Logging into #{logfilepath}"
+        logger.outputters << Log4r::FileOutputter.new('rcs-collector-config', filename: logfilepath)
+      end
+
+      __send__(:define_singleton_method, :trace) { |level, message| @logger.__send__(level.to_sym, message) }
+    end
+
+    # migration
+    if options[:migrate]
+      require_relative 'migration'
+      Migration.run(logger: @logger)
+      return 0
+    end
+
     # load the current config
     load_from_file
 
@@ -236,7 +255,12 @@ class Config
       opts.on( '-p', '--password PASSWORD', 'rcs-db password' ) do |password|
         options[:pass] = password
       end
-
+      opts.on( '--alternative-log', 'Log output into log/rcs-collector-config' ) do |value|
+        options[:alt_log] = true
+      end
+      opts.on( '--migrate', 'Run the migration script' ) do |value|
+        options[:migrate] = true
+      end
     end
 
     optparse.parse(argv)
