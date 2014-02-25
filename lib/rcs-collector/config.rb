@@ -139,16 +139,16 @@ class Config
     @global['NC_INTERVAL'] = options[:nc_interval] unless options[:nc_interval].nil?
 
     if options[:db_sign]
-      sig = get_from_server options[:user], options[:pass], 'server'
+      sig = get_from_server(options[:user], options[:pass], 'server', options)
       File.open(Config.instance.file('DB_SIGN'), 'wb') {|f| f.write sig}
-      sig = get_from_server options[:user], options[:pass], 'network'
+      sig = get_from_server(options[:user], options[:pass], 'network', options)
       File.open(Config.instance.file('rcs-network.sig'), 'wb') {|f| f.write sig}
     end
 
     if options[:db_cert]
-      sig = get_from_server options[:user], options[:pass], 'server.pem'
+      sig = get_from_server(options[:user], options[:pass], 'server.pem', options)
       File.open(Config.instance.file('DB_CERT'), 'wb') {|f| f.write sig} unless sig.nil?
-      sig = get_from_server options[:user], options[:pass], 'network.pem'
+      sig = get_from_server(options[:user], options[:pass], 'network.pem', options)
       File.open(Config.instance.file('rcs-network.pem'), 'wb') {|f| f.write sig} unless sig.nil?
     end
 
@@ -162,7 +162,7 @@ class Config
     return 0
   end
 
-  def get_from_server(user, pass, resource)
+  def get_from_server(user, pass, resource, **options)
     trace :info, "Retrieving #{resource} from the server..."
     begin
       http = Net::HTTP.new(@global['DB_ADDRESS'], @global['DB_PORT'])
@@ -178,7 +178,7 @@ class Config
       else
         cookie = resp['Set-Cookie']
       end
-      
+
       # get the signature or the cert
       res = http.request_get("/signature/#{resource}", {'Cookie' => cookie})
       sig = JSON.parse(res.body)
@@ -187,7 +187,13 @@ class Config
       http.request_post('/auth/logout', nil, {'Cookie' => cookie})
       return sig['value']
     rescue Exception => e
-      trace :fatal, "ERROR: auto-retrieve of component failed: #{e.message}"
+      if options[:wait_db]
+        sleep(1)
+        options[:wait_db] += 1
+        retry if options[:wait_db] <= 180
+      else
+        trace(:fatal, "ERROR: auto-retrieve of component failed: #{e.message}.")
+      end
     end
     trace :info, "done."
     return nil
@@ -260,6 +266,9 @@ class Config
       end
       opts.on( '--migrate', 'Run the migration script' ) do |value|
         options[:migrate] = true
+      end
+      opts.on( '--wait-db', 'Wait for the db to be reachable' ) do |value|
+        options[:wait_db] = 1
       end
     end
 
