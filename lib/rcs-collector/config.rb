@@ -28,8 +28,7 @@ class Config
                    'LISTENING_PORT' => 80,
                    'HB_INTERVAL' => 30,
                    'NC_INTERVAL' => 30,
-                   'NC_ENABLED' => true,
-                   'COLL_ENABLED' => true,
+                   'CONTROLLER_PORT' => 4499,
                    'RESOLVE_IP' => true,
                    'SSL_VERIFY' => true}
 
@@ -75,6 +74,8 @@ class Config
 
     @global['SSL_VERIFY'] = true if @global['SSL_VERIFY'].nil?
 
+    @global['CONTROLLER_PORT'] ||= DEFAULT_CONFIG['CONTROLLER_PORT']
+
     return true
   end
 
@@ -99,6 +100,25 @@ class Config
   end
 
   def run(options)
+    if options[:alt_log]
+      logfilepath = File.expand_path("../../../log/rcs-collector-config.log", __FILE__)
+
+      @logger = Log4r::Logger.new("migration").tap do |logger|
+        logger.outputters << Log4r::Outputter.stdout
+        puts "Logging into #{logfilepath}"
+        logger.outputters << Log4r::FileOutputter.new('rcs-collector-config', filename: logfilepath)
+      end
+
+      __send__(:define_singleton_method, :trace) { |level, message| @logger.__send__(level.to_sym, message) }
+    end
+
+    # migration
+    if options[:migrate]
+      require_relative 'migration'
+      Migration.run(logger: @logger)
+      return 0
+    end
+
     # load the current config
     load_from_file
 
@@ -117,20 +137,18 @@ class Config
     @global['LISTENING_PORT'] = options[:port] unless options[:port].nil?
     @global['HB_INTERVAL'] = options[:hb_interval] unless options[:hb_interval].nil?
     @global['NC_INTERVAL'] = options[:nc_interval] unless options[:nc_interval].nil?
-    @global['NC_ENABLED'] = options[:nc_enabled] unless options[:nc_enabled].nil?
-    @global['COLL_ENABLED'] = options[:coll_enabled] unless options[:coll_enabled].nil?
 
     if options[:db_sign]
-      sig = get_from_server options[:user], options[:pass], 'server'
+      sig = get_from_server(options[:user], options[:pass], 'server', options)
       File.open(Config.instance.file('DB_SIGN'), 'wb') {|f| f.write sig}
-      sig = get_from_server options[:user], options[:pass], 'network'
+      sig = get_from_server(options[:user], options[:pass], 'network', options)
       File.open(Config.instance.file('rcs-network.sig'), 'wb') {|f| f.write sig}
     end
 
     if options[:db_cert]
-      sig = get_from_server options[:user], options[:pass], 'server.pem'
+      sig = get_from_server(options[:user], options[:pass], 'server.pem', options)
       File.open(Config.instance.file('DB_CERT'), 'wb') {|f| f.write sig} unless sig.nil?
-      sig = get_from_server options[:user], options[:pass], 'network.pem'
+      sig = get_from_server(options[:user], options[:pass], 'network.pem', options)
       File.open(Config.instance.file('rcs-network.pem'), 'wb') {|f| f.write sig} unless sig.nil?
     end
 
@@ -144,7 +162,7 @@ class Config
     return 0
   end
 
-  def get_from_server(user, pass, resource)
+  def get_from_server(user, pass, resource, **options)
     trace :info, "Retrieving #{resource} from the server..."
     begin
       http = Net::HTTP.new(@global['DB_ADDRESS'], @global['DB_PORT'])
@@ -160,7 +178,7 @@ class Config
       else
         cookie = resp['Set-Cookie']
       end
-      
+
       # get the signature or the cert
       res = http.request_get("/signature/#{resource}", {'Cookie' => cookie})
       sig = JSON.parse(res.body)
@@ -169,7 +187,13 @@ class Config
       http.request_post('/auth/logout', nil, {'Cookie' => cookie})
       return sig['value']
     rescue Exception => e
-      trace :fatal, "ERROR: auto-retrieve of component failed: #{e.message}"
+      if options[:wait_db]
+        sleep(1)
+        options[:wait_db] += 1
+        retry if options[:wait_db] <= 180
+      else
+        trace(:fatal, "ERROR: auto-retrieve of component failed: #{e.message}.")
+      end
     end
     trace :info, "done."
     return nil
@@ -212,18 +236,6 @@ class Config
       opts.on( '-H', '--nc-heartbeat SEC', Integer, 'Time in seconds between two heartbeats to the network components' ) do |sec|
         options[:nc_interval] = sec
       end
-      opts.on( '-n', '--network', 'Enable the Network Controller' ) do
-        options[:nc_enabled] = true
-      end
-      opts.on( '-N', '--no-network', 'Disable the Network Controller' ) do
-        options[:nc_enabled] = false
-      end
-      opts.on( '-c', '--collector', 'Enable the Collector' ) do
-        options[:coll_enabled] = true
-      end
-      opts.on( '-C', '--no-collector', 'Disable the Collector' ) do
-        options[:coll_enabled] = false
-      end
 
       opts.separator ""
       opts.separator "General options:"
@@ -249,7 +261,15 @@ class Config
       opts.on( '-p', '--password PASSWORD', 'rcs-db password' ) do |password|
         options[:pass] = password
       end
-
+      opts.on( '--alternative-log', 'Log output into log/rcs-collector-config' ) do |value|
+        options[:alt_log] = true
+      end
+      opts.on( '--migrate', 'Run the migration script' ) do |value|
+        options[:migrate] = true
+      end
+      opts.on( '--wait-db', 'Wait for the db to be reachable' ) do |value|
+        options[:wait_db] = 1
+      end
     end
 
     optparse.parse(argv)

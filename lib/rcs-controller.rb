@@ -1,3 +1,3 @@
 require 'rcs-common/path_utils'
 
-require_component(:collector)
+require_component(:controller)

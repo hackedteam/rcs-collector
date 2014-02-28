@@ -4,7 +4,7 @@
 #
 
 # relatives
-require_relative 'nc_protocol.rb'
+require_relative 'protocol'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -15,16 +15,20 @@ require 'openssl'
 require 'timeout'
 
 module RCS
-module Collector
+module Controller
 
-class NetworkController
+class Network
   extend RCS::Tracer
 
   # TODO: check this for release
   # the minimum requested version of a Network Injector in order to work
-  MIN_INJECTOR_VERSION = 2013111101
-  
+  MIN_INJECTOR_VERSION = 2014012001
+
   def self.check
+
+    # if the database connection has gone
+    # try to re-login to the database again
+    DB.instance.connect!(:controller) if not DB.instance.connected?
 
     # retrieve the lists from the db
     elements = DB.instance.proxies
@@ -115,8 +119,10 @@ class NetworkController
     # create a new NC protocol
     proto = NCProto.new(ssl_socket)
 
+    network_signature = DB.instance.network_signature || File.read(Config.instance.file('rcs-network.sig')).strip
+
     # authenticate with the component
-    raise 'Cannot authenticate' unless proto.login(DB.instance.network_signature)
+    raise 'Cannot authenticate' unless proto.login(network_signature)
 
     trace :debug, "[NC] #{element['address']} login"
 
@@ -193,32 +199,26 @@ class NetworkController
     return result, logs
   end
 
-  # this method can be executed only by the DB
-  # and it is used to push a config to a network element without
-  # having to wait for the next heartbeat
-  def self.push(host, content)
-    # retrieve the lists from the db
-    elements = DB.instance.proxies
-    elements += DB.instance.collectors
+  # Push a config to a network element
+  def self.push(anon)
+    trace :info, "[NC] PUSHING to #{anon['address']}:#{anon['port']}"
 
-    # keep only the selected host
-    elements.delete_if {|x| x['address'] != host}
-    element = elements.first
+    # contact the anon
+    status, logs = nil
 
-    trace :info, "[NC] PUSHING to #{element['address']}:#{element['port']}"
-
-    begin
-      # contact the element
-      status, logs = check_element element
-      # send the results to db
-      report_status(element, *status) unless status.nil? or status.empty?
-      trace :info, "[NC] PUSHED to #{element['address']}:#{element['port']}"
-    rescue Exception => e
-      trace :warn, "[NC] CANNOT PUSH TO #{element['address']}: #{e.message}"
-      return e.message, "text/html"
+    Timeout::timeout(Config.instance.global['NC_INTERVAL'] - 5) do
+      status, logs = check_element(anon)
     end
 
-    return "OK", "text/html"
+    # send the results to db
+    report_status(anon, *status) unless status.nil? or status.empty?
+    trace :info, "[NC] PUSHED to #{anon['address']}:#{anon['port']}"
+
+    true
+  rescue Exception => e
+    msg = "[NC] CANNOT PUSH TO #{anon['address']}: #{e.message}"
+    trace(:warn, msg)
+    raise(msg)
   end
 
 

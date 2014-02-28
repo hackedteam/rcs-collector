@@ -4,13 +4,13 @@ source "http://rubygems.org"
 # Specify your gem's dependencies in rcs-collector.gemspec
 #gemspec
 
-gem "rcs-common", ">= 9.0.0", :path => "../rcs-common"
+gem "rcs-common", ">= 9.2.0", :path => "../rcs-common"
 
 gem 'eventmachine', ">= 1.0.3"
-gem 'em-http-server', ">= 0.1.3"
+gem 'em-http-server', ">= 0.1.7"
 gem 'persistent_http'
 gem 'uuidtools'
-gem 'rubyzip'
+gem 'rubyzip', "= 1.0.0"
 
 #platforms :ruby do
   gem 'sqlite3'
@@ -28,4 +28,5 @@ group :development do
   gem "bundler", "> 1.0.0"
   gem 'rake'
   gem 'test-unit'
+  gem 'pry'
 end

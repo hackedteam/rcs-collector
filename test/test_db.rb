@@ -41,7 +41,7 @@ class DB_mockup_rest
   end
 
   # mockup methods
-  def login(user, pass); return (@@failure) ? false : true; end
+  def login(user, pass, build, type); return (@@failure) ? false : true; end
   def logout; end
   def agent_signature
     raise if @@failure
@@ -59,7 +59,7 @@ class DB_mockup_rest
     raise if @@failure
     return {'BUILD001' => {'key' => 'secret class key', 'good' => true}, 'BUILD002' => {'key' => 'another secret', 'good' => true}}
   end
-  def agent_status(build_id, instance_id, platform, demo, scout)
+  def agent_status(build_id, instance_id, platform, demo, level)
     return {status: DB::UNKNOWN_AGENT, id: 0, good: false} if @@failure
     # return status, bid, good
     return {status: DB::ACTIVE_AGENT, id: 1, good: true}
@@ -102,7 +102,7 @@ class TestDB < Test::Unit::TestCase
     DBCache.destroy!
     # every test begins with the db connected
     DB_mockup_rest.failure = false
-    DB.instance.connect!
+    DB.instance.connect!(:collector)
     assert_true DB.instance.connected?
   end
 
@@ -112,7 +112,7 @@ class TestDB < Test::Unit::TestCase
 
   def test_connect
     DB_mockup_rest.failure = true
-    DB.instance.connect!
+    DB.instance.connect!(:collector)
     assert_false DB.instance.connected?
   end
 

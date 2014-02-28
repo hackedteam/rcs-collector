@@ -49,16 +49,21 @@ class DB_rest
       when 'POST'
         request = Net::HTTP::Post.new(uri, full_headers)
         request.body = content
-        @http.request(request)
+        resp = @http.request(request)
       when 'GET'
         request = Net::HTTP::Get.new(uri, full_headers)
-        @http.request(request)
+        resp = @http.request(request)
       #when 'PUT'
       #  @http.request_put(uri, full_headers)
       when 'DELETE'
         request = Net::HTTP::Delete.new(uri, full_headers)
-        @http.request(request)
+        resp = @http.request(request)
     end
+
+    # in case the db has restarted and our cookie is not valid anymore
+    raise "Invalid Cookie" if resp.kind_of? Net::HTTPForbidden
+
+    return resp
   end
 
   # timeout exception propagator
@@ -72,10 +77,10 @@ class DB_rest
 
   # log in to the database
   # returns a boolean
-  def login(user, pass)
+  def login(user, pass, version, type)
     begin
       # send the authentication data
-      account = {:user => user, :pass => pass, :version => $version}
+      account = {:user => user, :pass => pass, :version => version, :type => type}
       request = Net::HTTP::Post.new('/auth/login')
       request.body = account.to_json
       resp = @http.request(request)
@@ -106,7 +111,7 @@ class DB_rest
                  :instance => session[:instance],
                  :platform => session[:platform],
                  :demo => session[:demo],
-                 :scout => session[:scout],
+                 :level => session[:level],
                  :version => version,
                  :user => user,
                  :device => device,
@@ -128,7 +133,7 @@ class DB_rest
                  :instance => session[:instance],
                  :platform => session[:platform],
                  :demo => session[:demo],
-                 :scout => session[:scout],
+                 :level => session[:level],
                  :version => version,
                  :user => user,
                  :device => device,
@@ -175,6 +180,19 @@ class DB_rest
       return false, ret.body
     rescue Exception => e
       trace :error, "Error calling send_evidence: #{e.class} #{e.message}"
+      trace :fatal, e.backtrace
+      propagate_error e
+    end
+  end
+
+  def get_worker(instance)
+    begin
+      ret = rest_call('GET', "/evidence/worker/#{instance}")
+
+      return nil unless ret.is_a? Net::HTTPSuccess
+      return ret.body
+    rescue Exception => e
+      trace :error, "Error calling get_worker: #{e.class} #{e.message}"
       trace :fatal, e.backtrace
       propagate_error e
     end
@@ -239,9 +257,9 @@ class DB_rest
   end
 
   # agent identify
-  def agent_status(build_id, instance_id, platform, demo, scout)
+  def agent_status(build_id, instance_id, platform, demo, level)
     begin
-      request = {:ident => build_id, :instance => instance_id, :platform => platform, :demo => demo, :scout => scout}
+      request = {:ident => build_id, :instance => instance_id, :platform => platform, :demo => demo, :level => level}
       ret = rest_call('GET', '/agent/status/?' + CGI.encode_query(request))
 
       return {status: DB::NO_SUCH_AGENT, id: 0, good: false} if ret.kind_of? Net::HTTPNotFound
@@ -611,6 +629,13 @@ class DB_rest
     end
   end
 
+  def first_anonymizer
+    ret = rest_call('GET', "/collector/first_anonymizer")
+    JSON.parse(ret.body)
+  rescue Exception => e
+    trace(:error, "Error calling first_anonymizer: #{e.class} #{e.message}")
+    propagate_error e
+  end
 end #
 
 end #Collector::

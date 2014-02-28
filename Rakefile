@@ -1,4 +1,3 @@
-require "bundler/gem_tasks"
 require 'fileutils'
 require 'rbconfig'
 require 'rake'
@@ -22,6 +21,15 @@ rescue Exception => e
   puts "error: #{e.message}"
 end
 
+def encode(component)
+  execute "Encrypting code for #{component}" do
+    # we have to change the current dir, otherwise rubyencoder
+    # will recreate the lib/rcs-collector structure under rcs-collector-release
+    Dir.chdir "lib/rcs-#{component}/"
+    system("#{RUBYENC} --stop-on-error --encoding UTF-8 -o ../rcs-#{component}-release --ruby 2.0.0 *.rb") || raise("Econding failed.")
+    Dir.chdir "../.."
+  end
+end
 
 desc "Housekeeping for the project"
 task :clean do
@@ -44,11 +52,19 @@ task :unprotect do
     Dir[Dir.pwd + '/lib/rcs-collector-release/*'].each do |f|
       File.delete(f) unless File.directory?(f)
     end
+    Dir[Dir.pwd + '/lib/rcs-carrier-release/*'].each do |f|
+      File.delete(f) unless File.directory?(f)
+    end
+    Dir[Dir.pwd + '/lib/rcs-controller-release/*'].each do |f|
+      File.delete(f) unless File.directory?(f)
+    end
     Dir[Dir.pwd + '/lib/rgloader/*'].each do |f|
       File.delete(f) unless File.directory?(f)
     end
     Dir.delete(Dir.pwd + '/lib/rgloader') if File.exist?(Dir.pwd + '/lib/rgloader')
     Dir.delete(Dir.pwd + '/lib/rcs-collector-release') if File.exist?(Dir.pwd + '/lib/rcs-collector-release')
+    Dir.delete(Dir.pwd + '/lib/rcs-carrier-release') if File.exist?(Dir.pwd + '/lib/rcs-carrier-release')
+    Dir.delete(Dir.pwd + '/lib/rcs-controller-release') if File.exist?(Dir.pwd + '/lib/rcs-controller-release')
   end
 end
 
@@ -66,6 +82,8 @@ task :protect do
   Rake::Task[:unprotect].invoke
   execute "Creating release folder" do
     Dir.mkdir(Dir.pwd + '/lib/rcs-collector-release') if not File.directory?(Dir.pwd + '/lib/rcs-collector-release')
+    Dir.mkdir(Dir.pwd + '/lib/rcs-carrier-release') if not File.directory?(Dir.pwd + '/lib/rcs-carrier-release')
+    Dir.mkdir(Dir.pwd + '/lib/rcs-controller-release') if not File.directory?(Dir.pwd + '/lib/rcs-controller-release')
   end
 
   execute "Copying the rgloader" do
@@ -80,13 +98,10 @@ task :protect do
     end
   end
 
-  execute "Encrypting code" do
-    # we have to change the current dir, otherwise rubyencoder
-    # will recreate the lib/rcs-collector structure under rcs-collector-release
-    Dir.chdir "lib/rcs-collector/"
-    system("#{RUBYENC} --stop-on-error --encoding UTF-8 -o ../rcs-collector-release --ruby 2.0.0 *.rb") || raise("Econding failed.")
-    Dir.chdir "../.."
-  end
+  encode('collector')
+  encode('carrier')
+  encode('controller')
+
 end
 
 require 'rcs-common/deploy'

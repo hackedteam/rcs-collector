@@ -32,7 +32,8 @@ class DBCache
               "CREATE TABLE upgrade (bid CHAR(32), uid CHAR(32), filename TEXT, content BLOB)",
               "CREATE TABLE downloads (bid CHAR(32), did CHAR(32), filename TEXT)",
               "CREATE TABLE exec (bid CHAR(32), eid CHAR(32), command TEXT)",
-              "CREATE TABLE filesystems (bid CHAR(32), fid CHAR(32), depth INT, path TEXT)"
+              "CREATE TABLE filesystems (bid CHAR(32), fid CHAR(32), depth INT, path TEXT)",
+              "CREATE TABLE anonymizers (addr CHAR(256))"
              ]
 
     # create all the tables
@@ -201,7 +202,8 @@ class DBCache
       db = SQLite.open CACHE_FILE
       rows = db.execute("SELECT * FROM factory_keys;")
       rows.each do |row|
-        factory_keys[row[0]] = {'key' => row[1], 'good' => row[2]}
+        good = row[2].to_s.downcase == 'true'
+        factory_keys[row[0]] = {'key' => row[1], 'good' => good}
       end
       db.close
     rescue Exception => e

@@ -1,0 +1,11 @@
+
+TODO 9.2.x
+
+  dynamic blacklist for "hack attack"
+
+TODO FUTURE
+
+  perform stress test on jruby / mri
+
+  change the NC protocol to use the chain to rerieve the anons status
+

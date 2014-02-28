@@ -5,7 +5,6 @@
 # relatives
 require_relative 'db.rb'
 require_relative 'sessions.rb'
-require_relative 'evidence_transfer.rb'
 require_relative 'evidence_manager.rb'
 
 # from RCS::Common
