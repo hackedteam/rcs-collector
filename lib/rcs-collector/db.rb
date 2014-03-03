@@ -613,6 +613,11 @@ class DB
     return unless @available
     db_rest_call :first_anonymizer
   end
+
+  def public_delete(file)
+    return unless @available
+    db_rest_call :public_delete, file
+  end
 end #DB
 
 end #Collector::
