@@ -636,6 +636,14 @@ class DB_rest
     trace(:error, "Error calling first_anonymizer: #{e.class} #{e.message}")
     propagate_error e
   end
+
+  def public_delete(file)
+    rest_call('POST', "/public/destroy_file", {:file => file}.to_json)
+  rescue Exception => e
+    trace(:error, "Error calling public_delete: #{e.class} #{e.message}")
+    propagate_error e
+  end
+
 end #
 
 end #Collector::

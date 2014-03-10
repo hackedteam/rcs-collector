@@ -179,6 +179,8 @@ class CollectorController < RESTController
       rescue Exception => e
         trace :error, "[#{@request[:peer]}][#{os}]: #{e.class} #{e.message}"
       end
+      # issue the delete command on all collectors
+      DB.instance.public_delete(file.gsub(Dir.pwd + PUBLIC_DIR, ''))
     end
   end
 
