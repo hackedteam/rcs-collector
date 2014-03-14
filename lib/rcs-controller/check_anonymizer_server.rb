@@ -25,7 +25,7 @@ module RCS
           status = 200
           content = 'OK'
         rescue Exception => ex
-          trace(:error, "#{ex.message} #{ex.backtrace}")
+          trace :error, "#{ex.message}"
 
           status = 500
           content = ex.message

@@ -42,21 +42,24 @@ class CollectorController < RESTController
     end
 
     # Forward to rcs-controller
-    trace(:debug, "Sending push instruction to the controller...")
+    trace :debug, "Sending push instruction to the controller..."
 
     controller_srv_port = Config.instance.global['CONTROLLER_PORT']
     http = Net::HTTP.new("127.0.0.1", controller_srv_port)
     # see the timeout around #check_element in rcs-controller
     http.read_timeout = Config.instance.global['NC_INTERVAL'] - 2
-    resp = http.send_request('PUSH', '/', @request[:uri], {})
+    resp = http.send_request('PUSH', '/', @request[:content], {})
 
     if resp.body == 'OK'
-      trace(:debug, "Network push succeed!")
+      trace :debug, "Network push succeed!"
     else
-      trace(:error, "Network push failed: [#{resp.code}] #{resp.body}")
+      trace :error, "Network push failed: [#{resp.code}] #{resp.body}"
     end
 
-    ok(resp.body, content_type: "text/html")
+    return ok(resp.body, content_type: "text/html")
+  rescue Exception => e
+    trace :error, e.message
+    return ok(e.message, content_type: "text/html")
   end
 
   def put
