@@ -60,9 +60,11 @@ class Network
         begin
           # interval check minus 5 seconds is a good compromise for timeout
           # we are sure that the operations will be finished before the next check
-          Timeout::timeout(Config.instance.global['NC_INTERVAL'] - 5) do
+
+          # remove timeout to allow NI upgrade on slow connections
+          #Timeout::timeout(Config.instance.global['NC_INTERVAL'] - 5) do
             status, logs = check_element p
-          end
+          #end
 
           # send the status to db
           report_status(p, *status) unless status.nil? or status.empty?
@@ -89,9 +91,9 @@ class Network
     end
 
     # wait for all the threads to finish
-    threads.each do |t|
-      t.join
-    end
+    #threads.each do |t|
+    #  t.join
+    #end
 
     trace :info, "[NC] Network elements check completed"
   end
@@ -160,6 +162,7 @@ class Network
             content = DB.instance.injector_upgrade(element['_id']) if element['type'].nil?
             content = DB.instance.collector_upgrade(element['_id']) unless element['type'].nil?
             trace :info, "[NC] #{element['address']} has a new upgrade (#{content.length} bytes)" unless content.nil?
+            trace :debug, "[NC] #{element['address']} upgrade MD5: #{Digest::MD5.hexdigest(content)}"
           end
           proto.upgrade(content)
 
