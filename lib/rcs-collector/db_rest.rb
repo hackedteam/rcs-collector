@@ -519,7 +519,7 @@ class DB_rest
     begin
       ret = rest_call('GET', "/injector/config/#{id}")
 
-      if ret.kind_of? Net::HTTPNotFound then
+      if ret.kind_of? Net::HTTPNotFound
         return nil
       end
 
@@ -534,7 +534,7 @@ class DB_rest
     begin
       ret = rest_call('GET', "/injector/upgrade/#{id}")
 
-      if ret.kind_of? Net::HTTPNotFound then
+      if ret.kind_of? Net::HTTPNotFound
         return nil
       end
 
