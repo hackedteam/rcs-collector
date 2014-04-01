@@ -62,7 +62,9 @@ config/*.sig
 config/config.yaml
 
 # encrypted code
-lib/rcs-collector-release
+lib/rcs-*-release/*
+bin-release/*
+rgloader/*
 
 # evidences
 evidence/*
