@@ -174,7 +174,7 @@ class EvidenceTransfer
 
     return false, ret.body
   rescue Exception => e
-    trace :error, "Error calling send_evidence to #{address}: #{e.class} #{e.message}"
+    trace :error, "Cannot send evidence to #{address}: #{e.class} #{e.message}"
     #trace :fatal, e.backtrace
     raise
   end
