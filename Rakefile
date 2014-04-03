@@ -11,7 +11,6 @@ end
 
 task :default => :test
 
-
 def execute(message)
   print message + '...'
   STDOUT.flush
@@ -21,7 +20,21 @@ rescue Exception => e
   puts "error: #{e.message}"
 end
 
-def encode(component)
+def encode_bin
+  # Copy the bin folder to bin-release and encode it
+  # Note: The rcs-license-check script is used during the installation
+  FileUtils.rm_rf("bin-release")
+  FileUtils.cp_r("bin", "bin-release")
+
+  Dir["bin-release/*"].each do |path|
+    extname = File.extname(path).downcase
+    is_ruby_script = (extname == ".rb") || (extname.empty? and File.read(path) =~ /\#\!.+ruby/i)
+    next unless is_ruby_script
+    system "#{RUBYENC} --stop-on-error --encoding UTF-8 -b- --ruby 2.0.0 #{path}" || raise("Econding failed.")
+  end
+end
+
+def encode_lib(component)
   execute "Encrypting code for #{component}" do
     # we have to change the current dir, otherwise rubyencoder
     # will recreate the lib/rcs-collector structure under rcs-collector-release
@@ -49,28 +62,18 @@ end
 desc "Remove the protected release code"
 task :unprotect do
   execute "Deleting the protected release folder" do
-    Dir[Dir.pwd + '/lib/rcs-collector-release/*'].each do |f|
-      File.delete(f) unless File.directory?(f)
-    end
-    Dir[Dir.pwd + '/lib/rcs-carrier-release/*'].each do |f|
-      File.delete(f) unless File.directory?(f)
-    end
-    Dir[Dir.pwd + '/lib/rcs-controller-release/*'].each do |f|
-      File.delete(f) unless File.directory?(f)
-    end
-    Dir[Dir.pwd + '/lib/rgloader/*'].each do |f|
-      File.delete(f) unless File.directory?(f)
-    end
-    Dir.delete(Dir.pwd + '/lib/rgloader') if File.exist?(Dir.pwd + '/lib/rgloader')
-    Dir.delete(Dir.pwd + '/lib/rcs-collector-release') if File.exist?(Dir.pwd + '/lib/rcs-collector-release')
-    Dir.delete(Dir.pwd + '/lib/rcs-carrier-release') if File.exist?(Dir.pwd + '/lib/rcs-carrier-release')
-    Dir.delete(Dir.pwd + '/lib/rcs-controller-release') if File.exist?(Dir.pwd + '/lib/rcs-controller-release')
+    FileUtils.rm_rf(Dir.pwd + '/rgloader') if File.exist?(Dir.pwd + '/rgloader')
+    FileUtils.rm_rf(Dir.pwd + '/bin-release') if File.exist?(Dir.pwd + '/bin-release')
+    FileUtils.rm_rf(Dir.pwd + '/lib/rcs-collector-release') if File.exist?(Dir.pwd + '/lib/rcs-collector-release')
+    FileUtils.rm_rf(Dir.pwd + '/lib/rcs-carrier-release') if File.exist?(Dir.pwd + '/lib/rcs-carrier-release')
+    FileUtils.rm_rf(Dir.pwd + '/lib/rcs-controller-release') if File.exist?(Dir.pwd + '/lib/rcs-controller-release')
   end
 end
 
 case RbConfig::CONFIG['host_os']
   when /darwin/
-    RUBYENCPATH = '/Applications/Development/RubyEncoder.app/Contents/MacOS'
+    paths = ['/Applications/Development/RubyEncoder.app/Contents/MacOS', '/Applications/RubyEncoder.app/Contents/MacOS']
+    RUBYENCPATH = File.exists?(paths.first) ? paths.first : paths.last
     RUBYENC = "#{RUBYENCPATH}/rgencoder"
   when /mingw/
     RUBYENCPATH = 'C:/Program Files (x86)/RubyEncoder'
@@ -80,6 +83,7 @@ end
 desc "Create the encrypted code for release"
 task :protect do
   Rake::Task[:unprotect].invoke
+
   execute "Creating release folder" do
     Dir.mkdir(Dir.pwd + '/lib/rcs-collector-release') if not File.directory?(Dir.pwd + '/lib/rcs-collector-release')
     Dir.mkdir(Dir.pwd + '/lib/rcs-carrier-release') if not File.directory?(Dir.pwd + '/lib/rcs-carrier-release')
@@ -88,20 +92,20 @@ task :protect do
 
   execute "Copying the rgloader" do
     RGPATH = RUBYENCPATH + '/Loaders'
-    Dir.mkdir(Dir.pwd + '/lib/rgloader')
+    Dir.mkdir(Dir.pwd + '/rgloader')
     files = Dir[RGPATH + '/**/**']
     # keep only the interesting files (2.0.x windows, macos)
     files.delete_if {|v| v.match(/bsd/i) or v.match(/linux/i)}
     files.keep_if {|v| v.match(/20/) or v.match(/loader.rb/) }
     files.each do |f|
-      FileUtils.cp(f, Dir.pwd + '/lib/rgloader')
+      FileUtils.cp(f, Dir.pwd + '/rgloader')
     end
   end
 
-  encode('collector')
-  encode('carrier')
-  encode('controller')
-
+  encode_bin
+  encode_lib('collector')
+  encode_lib('carrier')
+  encode_lib('controller')
 end
 
 require 'rcs-common/deploy'
