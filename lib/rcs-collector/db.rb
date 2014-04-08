@@ -620,15 +620,14 @@ class DB
   end
 
   def anon_cookies(force=false)
-    cookies = DBCache.anon_cookies
+    # use in memory cache for the results
+    cookies = @anon_cookies
 
     return cookies unless @available
-    return cookies if not cookies.empty? and not force
+    return cookies if not cookies.nil? and not cookies.empty? and not force
 
-    cookies = db_rest_call :anon_cookies if @available
-    DBCache.store_anon_cookies cookies
-
-    return cookies
+    @anon_cookies = db_rest_call :anon_cookies if @available
+    return @anon_cookies
   end
 
 

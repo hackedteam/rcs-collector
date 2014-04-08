@@ -34,6 +34,17 @@ class CollectorController < RESTController
     return decoy_page
   end
 
+  def post
+    # this request comes from an anonymizer
+    return anon_proto if DB.instance.anon_cookies.include? @request[:http_cookie]
+
+    # the REST protocol for agent synchronization
+    content, content_type, cookie = Protocol.parse @request[:peer], @request[:uri], @request[:cookie], @request[:content], @request[:anon_version]
+    return decoy_page if content.nil?
+
+    return ok(content, {content_type: content_type, cookie: cookie})
+  end
+
   def push
     # only the DB is authorized to send PUSH commands
     unless from_db?(@request[:headers])
@@ -42,13 +53,9 @@ class CollectorController < RESTController
     end
 
     # Forward to rcs-controller
-    trace :debug, "Sending push instruction to the controller..."
+    trace :info, "[NC] Sending push instruction to the controller..."
 
-    controller_srv_port = Config.instance.global['CONTROLLER_PORT']
-    http = Net::HTTP.new("127.0.0.1", controller_srv_port)
-    # see the timeout around #check_element in rcs-controller
-    http.read_timeout = Config.instance.global['NC_INTERVAL'] - 2
-    resp = http.send_request('PUSH', '/', @request[:content], {})
+    resp = send_to_controller(@request)
 
     if resp.body == 'OK'
       trace :debug, "Network push succeed!"
@@ -100,13 +107,6 @@ class CollectorController < RESTController
     return ok("#{$external_address} #{DB.instance.check_signature} #{$version}", {content_type: "text/html"}) if @request[:uri].eql? 'CHECK'
     return method_not_allowed if @request[:uri] != @request[:peer]
     return ok("#{$version}", {content_type: "text/html"}) if $watchdog.lock
-  end
-
-  def post
-    # the REST protocol for synchronization
-    content, content_type, cookie = Protocol.parse @request[:peer], @request[:uri], @request[:cookie], @request[:content], @request[:anon_version]
-    return decoy_page if content.nil?
-    return ok(content, {content_type: content_type, cookie: cookie})
   end
 
   #
@@ -382,6 +382,27 @@ class CollectorController < RESTController
     return true if sig == File.read(Config.instance.file('DB_SIGN'))
 
     return false
+  end
+
+  def send_to_controller(request)
+    controller_srv_port = Config.instance.global['CONTROLLER_PORT']
+    http = Net::HTTP.new("127.0.0.1", controller_srv_port)
+    resp = http.send_request(request[:method], request[:uri], request[:content], {})
+  end
+
+  def anon_proto
+    trace :info, "[NC] [#{@request[:peer]}] Sending Anonymizer requests to the controller..."
+
+    resp = send_to_controller(@request)
+
+    if not resp.is_a? Net::HTTPSuccess
+      trace :error, "[NC]: #{resp.inspect} #{resp.body.inspect}"
+      return decoy_page
+    end
+
+    trace :debug, "[NC]: #{resp.inspect} #{resp.body.inspect}"
+
+    return ok(resp.body)
   end
 
 end # RCS::Controller::CollectorController
