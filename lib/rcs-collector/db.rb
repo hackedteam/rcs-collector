@@ -542,12 +542,12 @@ class DB
     return down
   end
 
-  def proxies
+  def injectors
     # return empty if not available
     return [] unless @available
 
     # ask the db
-    ret = db_rest_call :get_proxies
+    ret = db_rest_call :get_injectors
 
     # return the results or empty on error
     return ret || []
@@ -618,6 +618,20 @@ class DB
     return unless @available
     db_rest_call :public_delete, file
   end
+
+  def anon_cookies(force=false)
+    cookies = DBCache.anon_cookies
+
+    return cookies unless @available
+    return cookies if not cookies.empty? and not force
+
+    cookies = db_rest_call :anon_cookies if @available
+    DBCache.store_anon_cookies cookies
+
+    return cookies
+  end
+
+
 end #DB
 
 end #Collector::

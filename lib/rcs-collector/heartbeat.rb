@@ -37,6 +37,9 @@ module RCS
         elsif Firewall.first_anonymizer_changed?
           Firewall.create_default_rules
         end
+
+        # retrieve the anon cookie list
+        DB.instance.anon_cookies(force = true)
       end
 
       def status

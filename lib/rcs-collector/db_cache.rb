@@ -33,7 +33,7 @@ class DBCache
               "CREATE TABLE downloads (bid CHAR(32), did CHAR(32), filename TEXT)",
               "CREATE TABLE exec (bid CHAR(32), eid CHAR(32), command TEXT)",
               "CREATE TABLE filesystems (bid CHAR(32), fid CHAR(32), depth INT, path TEXT)",
-              "CREATE TABLE anonymizers (addr CHAR(256))"
+              "CREATE TABLE anonymizers (cookie CHAR(256), aid CHAR(32))"
              ]
 
     # create all the tables
@@ -211,6 +211,44 @@ class DBCache
     end
 
     return factory_keys
+  end
+
+  ##############################################
+  # ANONYMIZERS
+  ##############################################
+
+  def self.store_anon_cookies(cookies)
+    # ensure the db was already created, otherwise create it
+    create! unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite.open CACHE_FILE
+      db.execute("DELETE FROM anonymizers;")
+      cookies.each_pair do |cookie, id|
+        db.execute("INSERT INTO anonymizers VALUES ('#{cookie}', '#{id}');")
+      end
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot save the cache: #{e.message}"
+    end
+  end
+
+  def self.anon_cookies
+    return nil unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite.open CACHE_FILE
+      ret = db.execute("SELECT * FROM anonymizers;")
+      cookies = {}
+      ret.each do |anon|
+        cookies[anon.first] = anon.last
+      end
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    return cookies
   end
 
   ##############################################

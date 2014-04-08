@@ -495,13 +495,12 @@ class DB_rest
     end
   end
 
-
-  def get_proxies
+  def get_injectors
     begin
       ret = rest_call('GET', "/injector")
       return JSON.parse(ret.body)
     rescue Exception => e
-      trace :error, "Error calling get_proxies: #{e.class} #{e.message}"
+      trace :error, "Error calling get_injectors: #{e.class} #{e.message}"
       propagate_error e
     end
   end
@@ -634,6 +633,18 @@ class DB_rest
     JSON.parse(ret.body)
   rescue Exception => e
     trace(:error, "Error calling first_anonymizer: #{e.class} #{e.message}")
+    propagate_error e
+  end
+
+  def anon_cookies
+    ret = rest_call('GET', "/collector/anon_cookies")
+    cookies = {}
+    JSON.parse(ret.body).each do |anon|
+      cookies[anon['cookie']] = anon['_id']
+    end
+    return cookies
+  rescue Exception => e
+    trace(:error, "Error calling anon_cookies: #{e.class} #{e.message}")
     propagate_error e
   end
 

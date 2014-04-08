@@ -31,7 +31,7 @@ class Network
     DB.instance.connect!(:controller) if not DB.instance.connected?
 
     # retrieve the lists from the db
-    elements = DB.instance.proxies
+    elements = DB.instance.injectors
     elements += DB.instance.collectors
 
     # use one thread for each element
