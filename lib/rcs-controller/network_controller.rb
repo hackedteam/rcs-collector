@@ -8,8 +8,8 @@ module RCS
 
     # This server listen for connections on #LISTENING_PORT.
     # It expects a json string that represents a #Collection object
-    # and then delegates it to Network#push.
-    class CheckAnonymizerServer < EM::HttpServer::Server
+    # and then delegates it to LegacyNetworkController#push.
+    class NetworkController < EM::HttpServer::Server
       include RCS::Tracer
       extend RCS::Tracer
 
@@ -20,7 +20,7 @@ module RCS
         begin
           anon = JSON.parse(@http_content)
 
-          result = Network.push(anon)
+          result = LegacyNetworkController.push(anon)
 
           status = 200
           content = 'OK'
@@ -44,11 +44,11 @@ module RCS
       def self.start
         @server_signature ||= begin
           listening_port = Config.instance.global['CONTROLLER_PORT']
-          trace(:info, "Starting controller http server #{LISTENING_ADDR}:#{listening_port}...")
+          trace :info, "Starting controller http server #{LISTENING_ADDR}:#{listening_port}..."
           EM::start_server(LISTENING_ADDR, listening_port, self)
         end
       rescue Exception => ex
-        raise("Unable to start CheckAnonymizer server on port #{listening_port}: #{ex.message}")
+        raise "Unable to start CheckAnonymizer server on port #{listening_port}: #{ex.message}"
       end
     end
   end

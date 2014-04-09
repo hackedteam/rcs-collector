@@ -403,6 +403,9 @@ class CollectorController < RESTController
     trace :debug, "[NC]: #{resp.inspect} #{resp.body.inspect}"
 
     return ok(resp.body)
+  rescue Exception => e
+    trace :error, "[NC] ERROR: #{e.message}"
+    return decoy_page
   end
 
 end # RCS::Controller::CollectorController
