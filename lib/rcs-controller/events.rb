@@ -2,7 +2,7 @@ require 'rcs-common/trace'
 require 'rcs-common/systemstatus'
 
 require_relative 'heartbeat'
-require_relative 'check_anonymizer_server'
+require_relative 'network_controller'
 require_relative 'legacy_network_controller'
 
 require 'eventmachine'

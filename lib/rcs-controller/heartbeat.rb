@@ -25,7 +25,7 @@ module RCS
       end
 
       def message
-        "Idle"
+        "Idle..."
       end
     end
   end

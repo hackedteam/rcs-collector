@@ -3,6 +3,8 @@ require 'em-http-server'
 
 require 'rcs-common/trace'
 
+require_relative 'protocol_parser'
+
 module RCS
   module Controller
 
@@ -17,24 +19,35 @@ module RCS
       LISTENING_ADDR = "127.0.0.1"
 
       def process_http_request
-        begin
-          anon = JSON.parse(@http_content)
 
-          result = LegacyNetworkController.push(anon)
+        operation = proc do
+          begin
+            # perform the protocol (all the interesting stuff happens here)
+            status, content = ProtocolParser.new(@http_request_method, @http_request_uri, @http_content, @http).act!
 
-          status = 200
-          content = 'OK'
-        rescue Exception => ex
-          trace :error, "#{ex.message}"
+          rescue Exception => ex
+            trace :error, "#{ex.message}"
 
-          status = 500
-          content = ex.message
+            status = 500
+            content = ex.message
+          end
+
+          response = EM::DelegatedHttpResponse.new(self)
+          response.status = status
+          response.content = content
+          response
         end
 
-        response = EM::DelegatedHttpResponse.new(self)
-        response.status = status
-        response.content = content
-        response.send_response
+        response = proc do |reply|
+          # safe escape on invalid reply
+          next unless reply
+
+          # send the actual response
+          reply.send_response
+        end
+
+        # Let the thread pool handle request
+        EM.defer(operation, response)
       end
 
       def http_request_errback(ex)
