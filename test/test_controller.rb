@@ -7,6 +7,9 @@ class Classy < RCS::Collector::CollectorController
     @request = {peer: "test_peer", headers: {host: "testhost"}}
   end
 
+  def close_connection
+  end
+
   # fake trace method for testing
   def trace(a, b)
   end
@@ -24,7 +27,7 @@ class TestParser < Test::Unit::TestCase
     c = Classy.new
     content = c.http_get_file(@headers, "/ciao")
 
-    assert_equal 404, content.status
+    assert_equal 444, content.status
   end
 
   def test_parser_get_file_in_public
@@ -50,7 +53,7 @@ class TestParser < Test::Unit::TestCase
 
     # this must not be able to retrieve the file since it is out of the public dir
     assert_not_equal RCS::Collector::RESTFileStream, content.class
-    assert_equal 404, content.status
+    assert_equal 444, content.status
   end
 
   def test_parser_get_file_with_specific_platform
