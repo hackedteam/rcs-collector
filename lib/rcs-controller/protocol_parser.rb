@@ -37,9 +37,7 @@ module RCS
         # legacy code
         anon = JSON.parse(@http_content)
         LegacyNetworkController.push(anon)
-        status = STATUS_OK
-        content = 'OK'
-        return content, status
+        return STATUS_OK, 'OK'
       end
 
       def protocol_post
@@ -98,24 +96,25 @@ module RCS
         # fallback to array if it's a single command
         commands = [commands] unless commands.is_a? Array
 
+        response = []
+
         # iterate over all the commands
         commands.each do |command|
           case command['command']
             when 'STATUS'
-              protocol_status(command)
+              protocol_status(command, response)
             when 'LOG'
-              protocol_log(command)
+              protocol_log(command, response)
           end
         end
 
-        response = {command: 'STATUS', result: {status: 'OK'}}
 
         return STATUS_OK, response
       rescue Exception => e
-        return STATUS_SERVER_ERROR, {command: 'STATUS', result: {status: 'ERROR', msg: e.message}}
+        return STATUS_SERVER_ERROR, [{command: 'STATUS', result: {status: 'ERROR', msg: e.message}}]
       end
 
-      def protocol_status(command)
+      def protocol_status(command, response)
         params = command['params']
         status = params['status']
         stats = params['stats']
@@ -126,6 +125,8 @@ module RCS
         stats = stats.inject({}){|h,(k,v)| h.merge({ k.to_sym => v}) }
 
         report_status 'RCS::ANON::' + @anon['name'], @anon['address'], 'anonymizer', status, msg, stats, version
+
+        response << {command: 'STATUS', result: {status: 'OK'}}
       end
 
       def report_status(name, address, type, status, message, stats, version=0)
@@ -136,9 +137,11 @@ module RCS
         DB.instance.update_status name, address, status, message, stats, type, version
       end
 
-      def protocol_log(command)
+      def protocol_log(command, response)
         params = command['params']
         DB.instance.collector_add_log(@anon['_id'], params['time'], params['type'], params['desc'])
+
+        response << {command: 'LOG', result: {status: 'OK'}}
       end
 
     end
