@@ -26,7 +26,8 @@ module RCS
             status, content = ProtocolParser.new(@http_request_method, @http_request_uri, @http_content, @http).act!
 
           rescue Exception => ex
-            trace :error, "#{ex.message}"
+            trace :error, "Cannot process request: #{ex.message}"
+            trace :debug, ex.backtrace.join("\n")
 
             status = 500
             content = ex.message
