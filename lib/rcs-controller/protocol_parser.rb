@@ -149,12 +149,12 @@ module RCS
         chain = []
 
         # find the collector that represent the local instance (find us)
-        me = anonymizers.select {|x| x['instance'].eql? DB.instance.local_instance}.first
+        @me = anonymizers.select {|x| x['instance'].eql? DB.instance.local_instance}.first
         # and put it in front of the chain
-        chain << me
+        chain << @me
 
         # fill the chain with the others
-        next_anon = me['next'].first
+        next_anon = @me['next'].first
         until next_anon.eql? nil
           current = anonymizers.select {|x| x['_id'].eql? next_anon}.first
           break unless current
@@ -172,7 +172,7 @@ module RCS
         receiver = @anonymizers.select{|x| x['_id'].eql? command['anon']}.first
         raise "Cannot send to unknown anon [#{command['anon']}]" unless receiver
 
-        trace :info, "Sending #{command['command']} to '#{receiver['name']}'"
+        trace :info, "Preparing #{command['command']} for '#{receiver['name']}'"
 
         # prepare the command for the receiver
         case command['command']
@@ -182,15 +182,45 @@ module RCS
             msg = {command: 'UPGRADE', params: {}, body: Base64.encode64(DB.instance.injector_upgrade(receiver['_id']))}
         end
 
-        # TODO calculate the chain to reach the receiver
+        trace :debug, "Preparing #{command['command']} for '#{receiver['name']}' -- #{msg.inspect}"
+
+        # encrypt for the receiver
         msg = protocol_encrypt(receiver['cookie'], msg)
 
-        forward = {command: 'FORWARD', params: {ip: receiver['address'], cookie: receiver['cookie']}, body: msg}
+        # calculate the chain to reach the receiver
+        chain = forwarding_chain(receiver)
 
-        trace :debug, forward.inspect
+        # encapsulate into FORWARD commands until the first anon (or collector)
+        begin
+          # check if the only one in the chain is a collecor, then send
+          break if chain.size.eql? 1
+
+          # get the current receiver
+          receiver = chain.pop
+
+          # encapsulate for the last anon
+          forward = {command: 'FORWARD', params: {ip: receiver['address'], cookie: receiver['cookie']}, body: msg}
+          msg = protocol_encrypt(receiver['cookie'], msg)
+
+          trace :debug, "Forwarding through: #{receiver['name']}"
+
+        end until chain.empty?
+
+        trace :info, "Sending complete command to: #{receiver['name']}"
+
+        # TODO: send the command
 
         return STATUS_OK, 'OK'
       end
+
+      def forwarding_chain(anon)
+        # we need to have the chain of anon to traverse before sending to the recipient
+        # if the anon is in the chain, use it until its position
+        # otherwise use the full chain
+        # #take_while will take care of all, if not fould the chain is the full one
+        return @chain.take_while {|x| not x['_id'].eql? anon['_id']}
+      end
+
     end
 
   end
