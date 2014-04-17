@@ -180,6 +180,8 @@ module RCS
             msg = {command: 'CONFIG', params: {}, body: command['params']}
           when 'upgrade'
             msg = {command: 'UPGRADE', params: {}, body: Base64.encode64(DB.instance.injector_upgrade(receiver['_id']))}
+          when 'check'
+            msg = {command: 'CHECK', params: {}}
         end
 
         trace :debug, "Preparing #{command['command']} for '#{receiver['name']}' -- #{msg.inspect}"
@@ -192,7 +194,7 @@ module RCS
 
         # encapsulate into FORWARD commands until the first anon (or collector)
         begin
-          # check if the only one in the chain is a collecor, then send
+          # check if the only one in the chain is a collector, then send
           break if chain.size.eql? 1
 
           # get the current receiver
