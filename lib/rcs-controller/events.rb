@@ -19,8 +19,6 @@ module RCS
         EM.epoll
 
         EM::run do
-          SystemStatus.my_status = SystemStatus::OK
-
           CheckAnonymizerServer.start
 
           # first heartbeat and checks (so we don't have to wait 'check_interval' to see the green light on startup)
