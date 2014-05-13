@@ -29,6 +29,7 @@ module RCS
         @transferred_size += evidence_size
 
         transfer_time = timestamp - @started_at
+        transfer_time = 1 if transfer_time == 0
 
         # bytes/sec
         @speed = @transferred_size / transfer_time
