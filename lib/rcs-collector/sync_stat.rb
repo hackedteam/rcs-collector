@@ -8,6 +8,7 @@ module RCS
         @total = 0
         @transferred = 0
         @transferred_size = 0
+        @timeout = false
       end
 
       def ended
@@ -34,8 +35,8 @@ module RCS
       end
 
       def to_hash
-        {total: @total, count: @transferred, started_at: @started_at,
-          ended_at: @ended_at, speed: @speed, timeout: @timeout, size: @transferred_size}
+        {total: @total, count: @transferred, begin: @started_at,
+          end: @ended_at, speed: @speed, timeout: @timeout, size: @transferred_size}
       end
 
       alias :as_json :to_hash
@@ -45,7 +46,7 @@ module RCS
       end
 
       def timestamp
-        Time.now.utc.to_f
+        Time.now.utc.to_i
       end
     end
   end
