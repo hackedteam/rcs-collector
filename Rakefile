@@ -108,7 +108,9 @@ task :protect do
   encode_lib('controller')
 end
 
-require 'rcs-common/deploy'
-ENV['DEPLOY_USER'] = 'Administrator'
-ENV['DEPLOY_ADDRESS'] = '192.168.100.100'
-RCS::Deploy::Task.import
+if ARGV.find { |arg| arg.start_with?('deploy') } or ARGV.empty?
+  require 'rcs-common/deploy'
+  ENV['DEPLOY_USER'] = 'Administrator'
+  ENV['DEPLOY_ADDRESS'] = '192.168.100.100'
+  RCS::Deploy::Task.import
+end
