@@ -12,7 +12,7 @@ if relevant_logs.empty?
   exit
 end
 
-zipname = "#{File.basename(__FILE__)}.zip"
+zipname = "#{execution_directory}/#{File.basename(__FILE__)}.zip"
 puts "Generating file #{zipname}..."
 
 buffer = Zip::OutputStream.write_buffer do |out|
@@ -27,5 +27,5 @@ buffer = Zip::OutputStream.write_buffer do |out|
   end
 end
 
-File.open(zipname, "w") {|f| f.write(buffer.string) }
+File.open(zipname, "wb") {|f| f.write(buffer.string) }
 puts "#{buffer.size} byte(s) written"
