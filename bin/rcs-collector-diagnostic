@@ -1,0 +1,31 @@
+#!/usr/bin/env ruby
+$LOAD_PATH.unshift File.join(File.dirname(__FILE__), '..', 'lib')
+
+require 'bundler/setup'
+require 'zip'
+require 'rcs-common/diagnosticable'
+
+include RCS::Diagnosticable
+
+if relevant_logs.empty?
+  puts "No logs found"
+  exit
+end
+
+zipname = "#{File.basename(__FILE__)}.zip"
+puts "Generating file #{zipname}..."
+
+buffer = Zip::OutputStream.write_buffer do |out|
+  relevant_logs.each do |path|
+    if huge_log?(path)
+      puts "Warning: #{path} is too big"
+      next
+    end
+
+    out.put_next_entry(File.basename(path))
+    out.write(hide_addresses(File.read(path)))
+  end
+end
+
+File.open(zipname, "w") {|f| f.write(buffer.string) }
+puts "#{buffer.size} byte(s) written"
