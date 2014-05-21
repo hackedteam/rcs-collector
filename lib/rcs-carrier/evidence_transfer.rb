@@ -159,6 +159,7 @@ class EvidenceTransfer
       :host         => host,
       :port         => port,
       :use_ssl      => true,
+      :read_timeout => 300,
       :verify_mode  => OpenSSL::SSL::VERIFY_NONE
     )
 
