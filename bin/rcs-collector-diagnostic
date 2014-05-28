@@ -64,6 +64,12 @@ buffer = Zip::OutputStream.write_buffer do |out|
     out.write(content)
   end
 
+  hosts_path = 'C:\Windows\system32\drivers\etc\hosts'
+  if File.exists?(hosts_path)
+    out.put_next_entry('hosts')
+    out.write(File.read(hosts_path))
+  end
+
   ['rcs-collector-stats', 'rcs-collector-queue', 'rcs-carrier-stats'].each do |command|
     out.put_next_entry(command.gsub(/(\-|\s)/, "_"))
     out.puts(hide_addresses(command_output(command)))
