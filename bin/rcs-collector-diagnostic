@@ -54,7 +54,7 @@ buffer = Zip::OutputStream.write_buffer do |out|
   end
 
   out.put_next_entry("machine")
-  PP.pp(machine_info, out)
+  pretty_print(machine_info, out)
 
   config_files.each do |path|
     entry = path[path.index('config/')..-1]
