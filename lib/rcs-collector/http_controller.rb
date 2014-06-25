@@ -47,7 +47,7 @@ class CollectorController < RESTController
     controller_srv_port = Config.instance.global['CONTROLLER_PORT']
     http = Net::HTTP.new("127.0.0.1", controller_srv_port)
     # see the timeout around #check_element in rcs-controller
-    http.read_timeout = Config.instance.global['NC_INTERVAL'] - 2
+    http.read_timeout = 300
     resp = http.send_request('PUSH', '/', @request[:content], {})
 
     if resp.body == 'OK'

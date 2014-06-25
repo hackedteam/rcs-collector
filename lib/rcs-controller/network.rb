@@ -253,7 +253,7 @@ class Network
     ip = ''
 
     # report our status
-    status = SystemStatus.my_status
+    status = SystemStatus.status
     disk = SystemStatus.disk_free
     cpu = SystemStatus.cpu_load
     pcpu = SystemStatus.my_cpu_load(component)

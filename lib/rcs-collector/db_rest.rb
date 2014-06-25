@@ -112,6 +112,8 @@ class DB_rest
                  :platform => session[:platform],
                  :demo => session[:demo],
                  :level => session[:level],
+                 :cookie => session[:cookie],
+                 :sync_stat => session[:sync_stat],
                  :version => version,
                  :user => user,
                  :device => device,
@@ -150,7 +152,7 @@ class DB_rest
 
   def sync_timeout(session)
     begin
-      content = {:bid => session[:bid], :instance => session[:instance]}
+      content = {:bid => session[:bid], :instance => session[:instance], :cookie => session[:cookie], :sync_stat => session[:sync_stat]}
       return rest_call('POST', '/evidence/timeout', content.to_json)
     rescue Exception => e
       trace :error, "Error calling sync_timeout: #{e.class} #{e.message}"
@@ -160,7 +162,7 @@ class DB_rest
 
   def sync_end(session)
     begin
-      content = {:bid => session[:bid], :instance => session[:instance]}
+      content = {:bid => session[:bid], :instance => session[:instance], :cookie => session[:cookie], :sync_stat => session[:sync_stat]}
       return rest_call('POST', '/evidence/stop', content.to_json)
     rescue Exception => e
       trace :error, "Error calling sync_end: #{e.class} #{e.message}"

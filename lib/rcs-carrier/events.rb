@@ -24,9 +24,6 @@ class Events
     EM.threadpool_size = 10
 
     EM::run do
-      # we are alive and ready to party
-      SystemStatus.my_status = SystemStatus::OK
-
       EM.defer { EvidenceTransfer.run }
 
       # calculate and save the stats
