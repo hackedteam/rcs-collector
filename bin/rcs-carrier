@@ -2,6 +2,8 @@
 $LOAD_PATH.unshift File.join(File.dirname(__FILE__), '..', 'lib')
 
 require 'bundler/setup'
-require 'rcs-carrier'
+require 'rcs-common/path_utils'
+
+require_component(:carrier)
 
 exit RCS::Carrier::Application.run!(*ARGV)
