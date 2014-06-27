@@ -109,6 +109,8 @@ class CollectorController < RESTController
     return ok(content, {content_type: content_type, cookie: cookie})
   end
 
+  private
+
   #
   # HELPERS
   #
