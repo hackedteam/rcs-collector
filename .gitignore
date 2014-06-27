@@ -53,6 +53,8 @@ log/*
 # the cache
 config/cache.db
 config/stats
+config/carrier-stats
+config/collector-stats
 
 # certs
 config/*.pem
