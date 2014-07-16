@@ -425,7 +425,7 @@ class DB_rest
   # retrieve the filesystem list from db (if any)
   def new_filesystems(bid)
     begin
-      ret = rest_call('GET', "/agent/filesystems/#{bid}")
+      ret = rest_call('GET', "/agent/filesystems/#{bid}?new=true")
 
       files = {}
       # parse the results
@@ -442,7 +442,8 @@ class DB_rest
 
   def del_filesystem(bid, id)
     begin
-      return rest_call('DELETE', "/agent/filesystem/#{bid}?" + CGI.encode_query({:filesystem => id}))
+      # TODO: use update http method (not delete)
+      return rest_call('DELETE', "/agent/filesystem/#{bid}?" + CGI.encode_query({:filesystem => id, :sent_at => Time.now.to_i}))
     rescue Exception => e
       trace :error, "Error calling del_filesystem: #{e.class} #{e.message}"
       propagate_error e
