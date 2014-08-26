@@ -59,15 +59,16 @@ class CollectorController < RESTController
 
     if resp.body == 'OK'
       trace :debug, "Network push succeed!"
+      return ok(resp.body, content_type: "text/html")
     else
       trace :error, "Network push failed: [#{resp.code}] #{resp.body}"
+      return server_error(resp.body, content_type: "text/html")
     end
 
-    return ok(resp.body, content_type: "text/html")
   rescue Exception => e
     trace :error, e.message
     trace :debug, e.backtrace.join("\n")
-    return ok(e.message, content_type: "text/html")
+    return server_error(e.message, content_type: "text/html")
   end
 
   def put

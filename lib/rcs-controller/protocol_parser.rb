@@ -225,8 +225,8 @@ module RCS
             resp = http.send_request('POST', '/', msg, {'Cookie' => receiver['cookie']})
           end
         rescue Exception => ex
-          trace :error, "Cannot communicate wiht #{receiver['name']}: #{ex.message}"
-          return STATUS_SERVER_ERROR, ex.message
+          trace :error, "Cannot communicate with #{receiver['name']}: #{ex.message}"
+          return STATUS_SERVER_ERROR, "Cannot communicate with #{receiver['name']}: #{ex.message}"
         end
 
         # receive, check and decrypt a command
@@ -244,7 +244,7 @@ module RCS
         # we need to have the chain of anon to traverse before sending to the recipient
         # if the anon is in the chain, use it until its position
         # otherwise use the full chain
-        # #take_while will take care of all, if not fould the chain is the full one
+        # #take_while will take care of all, if not found the chain is the full one
         return @chain.take_while {|x| not x['_id'].eql? anon['_id']}
       end
 
