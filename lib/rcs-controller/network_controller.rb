@@ -57,12 +57,12 @@ module RCS
 
       def self.start
         @server_signature ||= begin
-          listening_port = Config.instance.global['CONTROLLER_PORT']
+          listening_port = Config.instance.global['CONTROLLER_PORT'] || 4499
           trace :info, "Starting controller http server #{LISTENING_ADDR}:#{listening_port}..."
           EM::start_server(LISTENING_ADDR, listening_port, self)
         end
       rescue Exception => ex
-        raise "Unable to start CheckAnonymizer server on port #{listening_port}: #{ex.message}"
+        raise "Unable to start NetworkController server on port #{listening_port}: #{ex.message}"
       end
     end
   end

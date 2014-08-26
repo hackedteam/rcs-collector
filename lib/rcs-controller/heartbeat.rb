@@ -7,7 +7,7 @@ module RCS
     class HeartBeat < RCS::HeartBeat::Base
       component :controller
 
-      before_heartbeat do
+      def perform
         # if the database connection has gone
         # try to re-login to the database again
         unless DB.instance.connected?
@@ -15,18 +15,14 @@ module RCS
           DB.instance.connect!(:controller)
         end
 
-        # still no luck ?  return and wait for the next iteration
-        DB.instance.connected?
+        # still no luck ? return and wait for the next iteration
+        return unless DB.instance.connected?
+
+        message = "Idle"
+
+        return [OK, message]
       end
 
-      def status
-        super
-        #EvidenceTransfer.instance.status ? 'ERROR' : super
-      end
-
-      def message
-        "Idle..."
-      end
     end
   end
 end
