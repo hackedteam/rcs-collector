@@ -109,30 +109,21 @@ class RESTController
   def stream_file(filename, callback=nil)
     RESTFileStream.new(filename, callback)
   end
-  
+
   def self.get(request)
     CollectorController
   end
-  
+
   def request=(request)
     @request = request
-    identify_action
   end
-  
-  def identify_action
-    action = @request[:uri_params].first
-    if not action.nil? and respond_to?(action)
-      # use the default http method as action
-      @request[:action] = @request[:uri_params].shift.to_sym
-    else
-      @request[:action] = map_method_to_action(@request[:method], @request[:uri_params].empty?)
-    end
-  end
-  
+
   def act!
+    @request[:action] = @request[:method].to_s.downcase.to_sym
+
     # check we have a valid action
-    return bad_request if @request[:action].nil?
-    
+    return bad_request unless public_methods(false).include?(@request[:action])
+
     # make a copy of the params, handy for access and mongoid queries
     # consolidate URI parameters
     @params = @request[:params].clone unless @request[:params].nil?
@@ -144,43 +135,18 @@ class RESTController
     # get the anonimizer version
     @request[:anon_version] = http_get_anon_version(@request[:headers])
 
-    response = send(@request[:action])
+    response = __send__(@request[:action])
 
-    return decoy_page if response.nil?
+    return decoy_page unless response
     return response
   rescue Exception => e
     trace :error, "Server error: #{e.message}"
     trace :fatal, "Backtrace   : #{e.backtrace}"
     return decoy_page
   end
-  
+
+  # hook method if you need to perform some cleanup operation
   def cleanup
-    # hook method if you need to perform some cleanup operation
-  end
-  
-  def map_method_to_action(method, no_params)
-    case method
-      when 'GET'
-        return :get
-      when 'POST'
-        return :post
-      when 'PUT'
-        return :put
-      when 'DELETE'
-        return :delete
-      when 'HEAD'
-        return :head
-      when 'PROXY'
-        return :proxy
-      when 'PUSH'
-        return :push
-      when 'WATCHDOG'
-        return :watchdog
-      when 'OPTIONS', 'TRACE', 'CONNECT', 'PROPFIND', 'TRACK'
-        return :method_not_allowed
-      else
-        return :bad_request
-    end
   end
 
   def http_get_anon_version(headers)

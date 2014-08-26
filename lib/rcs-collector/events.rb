@@ -229,9 +229,6 @@ class Events
     EM.threadpool_size = 50
 
     EM::run do
-      # we are alive and ready to party
-      SystemStatus.my_status = SystemStatus::OK
-
       if Firewall.ok?
         Firewall.create_default_rules
         HttpServer.start

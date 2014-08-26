@@ -20,7 +20,6 @@ module RCS
         EM.epoll
 
         EM::run do
-          SystemStatus.my_status = SystemStatus::OK
 
           # star the web server that will handle all the requests forwarded by the collector
           NetworkController.start

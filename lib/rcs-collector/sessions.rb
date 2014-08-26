@@ -3,6 +3,7 @@
 #
 
 require_relative 'evidence_manager'
+require_relative 'sync_stat'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -44,6 +45,7 @@ class SessionManager
                            :cookie => cookie,
                            :ip => ip,
                            :time => Time.now,
+                           :sync_stat => SyncStat.new,
                            :count => 0,
                            :total => 0}
     end
@@ -101,6 +103,8 @@ class SessionManager
         @sessions.each_pair do |key, sess|
           if Time.now - sess[:time] >= delta
             trace :info, "Session Timeout for [#{sess[:cookie]}]"
+
+            sess[:sync_stat].timedout
 
             # update the status accordingly
             DB.instance.sync_timeout sess

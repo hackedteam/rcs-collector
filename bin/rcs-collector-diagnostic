@@ -1,0 +1,85 @@
+#!/usr/bin/env ruby
+$LOAD_PATH.unshift File.join(File.dirname(__FILE__), '..', 'lib')
+
+require 'bundler/setup'
+require 'zip'
+require 'pp'
+require 'json'
+require 'optparse'
+require 'rcs-common/diagnosticable'
+require 'rcs-common/path_utils'
+
+$options = {}
+
+OptionParser.new do |parser|
+  parser.on("-o", "--output PATH", "Optionally specify the output file path") { |value|
+    $options[:output] = value
+  }
+
+  parser.on("--hide-addresses", "Optionally mask ip addresses and domain names that can appear in the output") { |value|
+    $options[:hide_addresses] = true
+  }
+
+  parser.on("--log-level INFO|DEBUG", "Change the log devel") { |value|
+    value.upcase!
+    raise "Ivalid log level #{value}" unless %w[INFO DEBUG].include?(value)
+    $options[:log_level] = value
+  }
+end.parse!
+
+include RCS::Diagnosticable
+
+if level = $options[:log_level]
+  puts "Changing log level to #{level}"
+  change_trace_level(level)
+  exit
+end
+
+zipname = $options[:output] || File.basename(__FILE__)
+zipname << ".zip" unless zipname =~ /zip$/i
+
+puts "Execution directory is #{execution_directory}"
+puts "Generating file #{zipname}. It may take a while."
+
+buffer = Zip::OutputStream.write_buffer do |out|
+  relevant_logs.each do |path|
+    if huge_log?(path)
+      puts "Warning: #{path} is too big"
+      next
+    end
+
+    entry = path[path.index('log/')..-1]
+    out.put_next_entry(entry)
+    out.write(hide_addresses(File.read(path)))
+  end
+
+  out.put_next_entry("machine")
+  pretty_print(machine_info, out)
+
+  config_files.each do |path|
+    entry = path[path.index('config/')..-1]
+    out.put_next_entry(entry)
+    content = File.read(path)
+    content = hide_addresses(content) unless %w[.pem .crt].include?(File.extname(path))
+    out.write(content)
+  end
+
+  hosts_path = 'C:\Windows\system32\drivers\etc\hosts'
+  if File.exists?(hosts_path)
+    out.put_next_entry('hosts')
+    out.write(File.read(hosts_path))
+  end
+
+  ['rcs-collector-stats', 'rcs-collector-queue', 'rcs-carrier-stats'].each do |command|
+    out.put_next_entry(command.gsub(/(\-|\s)/, "_"))
+    out.puts(hide_addresses(command_output(command)))
+  end
+
+  if windows?
+    out.put_next_entry("systeminfo")
+    out.puts(hide_addresses(command_output("systeminfo")))
+  end
+end
+
+File.open(zipname, "wb") {|f| f.write(buffer.string) }
+puts "#{buffer.size} byte(s) written"

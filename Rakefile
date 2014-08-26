@@ -20,26 +20,40 @@ rescue Exception => e
   puts "error: #{e.message}"
 end
 
-def encode_bin
-  # Copy the bin folder to bin-release and encode it
-  # Note: The rcs-license-check script is used during the installation
-  FileUtils.rm_rf("bin-release")
-  FileUtils.cp_r("bin", "bin-release")
+def verbose?
+  Rake.verbose == true
+end
 
-  Dir["bin-release/*"].each do |path|
-    extname = File.extname(path).downcase
-    is_ruby_script = (extname == ".rb") || (extname.empty? and File.read(path) =~ /\#\!.+ruby/i)
-    next unless is_ruby_script
-    system "#{RUBYENC} --stop-on-error --encoding UTF-8 -b- --ruby 2.0.0 #{path}" || raise("Econding failed.")
+def exec_rubyencoder(cmd)
+  if verbose?
+    system(cmd) || raise("Econding failed.")
+  else
+    raise("Econding failed.") if `#{cmd}` =~ /[1-9]\serror/
+  end
+end
+
+# Copy the bin folder to bin-release and encode it
+# Note: The rcs-license-check script is used during the installation
+def encode_bin
+  execute "Encrypting code of the bin folder (use --trace to see RubyEncoder output)" do
+    FileUtils.rm_rf("bin-release")
+    FileUtils.cp_r("bin", "bin-release")
+
+    Dir["bin-release/*"].each do |path|
+      extname = File.extname(path).downcase
+      is_ruby_script = (extname == ".rb") || (extname.empty? and File.read(path) =~ /\#\!.+ruby/i)
+      next unless is_ruby_script
+      exec_rubyencoder("#{RUBYENC} --stop-on-error --encoding UTF-8 -b- --ruby 2.0.0 #{path}")
+    end
   end
 end
 
 def encode_lib(component)
-  execute "Encrypting code for #{component}" do
+  execute "Encrypting code for #{component} (use --trace to see RubyEncoder output)" do
     # we have to change the current dir, otherwise rubyencoder
     # will recreate the lib/rcs-collector structure under rcs-collector-release
     Dir.chdir "lib/rcs-#{component}/"
-    system("#{RUBYENC} --stop-on-error --encoding UTF-8 -o ../rcs-#{component}-release --ruby 2.0.0 *.rb") || raise("Econding failed.")
+    exec_rubyencoder("#{RUBYENC} --stop-on-error --encoding UTF-8 -o ../rcs-#{component}-release --ruby 2.0.0 *.rb")
     Dir.chdir "../.."
   end
 end
@@ -108,7 +122,9 @@ task :protect do
   encode_lib('controller')
 end
 
-require 'rcs-common/deploy'
-ENV['DEPLOY_USER'] = 'Administrator'
-ENV['DEPLOY_ADDRESS'] = '192.168.100.100'
-RCS::Deploy::Task.import
+if ARGV.find { |arg| arg.start_with?('deploy') } or ARGV.empty?
+  require 'rcs-common/deploy'
+  ENV['DEPLOY_USER'] = 'Administrator'
+  ENV['DEPLOY_ADDRESS'] = '192.168.100.100'
+  RCS::Deploy::Task.import
+end
