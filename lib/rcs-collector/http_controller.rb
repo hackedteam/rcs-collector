@@ -373,6 +373,8 @@ class CollectorController < RESTController
   end
 
   def from_db?(headers)
+    return false unless headers
+
     # search the header for our X-Auth-Frontend value
     auth = headers[:x_auth_frontend]
     return false unless auth

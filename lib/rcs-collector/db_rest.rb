@@ -576,36 +576,6 @@ class DB_rest
     end
   end
 
-  def collector_config(id)
-    begin
-     ret = rest_call('GET', "/collector/config/#{id}")
-
-      if ret.kind_of? Net::HTTPNotFound then
-        return nil
-      end
-
-      return ret.body
-    rescue Exception => e
-      trace :error, "Error calling collector_config: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  def collector_upgrade(id)
-    begin
-     ret = rest_call('GET', "/collector/upgrade/#{id}")
-
-      if ret.kind_of? Net::HTTPNotFound then
-        return nil
-      end
-
-      return ret.body
-    rescue Exception => e
-      trace :error, "Error calling collector_upgrade: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
   def collector_add_log(id, time, type, desc)
     begin
       log = {:_id => id, :type => type, :time => time, :desc => desc}

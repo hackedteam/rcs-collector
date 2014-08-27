@@ -31,13 +31,9 @@ class LegacyNetworkController
 
     # retrieve the lists from the db
     elements = DB.instance.injectors
-    elements += DB.instance.collectors
 
     # use one thread for each element
     threads = []
-
-    # keep only the remote anonymizers discarding the local collectors
-    elements.delete_if {|x| x['type'] == 'local'}
 
     # keep only the elements to be polled
     elements.delete_if {|x| x['poll'] == false}
@@ -69,7 +65,6 @@ class LegacyNetworkController
           # send the logs to db
           logs.each do |log|
             DB.instance.injector_add_log(p['_id'], *log) if p['type'].nil?
-            DB.instance.collector_add_log(p['_id'], *log) unless p['type'].nil?
           end
 
         rescue Exception => e
@@ -140,13 +135,11 @@ class LegacyNetworkController
 
           # update the db accordingly
           DB.instance.update_injector_version(element['_id'], ver) if element['type'].nil?
-          DB.instance.update_collector_version(element['_id'], ver) unless element['type'].nil?
 
         when LegacyProtocol::PROTO_CONF
           content = nil
           unless element['configured']
             content = DB.instance.injector_config(element['_id']) if element['type'].nil?
-            content = DB.instance.collector_config(element['_id']) unless element['type'].nil?
             trace :info, "[NC] #{element['address']} has a new configuration (#{content.length} bytes)" unless content.nil?
           end
           proto.config(content)
@@ -155,7 +148,6 @@ class LegacyNetworkController
           content = nil
           if element['upgradable']
             content = DB.instance.injector_upgrade(element['_id']) if element['type'].nil?
-            content = DB.instance.collector_upgrade(element['_id']) unless element['type'].nil?
             trace :info, "[NC] #{element['address']} has a new upgrade (#{content.length} bytes)" unless content.nil?
             trace :debug, "[NC] #{element['address']} upgrade MD5: #{Digest::MD5.hexdigest(content)}"
           end
