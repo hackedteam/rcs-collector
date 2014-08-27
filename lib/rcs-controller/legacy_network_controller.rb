@@ -190,25 +190,22 @@ class LegacyNetworkController
   end
 
   # Push a config to a network element
-  def self.push(anon)
-    trace :info, "[NC] PUSHING to #{anon['address']}:#{anon['port']}"
+  def self.push(element)
+    trace :info, "[NC] PUSHING to #{element['address']}:#{element['port']}"
 
-    # contact the anon
-    status, logs = nil
-
-    Timeout::timeout(Config.instance.global['NC_INTERVAL'] - 5) do
-      status, logs = check_element(anon)
-    end
+    # contact the network element
+    status, logs = check_element(element)
 
     # send the results to db
-    report_status(anon, *status) unless status.nil? or status.empty?
-    trace :info, "[NC] PUSHED to #{anon['address']}:#{anon['port']}"
+    report_status(element, *status) unless status.nil? or status.empty?
+    msg = "[NC] PUSHED to #{element['address']}:#{element['port']}"
+    trace :info, msg
 
-    true
+    return 200, msg
   rescue Exception => e
-    msg = "[NC] CANNOT PUSH TO #{anon['address']}: #{e.message}"
-    trace(:warn, msg)
-    raise(msg)
+    msg = "[NC] CANNOT PUSH TO #{element['address']}: #{e.message}"
+    trace :error, msg
+    return 500, msg
   end
 
 

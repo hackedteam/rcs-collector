@@ -389,7 +389,7 @@ class CollectorController < RESTController
   end
 
   def send_to_controller(request)
-    controller_srv_port = Config.instance.global['CONTROLLER_PORT'] || 4499
+    controller_srv_port = Config.instance.global['CONTROLLER_PORT']
     http = Net::HTTP.new("127.0.0.1", controller_srv_port)
     http.read_timeout = 600
     http.send_request(request[:method], request[:uri], request[:content], {'Cookie' => request[:http_cookie] || ''})

@@ -3,6 +3,8 @@ require 'base64'
 require 'rcs-common/trace'
 require 'rcs-common/crypt'
 
+require_relative 'legacy_network_controller'
+
 module RCS
   module Controller
 
@@ -38,14 +40,20 @@ module RCS
         # commands sent from the db to be forwarded to the anons
 
         command = JSON.parse(@http_content)
-        trace :debug, "Received command: #{command.inspect}"
 
-        #TODO: check if it's a legacy push
+        # TODO: remove legacy code
 
-        return protocol_send_command(command)
+        if command.has_key? 'command'
+          trace :debug, "Received command: #{command.inspect}"
+          return protocol_send_command(command)
+        else
+          trace :debug, "Received LEGACY element: #{command.inspect}"
+          return LegacyNetworkController.push(command)
+        end
+
+        return STATUS_SERVER_ERROR, "Bad push parsing"
       rescue Exception => e
         trace :error, "Cannot push to anonymizer: #{e.message}"
-        trace :fatal, e.backtrace.join("\n")
         return STATUS_SERVER_ERROR, e.message
       end
 

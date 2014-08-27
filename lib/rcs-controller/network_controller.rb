@@ -57,7 +57,7 @@ module RCS
 
       def self.start
         @server_signature ||= begin
-          listening_port = Config.instance.global['CONTROLLER_PORT'] || 4499
+          listening_port = Config.instance.global['CONTROLLER_PORT']
           trace :info, "Starting controller http server #{LISTENING_ADDR}:#{listening_port}..."
           EM::start_server(LISTENING_ADDR, listening_port, self)
         end
