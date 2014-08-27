@@ -231,6 +231,7 @@ module RCS
         begin
           Timeout::timeout(30) do
             http = Net::HTTP.new(receiver['address'], receiver['port'])
+            http.read_timeout = 300
             resp = http.send_request('POST', '/', msg, {'Cookie' => receiver['cookie']})
           end
         rescue Exception => ex
