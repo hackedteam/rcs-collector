@@ -127,7 +127,7 @@ module RCS
 
         return STATUS_OK, response
       rescue Exception => e
-        puts e.backtrace.join("\n")
+        trace :error, e.backtrace.join("\n")
         return STATUS_SERVER_ERROR, [{command: 'STATUS', result: {status: 'ERROR', msg: e.message}}]
       end
 
