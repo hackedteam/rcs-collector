@@ -613,7 +613,7 @@ class DB_rest
     ret = rest_call('GET', "/collector/anon_cookies")
     cookies = {}
     JSON.parse(ret.body).each do |anon|
-      cookies[anon['cookie']] = anon['_id']
+      cookies['ID=' + anon['cookie']] = anon['_id']
     end
     return cookies
   rescue Exception => e

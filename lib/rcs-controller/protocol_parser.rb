@@ -54,6 +54,7 @@ module RCS
         return STATUS_SERVER_ERROR, "Bad push parsing"
       rescue Exception => e
         trace :error, "Cannot push to anonymizer: #{e.message}"
+        trace :debug, e.backtrace.join("\n")
         return STATUS_SERVER_ERROR, e.message
       end
 
@@ -77,7 +78,7 @@ module RCS
 
       def protocol_decrypt(cookie, blob)
         # check that the cookie is valid and belongs to an anon
-        @anon = @anonymizers.select {|x| x['cookie'].eql? cookie}.first
+        @anon = @anonymizers.select {|x| x['cookie'].eql? cookie.split('=').last}.first
         raise "Invalid received cookie" unless @anon
         trace :info, "Anonymizer '#{@anon['name']}' is sending a command..."
 
@@ -85,6 +86,7 @@ module RCS
         blob = Base64.decode64(blob)
         command = aes_decrypt(blob, @anon['key'])
 
+        puts command.inspect
         command = JSON.parse(command)
 
         # TODO: anti replay attack
@@ -94,14 +96,14 @@ module RCS
 
       def protocol_encrypt(cookie, command)
         # retrieve the encryption key from the cookie
-        @anon = @anonymizers.select {|x| x['cookie'].eql? cookie}.first
+        @anon = @anonymizers.select {|x| x['cookie'].eql? cookie.split('=').last}.first
         raise "Invalid cookie to send" unless @anon
 
         command = command.to_json
 
         # encrypt the message
         blob = aes_encrypt(command, @anon['key'])
-        blob = Base64.encode64(blob)
+        blob = Base64.strict_encode64(blob)
 
         return blob
       end
@@ -211,11 +213,14 @@ module RCS
           # check if the only one in the chain is a collector, then send
           break if chain.size.eql? 1
 
+          # encapsulate for the last anon
+          forward = {command: 'FORWARD', params: {address: "#{receiver['address']}:#{receiver['port']}", cookie: 'ID=' + receiver['cookie']}, body: msg}
+          #trace :debug, "Forward command: " + forward.inspect
+
           # get the current receiver
           receiver = chain.pop
 
-          # encapsulate for the last anon
-          forward = {command: 'FORWARD', params: {address: "#{receiver['address']}:#{receiver['port']}", cookie: receiver['cookie']}, body: msg}
+          # and encrypt for it
           msg = protocol_encrypt(receiver['cookie'], forward)
 
           trace :debug, "Forwarding through: #{receiver['name']}"
@@ -229,20 +234,31 @@ module RCS
 
         # send the command
         begin
-          Timeout::timeout(30) do
+          Timeout::timeout(300) do
             http = Net::HTTP.new(receiver['address'], receiver['port'])
             http.read_timeout = 300
-            resp = http.send_request('POST', '/', msg, {'Cookie' => receiver['cookie']})
+            #http.set_debug_output($stdout)
+            resp = http.send_request('POST', '/', msg, {'Cookie' => 'ID=' + receiver['cookie']})
           end
         rescue Exception => ex
           trace :error, "Cannot communicate with #{receiver['name']}: #{ex.message}"
           return STATUS_SERVER_ERROR, "Cannot communicate with #{receiver['name']}: #{ex.message}"
         end
 
+        cookie = resp['Set-Cookie']
+        raise("Invalid cookie from anonimizer '#{receiver['name']}'") unless cookie
+
         # receive, check and decrypt a command
-        reply = protocol_decrypt(resp['cookie'], resp.body)
+        reply = protocol_decrypt(cookie, resp.body)
 
         trace :debug, "Received response: #{reply.inspect}"
+
+        # special case for 'CHECK' request
+        if reply['command'].eql? 'STATUS'
+          protocol_execute_commands(reply)
+          #generate a fake result from the status command
+          reply['result'] = {'status' => reply['params']['status']}
+        end
 
         result = reply['result']
         status = result['status']
