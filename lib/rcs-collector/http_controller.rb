@@ -405,7 +405,7 @@ class CollectorController < RESTController
       return decoy_page
     end
 
-    trace :debug, "[NC]: #{resp.inspect} #{resp.body.inspect}"
+    #trace :debug, "[NC]: #{resp.inspect} #{resp.body.inspect}"
 
     return ok(resp.body)
   rescue Exception => e

@@ -80,13 +80,11 @@ module RCS
         # check that the cookie is valid and belongs to an anon
         @anon = @anonymizers.select {|x| x['cookie'].eql? cookie.split('=').last}.first
         raise "Invalid received cookie" unless @anon
-        trace :info, "Anonymizer '#{@anon['name']}' is sending a command..."
+        trace :debug, "Anonymizer '#{@anon['name']}' is sending a command..."
 
         # decrypt the blob
         blob = Base64.decode64(blob)
         command = aes_decrypt(blob, @anon['key'])
-
-        puts command.inspect
         command = JSON.parse(command)
 
         # TODO: anti replay attack
@@ -137,7 +135,7 @@ module RCS
         params = command['params']
         status = params['status']
         stats = params['stats']
-        msg = params['mgs']
+        msg = params['msg']
         version = params['version']
 
         # symbolize keys
@@ -227,7 +225,7 @@ module RCS
 
         end until chain.empty?
 
-        trace :info, "Sending complete command to: #{receiver['name']}"
+        trace :info, "Sending complete command to: #{receiver['name']} (#{msg.size} bytes)"
         trace :debug, "Sending complete command to: #{receiver['address']}:#{receiver['port']}"
 
         resp = nil
@@ -251,7 +249,7 @@ module RCS
         # receive, check and decrypt a command
         reply = protocol_decrypt(cookie, resp.body)
 
-        trace :debug, "Received response: #{reply.inspect}"
+        trace :info, "Received response: #{reply.inspect}"
 
         # special case for 'CHECK' request
         if reply['command'].eql? 'STATUS'
