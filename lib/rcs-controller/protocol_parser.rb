@@ -78,8 +78,8 @@ module RCS
 
       def protocol_decrypt(cookie, blob)
         # check that the cookie is valid and belongs to an anon
-        @anon = @anonymizers.select {|x| x['cookie'].eql? cookie.split('=').last}.first
-        raise "Invalid received cookie" unless @anon
+        anon_from_cookie(cookie)
+
         trace :debug, "Anonymizer '#{@anon['name']}' is sending a command..."
 
         # decrypt the blob
@@ -93,9 +93,10 @@ module RCS
       end
 
       def protocol_encrypt(cookie, command)
-        # retrieve the encryption key from the cookie
-        @anon = @anonymizers.select {|x| x['cookie'].eql? cookie.split('=').last}.first
-        raise "Invalid cookie to send" unless @anon
+        # check that the cookie is valid and belongs to an anon
+        anon_from_cookie(cookie)
+
+        trace :debug, "Sending command to anonymizer '#{@anon['name']}'..."
 
         command = command.to_json
 
@@ -186,19 +187,18 @@ module RCS
         receiver = @anonymizers.select{|x| x['_id'].eql? command['anon']}.first
         raise "Cannot send to unknown anon [#{command['anon']}]" unless receiver
 
-        trace :info, "Preparing #{command['command']} for '#{receiver['name']}'"
-
         # prepare the command for the receiver
         case command['command']
           when 'config'
             msg = {command: 'CONFIG', params: {}, body: command['body']}
+            trace :info, "Preparing CONFIG for '#{receiver['name']}' -- #{msg[:body].inspect}"
           when 'upgrade'
             msg = {command: 'UPGRADE', params: {}, body: command['body']}
+            trace :info, "Preparing UPGRADE for '#{receiver['name']}' -- #{msg[:body].size} bytes"
           when 'check'
             msg = {command: 'CHECK', params: {}}
+            trace :info, "Preparing CHECK for '#{receiver['name']}'"
         end
-
-        trace :debug, "Preparing #{command['command']} for '#{receiver['name']}' -- #{msg.inspect}"
 
         # encrypt for the receiver
         msg = protocol_encrypt(receiver['cookie'], msg)
@@ -249,7 +249,7 @@ module RCS
         # receive, check and decrypt a command
         reply = protocol_decrypt(cookie, resp.body)
 
-        trace :info, "Received response: #{reply.inspect}"
+        trace :info, "Received response from '#{@anon['name']}': #{reply.inspect}"
 
         # special case for 'CHECK' request
         if reply['command'].eql? 'STATUS'
@@ -270,6 +270,11 @@ module RCS
         # otherwise use the full chain
         # #take_while will take care of all, if not found the chain is the full one
         return @chain.take_while {|x| not x['_id'].eql? anon['_id']}
+      end
+
+      def anon_from_cookie(cookie)
+        @anon = @anonymizers.select { |x| x['cookie'].eql? cookie.split('=').last }.first
+        raise "Invalid cookie" unless @anon
       end
 
     end
