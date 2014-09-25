@@ -32,8 +32,7 @@ class DBCache
               "CREATE TABLE upgrade (bid CHAR(32), uid CHAR(32), filename TEXT, content BLOB)",
               "CREATE TABLE downloads (bid CHAR(32), did CHAR(32), filename TEXT)",
               "CREATE TABLE exec (bid CHAR(32), eid CHAR(32), command TEXT)",
-              "CREATE TABLE filesystems (bid CHAR(32), fid CHAR(32), depth INT, path TEXT)",
-              "CREATE TABLE anonymizers (addr CHAR(256))"
+              "CREATE TABLE filesystems (bid CHAR(32), fid CHAR(32), depth INT, path TEXT)"
              ]
 
     # create all the tables

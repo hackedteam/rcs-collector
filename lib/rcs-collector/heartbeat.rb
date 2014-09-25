@@ -34,6 +34,9 @@ module RCS
           Firewall.create_default_rules
         end
 
+        # retrieve the anon cookie list
+        DB.instance.anon_cookies(force = true)
+
         if firewall_error_message
           return [ERROR, firewall_error_message]
         else

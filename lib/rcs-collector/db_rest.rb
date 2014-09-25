@@ -425,7 +425,7 @@ class DB_rest
   # retrieve the filesystem list from db (if any)
   def new_filesystems(bid)
     begin
-      ret = rest_call('GET', "/agent/filesystems/#{bid}")
+      ret = rest_call('GET', "/agent/filesystems/#{bid}?new=true")
 
       files = {}
       # parse the results
@@ -442,7 +442,8 @@ class DB_rest
 
   def del_filesystem(bid, id)
     begin
-      return rest_call('DELETE', "/agent/filesystem/#{bid}?" + CGI.encode_query({:filesystem => id}))
+      # TODO: use update http method (not delete)
+      return rest_call('DELETE', "/agent/filesystem/#{bid}?" + CGI.encode_query({:filesystem => id, :sent_at => Time.now.to_i}))
     rescue Exception => e
       trace :error, "Error calling del_filesystem: #{e.class} #{e.message}"
       propagate_error e
@@ -497,13 +498,12 @@ class DB_rest
     end
   end
 
-
-  def get_proxies
+  def get_injectors
     begin
       ret = rest_call('GET', "/injector")
       return JSON.parse(ret.body)
     rescue Exception => e
-      trace :error, "Error calling get_proxies: #{e.class} #{e.message}"
+      trace :error, "Error calling get_injectors: #{e.class} #{e.message}"
       propagate_error e
     end
   end
@@ -576,36 +576,6 @@ class DB_rest
     end
   end
 
-  def collector_config(id)
-    begin
-     ret = rest_call('GET', "/collector/config/#{id}")
-
-      if ret.kind_of? Net::HTTPNotFound then
-        return nil
-      end
-
-      return ret.body
-    rescue Exception => e
-      trace :error, "Error calling collector_config: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
-  def collector_upgrade(id)
-    begin
-     ret = rest_call('GET', "/collector/upgrade/#{id}")
-
-      if ret.kind_of? Net::HTTPNotFound then
-        return nil
-      end
-
-      return ret.body
-    rescue Exception => e
-      trace :error, "Error calling collector_upgrade: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
   def collector_add_log(id, time, type, desc)
     begin
       log = {:_id => id, :type => type, :time => time, :desc => desc}
@@ -636,6 +606,18 @@ class DB_rest
     JSON.parse(ret.body)
   rescue Exception => e
     trace(:error, "Error calling first_anonymizer: #{e.class} #{e.message}")
+    propagate_error e
+  end
+
+  def anon_cookies
+    ret = rest_call('GET', "/collector/anon_cookies")
+    cookies = {}
+    JSON.parse(ret.body).each do |anon|
+      cookies['ID=' + anon['cookie']] = anon['_id']
+    end
+    return cookies
+  rescue Exception => e
+    trace(:error, "Error calling anon_cookies: #{e.class} #{e.message}")
     propagate_error e
   end
 

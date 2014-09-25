@@ -74,6 +74,7 @@ module Parser
     request[:query] = query
     request[:uri] = uri
     request[:uri_params] = uri_params
+    request[:http_cookie] = http[:cookie]
     request[:cookie] = SessionManager.instance.guid_from_cookie(http[:cookie])
 
     # if not content_type is provided, default to urlencoded

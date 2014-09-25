@@ -169,8 +169,13 @@ class Config
       http.use_ssl = true
       http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
+      seconds = options[:wait_db] ? 180 : 30
+
+      http.open_timeout = seconds
+      http.read_timeout = seconds
+
       # login
-      account = {:user => user, :pass => pass }
+      account = {:user => user, :pass => pass}
       resp = http.request_post('/auth/login', account.to_json, nil)
       if resp['Set-Cookie'].nil?
         puts "Invalid authentication"
@@ -187,13 +192,7 @@ class Config
       http.request_post('/auth/logout', nil, {'Cookie' => cookie})
       return sig['value']
     rescue Exception => e
-      if options[:wait_db]
-        sleep(1)
-        options[:wait_db] += 1
-        retry if options[:wait_db] <= 180
-      else
-        trace(:fatal, "ERROR: auto-retrieve of component failed: #{e.message}.")
-      end
+      trace(:fatal, "ERROR: auto-retrieve of component failed: #{e.message}.")
     end
     trace :info, "done."
     return nil
@@ -267,7 +266,7 @@ class Config
       opts.on( '--migrate', 'Run the migration script' ) do |value|
         options[:migrate] = true
       end
-      opts.on( '--wait-db', 'Wait for the db to be reachable' ) do |value|
+      opts.on( '--wait-db', 'Increase requests timeout (wait more for the db to be reachable)' ) do |value|
         options[:wait_db] = 1
       end
     end

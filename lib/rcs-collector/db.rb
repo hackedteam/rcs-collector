@@ -41,15 +41,8 @@ class DB
     @host = Config.instance.global['DB_ADDRESS'].to_s + ":" + Config.instance.global['DB_PORT'].to_s
 
     # the username is an unique identifier for each machine.
-    # we use the MD5 of the MAC address
-    # if mac address is not available, fallback to hostname
-    begin
-      unique_id = UUIDTools::UUID.mac_address.to_s
-    rescue Exception => e
-      unique_id = Socket.gethostname
-    end
+    @username = local_instance
 
-    @username = Digest::MD5.hexdigest(unique_id)
     # the password is a signature taken from a file
     @password = File.read(Config.instance.file('DB_SIGN'))
 
@@ -72,6 +65,17 @@ class DB
     @db_rest = DB_rest.new @host
     
     return @available
+  end
+
+  def local_instance
+    # we use the MD5 of the MAC address
+    # if mac address is not available, fallback to hostname
+    begin
+      unique_id = UUIDTools::UUID.mac_address.to_s
+    rescue Exception => e
+      unique_id = Socket.gethostname
+    end
+    Digest::MD5.hexdigest(unique_id)
   end
 
   def connect!(type)
@@ -542,12 +546,12 @@ class DB
     return down
   end
 
-  def proxies
+  def injectors
     # return empty if not available
     return [] unless @available
 
     # ask the db
-    ret = db_rest_call :get_proxies
+    ret = db_rest_call :get_injectors
 
     # return the results or empty on error
     return ret || []
@@ -579,19 +583,9 @@ class DB
     db_rest_call :injector_config, id
   end
 
-  def collector_config(id)
-    return unless @available
-    db_rest_call :collector_config, id
-  end
-
   def injector_upgrade(id)
     return unless @available
     db_rest_call :injector_upgrade, id
-  end
-
-  def collector_upgrade(id)
-    return unless @available
-    db_rest_call :collector_upgrade, id
   end
 
   def injector_add_log(id, time, type, desc)
@@ -618,6 +612,19 @@ class DB
     return unless @available
     db_rest_call :public_delete, file
   end
+
+  def anon_cookies(force=false)
+    # use in memory cache for the results
+    cookies = @anon_cookies
+
+    return cookies unless @available
+    return cookies if not cookies.nil? and not cookies.empty? and not force
+
+    @anon_cookies = db_rest_call :anon_cookies if @available
+    return @anon_cookies
+  end
+
+
 end #DB
 
 end #Collector::

@@ -8,7 +8,7 @@ require 'rcs-common/trace'
 module RCS
 module Controller
 
-class NCProto
+class LegacyProtocol
   include RCS::Tracer
 
   PROTO_OK      = 0x000F0001  # OK
