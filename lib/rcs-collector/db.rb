@@ -598,11 +598,6 @@ class DB
     db_rest_call :collector_add_log, id, time, type, desc
   end
 
-  def get_network_cert(file)
-    return unless @available
-    db_rest_call :get_network_cert, file
-  end
-
   def first_anonymizer
     return unless @available
     db_rest_call :first_anonymizer
