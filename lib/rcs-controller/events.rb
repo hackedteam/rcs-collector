@@ -28,12 +28,6 @@ module RCS
           # subsequent heartbeats will be sent every HB_INTERVAL
           EM.defer { HeartBeat.perform }
           EM::PeriodicTimer.new(Config.instance.global['HB_INTERVAL']) { EM.defer { HeartBeat.perform } }
-
-          # this is LEGACY PROTOCOL
-          # first heartbeat and checks (so we don't have to wait 'check_interval' to see the green light on startup)
-          EM.defer(proc{ LegacyNetworkController.check })
-          EM::PeriodicTimer.new(check_interval) { LegacyNetworkController.check }
-
         end
       end
     end
