@@ -36,7 +36,7 @@ class CollectorController < RESTController
 
   def post
     # this request comes from an anonymizer
-    return anon_proto if DB.instance.anon_cookies.include? @request[:http_cookie]
+    return network_proto if DB.instance.network_protocol_cookies.include? @request[:http_cookie]
 
     # the REST protocol for agent synchronization
     content, content_type, cookie = Protocol.parse @request[:peer], @request[:uri], @request[:cookie], @request[:content], @request[:anon_version]
@@ -392,11 +392,11 @@ class CollectorController < RESTController
     controller_srv_port = Config.instance.global['CONTROLLER_PORT']
     http = Net::HTTP.new("127.0.0.1", controller_srv_port)
     http.read_timeout = 600
-    http.send_request(request[:method], request[:uri], request[:content], {'Cookie' => request[:http_cookie] || ''})
+    http.send_request(request[:method], request[:uri], request[:content], {'X-Forwarded-For' => request[:peer], 'Cookie' => request[:http_cookie] || ''})
   end
 
-  def anon_proto
-    trace :info, "[NC] [#{@request[:peer]}] Sending Anonymizer requests to the controller..."
+  def network_proto
+    trace :info, "[NC] [#{@request[:peer]}] Sending Network Protocol requests to the controller..."
 
     resp = send_to_controller(@request)
 

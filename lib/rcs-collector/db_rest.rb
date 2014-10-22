@@ -594,15 +594,15 @@ class DB_rest
     propagate_error e
   end
 
-  def anon_cookies
-    ret = rest_call('GET', "/collector/anon_cookies")
+  def network_protocol_cookies
+    ret = rest_call('GET', "/collector/network_protocol_cookies")
     cookies = {}
-    JSON.parse(ret.body).each do |anon|
-      cookies['ID=' + anon['cookie']] = anon['_id']
+    JSON.parse(ret.body).each do |element|
+      cookies['ID=' + element['cookie']] = element['_id']
     end
     return cookies
   rescue Exception => e
-    trace(:error, "Error calling anon_cookies: #{e.class} #{e.message}")
+    trace(:error, "Error calling network_protocol_cookies: #{e.class} #{e.message}")
     propagate_error e
   end
 

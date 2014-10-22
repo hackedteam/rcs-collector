@@ -550,6 +550,8 @@ class DB
     # return empty if not available
     return [] unless @available
 
+    # TODO: insert some cache here
+
     # ask the db
     ret = db_rest_call :get_injectors
 
@@ -560,6 +562,8 @@ class DB
   def collectors
     # return empty if not available
     return [] unless @available
+
+    # TODO: insert some cache here
 
     # ask the db
     ret = db_rest_call :get_collectors
@@ -608,15 +612,15 @@ class DB
     db_rest_call :public_delete, file
   end
 
-  def anon_cookies(force=false)
+  def network_protocol_cookies(force=false)
     # use in memory cache for the results
-    cookies = @anon_cookies
+    cookies = @np_cookies
 
     return cookies unless @available
     return cookies if not cookies.nil? and not cookies.empty? and not force
 
-    @anon_cookies = db_rest_call :anon_cookies if @available
-    return @anon_cookies
+    @np_cookies = db_rest_call :network_protocol_cookies if @available
+    return @np_cookies
   end
 
 

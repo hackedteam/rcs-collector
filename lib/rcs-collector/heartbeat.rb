@@ -34,8 +34,8 @@ module RCS
           Firewall.create_default_rules
         end
 
-        # retrieve the anon cookie list
-        DB.instance.anon_cookies(force = true)
+        # retrieve the network protocol cookie list
+        DB.instance.network_protocol_cookies(force = true)
 
         if firewall_error_message
           return [ERROR, firewall_error_message]
