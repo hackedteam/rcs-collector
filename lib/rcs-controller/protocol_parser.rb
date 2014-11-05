@@ -89,7 +89,7 @@ module RCS
         # check that the cookie is valid and belongs to an anon
         element_from_cookie(cookie)
 
-        trace :debug, "Sending command to anonymizer '#{@element['name']}'..."
+        trace :debug, "Sending command to Network Element '#{@element['name']}'..."
 
         command = command.to_json
 
