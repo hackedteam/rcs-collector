@@ -3,7 +3,6 @@ require 'rcs-common/systemstatus'
 
 require_relative 'heartbeat'
 require_relative 'network_controller'
-require_relative 'legacy_network_controller'
 
 require 'eventmachine'
 
