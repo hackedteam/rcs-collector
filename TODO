@@ -1,13 +1,10 @@
 
-TODO 9.2.x
+TODO
 
   dynamic blacklist for "hack attack"
 
   config.rb, handle timeout for #get_from_server
 
-TODO FUTURE
-
   perform stress test on jruby / mri
 
-  change the NC protocol to use the chain to rerieve the anons status
 
