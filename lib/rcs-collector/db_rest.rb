@@ -80,7 +80,7 @@ class DB_rest
   def login(user, pass, version, type)
     begin
       # send the authentication data
-      account = {:user => user, :pass => pass, :version => version, :type => type}
+      account = {:user => user, :pass => pass, :version => version, :type => type, :demo => !!Config.instance.global['COLLECTOR_IS_DEMO']}
       request = Net::HTTP::Post.new('/auth/login')
       request.body = account.to_json
       resp = @http.request(request)

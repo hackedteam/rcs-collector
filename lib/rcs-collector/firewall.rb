@@ -58,7 +58,7 @@ module RCS
       end
 
       def developer_machine?
-        Config.instance.global['COLLECTOR_IS_GOOD']
+        Config.instance.global['COLLECTOR_IS_DEMO']
       end
     end
   end
