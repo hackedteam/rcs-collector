@@ -603,7 +603,7 @@ class DB
   end
 
   def first_anonymizer
-    return unless @available
+    return {} unless @available
     db_rest_call :first_anonymizer
   end
 
