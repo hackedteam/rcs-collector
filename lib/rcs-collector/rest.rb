@@ -155,7 +155,7 @@ class RESTController
     if ver.nil?
       # if the collector can be used without anonimizer, mark it as the highest possible version
       # this will cause the connection to be always coming from a good anon
-      return "9999123101" if Config.instance.global['COLLECTOR_IS_GOOD']
+      return "9999123101" if Config.instance.global['COLLECTOR_IS_DEMO']
       return "0"
     end
     trace :info, "[#{@request[:peer]}] is a connection thru anon version [#{ver}]"

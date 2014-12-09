@@ -20,6 +20,11 @@ OptionParser.new do |parser|
     $options[:hide_addresses] = true
   }
 
+  parser.on("-h", "--help", "Show this message") {
+    puts parser
+    exit
+  }
+
   parser.on("--log-level INFO|DEBUG", "Change the log devel") { |value|
     value.upcase!
     raise "Ivalid log level #{value}" unless %w[INFO DEBUG].include?(value)

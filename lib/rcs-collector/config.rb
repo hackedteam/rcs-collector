@@ -148,8 +148,6 @@ class Config
     if options[:db_cert]
       sig = get_from_server(options[:user], options[:pass], 'server.pem', options)
       File.open(Config.instance.file('DB_CERT'), 'wb') {|f| f.write sig} unless sig.nil?
-      sig = get_from_server(options[:user], options[:pass], 'network.pem', options)
-      File.open(Config.instance.file('rcs-network.pem'), 'wb') {|f| f.write sig} unless sig.nil?
     end
 
     trace :info, ""

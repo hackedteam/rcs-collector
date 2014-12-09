@@ -35,9 +35,6 @@ module RCS
 
           establish_database_connection(wait_until_connected: true)
 
-          # be sure to have the network certificate
-          database.get_network_cert(Config.instance.file('rcs-network')) unless File.exist? Config.instance.file('rcs-network.pem')
-
           # enter the main loop (hopefully will never exit from it)
           Events.new.setup
         end

