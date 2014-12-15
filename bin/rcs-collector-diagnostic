@@ -30,6 +30,10 @@ OptionParser.new do |parser|
     raise "Ivalid log level #{value}" unless %w[INFO DEBUG].include?(value)
     $options[:log_level] = value
   }
+
+  parser.on("--version", "Print the RCS version") do
+    $options[:version] = true
+  end
 end.parse!
 
 include RCS::Diagnosticable
@@ -37,6 +41,12 @@ include RCS::Diagnosticable
 if level = $options[:log_level]
   puts "Changing log level to #{level}"
   change_trace_level(level)
+  exit
+end
+
+if $options[:version]
+  version, build = get_version_info
+  puts "RCS version #{version} build #{build}"
   exit
 end
 
