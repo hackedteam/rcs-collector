@@ -1,7 +1,7 @@
 PATH
   remote: ../rcs-common
   specs:
-    rcs-common (9.5.0)
+    rcs-common (9.5.1)
       ffi
       log4r (>= 1.1.9)
       mail
