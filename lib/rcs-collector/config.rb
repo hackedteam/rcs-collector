@@ -143,6 +143,8 @@ class Config
       File.open(Config.instance.file('DB_SIGN'), 'wb') {|f| f.write sig}
       sig = get_from_server(options[:user], options[:pass], 'network', options)
       File.open(Config.instance.file('rcs-network.sig'), 'wb') {|f| f.write sig}
+      sig = get_from_server(options[:user], options[:pass], 'updater', options)
+      File.open(Config.instance.file('rcs-updater.sig'), 'wb') {|f| f.write sig}
     end
 
     if options[:db_cert]
