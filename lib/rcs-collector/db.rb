@@ -623,6 +623,17 @@ class DB
     return @np_cookies
   end
 
+  def updater_signature
+    signature_file = Config.instance.file("rcs-updater.sig")
+    signature = File.exists?(signature_file) ? File.read(signature_file) : ''
+
+    if signature.empty?
+      signature = db_rest_call(:updater_signature)
+      File.open(signature_file, 'wb') { |file| file.write(signature) }
+    end
+
+    return signature
+  end
 
 end #DB
 

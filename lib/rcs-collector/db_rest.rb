@@ -232,6 +232,17 @@ class DB_rest
     end
   end
 
+  def updater_signature
+    begin
+      ret = rest_call('GET', '/signature/updater')
+      sign = JSON.parse(ret.body)['value']
+      return sign
+    rescue Exception => e
+      trace :error, "Error calling updater_signature: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
   def check_signature
     begin
       ret = rest_call('GET', '/signature/check')
