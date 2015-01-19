@@ -31,7 +31,7 @@ GEM
     connection_pool (2.1.0)
     em-http-server (0.1.8)
       eventmachine
-    eventmachine (1.0.4)
+    eventmachine (1.0.3)
     ffi (1.9.6)
     gene_pool (1.4.1)
       thread_safe
@@ -87,7 +87,7 @@ PLATFORMS
 DEPENDENCIES
   bundler (> 1.0.0)
   em-http-server (>= 0.1.7)
-  eventmachine (>= 1.0.3)
+  eventmachine (= 1.0.3)
   jdbc-sqlite3
   jruby-openssl
   json
