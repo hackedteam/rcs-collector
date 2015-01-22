@@ -2,6 +2,8 @@ PATH
   remote: ../rcs-common
   specs:
     rcs-common (9.5.1)
+      em-http-server
+      eventmachine
       ffi
       log4r (>= 1.1.9)
       mail
@@ -10,6 +12,7 @@ PATH
       sbdb
       sys-cpu
       sys-filesystem
+      yajl-ruby
 
 GEM
   remote: http://rubygems.org/
@@ -80,6 +83,7 @@ GEM
     tzinfo (1.2.2)
       thread_safe (~> 0.1)
     uuidtools (2.1.5)
+    yajl-ruby (1.2.1)
 
 PLATFORMS
   ruby
