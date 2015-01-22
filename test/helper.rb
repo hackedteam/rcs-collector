@@ -11,7 +11,7 @@ require 'test/unit'
 
 $LOAD_PATH.unshift(File.dirname(__FILE__))
 $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', 'lib'))
-require 'rcs-collector'
+require 'rcs-collector/collector'
 
 class Test::Unit::TestCase
 end
