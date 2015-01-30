@@ -6,7 +6,7 @@ PATH
       log4r (>= 1.1.9)
       mail
       mime-types
-      mongoid (~> 4.0.0)
+      mongoid
       sbdb
       sys-cpu
       sys-filesystem
@@ -14,10 +14,10 @@ PATH
 GEM
   remote: http://rubygems.org/
   specs:
-    activemodel (4.1.6)
-      activesupport (= 4.1.6)
+    activemodel (4.1.8)
+      activesupport (= 4.1.8)
       builder (~> 3.1)
-    activesupport (4.1.6)
+    activesupport (4.1.8)
       i18n (~> 0.6, >= 0.6.9)
       json (~> 1.7, >= 1.7.7)
       minitest (~> 5.1)
@@ -28,7 +28,7 @@ GEM
     bson (2.3.0)
     builder (3.2.2)
     coderay (1.1.0)
-    connection_pool (2.0.0)
+    connection_pool (2.1.0)
     em-http-server (0.1.8)
       eventmachine
     eventmachine (1.0.3)
@@ -38,17 +38,17 @@ GEM
     i18n (0.6.11)
     json (1.8.1)
     log4r (1.1.10)
-    mail (2.6.1)
+    mail (2.6.3)
       mime-types (>= 1.16, < 3)
     method_source (0.8.2)
     mime-types (2.4.3)
-    minitest (5.4.2)
+    minitest (5.5.0)
     mongoid (4.0.0)
       activemodel (~> 4.0)
       moped (~> 2.0.0)
       origin (~> 2.1)
       tzinfo (>= 0.3.37)
-    moped (2.0.1)
+    moped (2.0.2)
       bson (~> 2.2)
       connection_pool (~> 2.0)
       optionable (~> 0.2.0)
