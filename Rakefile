@@ -28,7 +28,7 @@ def exec_rubyencoder(cmd)
   if verbose?
     system(cmd) || raise("Econding failed.")
   else
-    raise("Econding failed.") if `#{cmd}` =~ /[1-9]\serror/
+    raise("Econding failed.") if `#{cmd}` !~ /processed, 0 errors/
   end
 end
 
