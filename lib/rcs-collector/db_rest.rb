@@ -597,6 +597,15 @@ class DB_rest
     end
   end
 
+  def collector_address
+    ret = rest_call('GET', "/collector/my_address")
+    coll = JSON.parse(ret.body)
+    return coll['address']
+  rescue Exception => e
+    trace(:error, "Error calling my_address: #{e.class} #{e.message}")
+    propagate_error e
+  end
+
   def first_anonymizer
     ret = rest_call('GET', "/collector/first_anonymizer")
     JSON.parse(ret.body)

@@ -607,6 +607,11 @@ class DB
     db_rest_call :first_anonymizer
   end
 
+  def collector_address
+    return {} unless @available
+    db_rest_call :collector_address
+  end
+
   def public_delete(file)
     return unless @available
     db_rest_call :public_delete, file
