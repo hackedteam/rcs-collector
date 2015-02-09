@@ -1,28 +1,105 @@
 #!/usr/bin/env ruby
 
-require 'rbconfig'
+require 'optparse'
+
+$options = {}
+
+OptionParser.new do |parser|
+  parser.banner = "View log files"
+  parser.banner << "\nExamples:"
+  parser.banner << "\n  rcs-collector-log -n collector"
+  parser.banner << "\n  rcs-collector-log -n rcs-collector-log -d yesterday"
+  parser.banner << "\n  rcs-collector-log -n rcs-collector-log -d 2014-03-01"
+  parser.banner << "\nOptions:"
+
+  parser.on("-n NAME", "--name", "Log file name (or a part of it)") { |v|
+    $options[:name] = v
+  }
+
+  parser.on("-d DATE", "--date", "Log file date (YYYY-MM-DD or today, yesterday, monday, tuesday, ecc.)") { |v|
+    $options[:date] = v
+  }
+
+  parser.on("--err", "Only error logs") {
+    $options[:err] = :only
+  }
+
+  parser.on("--no-err", "Exclude error logs") {
+    $options[:err] = :none
+  }
+end.parse!
 
 # ensure the working dir is correct
 Dir.chdir File.dirname(File.dirname(File.realpath(__FILE__)))
 
-# list of logs to be opened
-$logs = []
-
-def append_logs_of(component)
-  last_log = Dir["log/rcs-#{component.to_s.downcase}**"].max
-  return unless last_log
-  $logs << last_log
-  $logs << File.join('log/err', File.basename(last_log))
+# prepare all the paths
+logs = Dir["log/rcs-*.log"].map do |path|
+  filename = File.basename(path).gsub('.log', '')
+  name = filename.split('_')[0]
+  date = filename.split('_')[1]
+  {path: path, name: name, date: date}
 end
 
-given_component = ARGV[0]
-
-if given_component
-  append_logs_of(given_component)
+# filter by name
+if $options[:name]
+  logs.reject! { |info| info[:name] !~ /#{$options[:name]}/i }
 else
-  append_logs_of(:collector)
-  append_logs_of(:carrier)
-  append_logs_of(:controller)
+  logs.reject! { |info| !info[:date] }
 end
 
-spawn "bin/baretail.exe " + $logs.join(" ")
+# filter by date
+if $options[:date]
+  now = Time.now
+  wdays = %w[sunday monday tuesday wednesday thursday friday saturday]
+  date = nil
+
+  if $options[:date] =~ /today/i
+    date = now.strftime("%Y-%m-%d")
+  elsif $options[:date] =~ /yesterday/i
+    date = (now - 86400).strftime("%Y-%m-%d")
+  elsif wdays.include?($options[:date])
+    loop do
+      break if now.__send__("#{$options[:date]}?")
+      now = now - 86400
+    end
+    date = now.strftime("%Y-%m-%d")
+  elsif $options[:date] =~ /\d{4}\-\d{2}\-\d{2}/
+    date = $options[:date]
+  else
+    raise("Invalid date filter - #{$options[:date]}")
+  end
+
+  logs.reject! { |info| info[:date] != date }
+end
+
+# group by name and take the last date (puts rcs-collector and rcs-carrier at the top)
+grouped_logs = []
+names = logs.map { |info| info[:name] }.uniq.sort
+names.insert(0, names.delete('rcs-carrier'))
+names.insert(0, names.delete('rcs-collector'))
+names.compact.each do |name|
+  info = logs.select { |i| i[:name] == name }.sort { |a, b| b[:date] <=> a[:date] }.first
+  info_err = info.dup
+  info_err[:path] = info[:path].gsub('log/', 'log/err/')
+  info_err[:err] = true
+  grouped_logs.concat([info, info_err])
+end
+logs = grouped_logs
+
+# filter by err
+if $options[:err] == :only
+  logs.reject! { |info| !info[:err] }
+elsif $options[:err] == :none
+  logs.reject! { |info| info[:err] }
+end
+
+if logs.empty?
+  $stderr.puts "No logs were found"
+  exit!(0)
+end
+
+if RbConfig::CONFIG['host_os'] =~ /mingw/
+  spawn "bin/baretail.exe " + logs.map { |i| i[:path] }.join(" ")
+else
+  exec "tail -F " + logs.map { |i| i[:path] }.join(" ")
+end
