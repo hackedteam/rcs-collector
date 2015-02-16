@@ -142,7 +142,7 @@ class Config
       auth_to_server(options[:user], options[:pass]) do
         puts "User #{options[:user]} authenticated successfully"
       end
-      exit
+      return 0
     end
 
     if options[:db_sign]
