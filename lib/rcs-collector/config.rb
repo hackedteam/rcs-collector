@@ -138,6 +138,13 @@ class Config
     @global['HB_INTERVAL'] = options[:hb_interval] unless options[:hb_interval].nil?
     @global['NC_INTERVAL'] = options[:nc_interval] unless options[:nc_interval].nil?
 
+    if options[:auth]
+      auth_to_server(options[:user], options[:pass]) do
+        puts "User #{options[:user]} authenticated successfully"
+      end
+      exit
+    end
+
     if options[:db_sign]
       sig = get_from_server(options[:user], options[:pass], 'server', options)
       File.open(Config.instance.file('DB_SIGN'), 'wb') {|f| f.write sig}
@@ -162,40 +169,41 @@ class Config
     return 0
   end
 
-  def get_from_server(user, pass, resource, **options)
-    trace :info, "Retrieving #{resource} from the server..."
-    begin
-      http = Net::HTTP.new(@global['DB_ADDRESS'], @global['DB_PORT'])
-      http.use_ssl = true
-      http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+  def auth_to_server(user, pass)
+    http = Net::HTTP.new(@global['DB_ADDRESS'], @global['DB_PORT'])
+    http.use_ssl = true
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    http.open_timeout = 120
+    http.read_timeout = 60
 
-      seconds = options[:wait_db] ? 180 : 30
+    # login
+    resp = http.request_post('/auth/login', {:user => user, :pass => pass}.to_json, nil)
 
-      http.open_timeout = seconds
-      http.read_timeout = seconds
-
-      # login
-      account = {:user => user, :pass => pass}
-      resp = http.request_post('/auth/login', account.to_json, nil)
-      if resp['Set-Cookie'].nil?
-        puts "Invalid authentication"
-        return nil
-      else
-        cookie = resp['Set-Cookie']
-      end
-
-      # get the signature or the cert
-      res = http.request_get("/signature/#{resource}", {'Cookie' => cookie})
-      sig = JSON.parse(res.body)
+    if cookie = resp['Set-Cookie']
+      yield(http, cookie) if block_given?
 
       # logout
       http.request_post('/auth/logout', nil, {'Cookie' => cookie})
-      return sig['value']
-    rescue Exception => e
-      trace(:fatal, "ERROR: auto-retrieve of component failed: #{e.message}.")
+    else
+      raise("Authentication failed: #{resp.body}")
     end
-    trace :info, "done."
-    return nil
+  end
+
+  def get_from_server(user, pass, resource, options = {})
+    trace(:info, "Retrieving #{resource} from the server...")
+
+    begin
+      auth_to_server(user, pass) do |http, cookie|
+        # get the signature or the cert
+        res = http.request_get("/signature/#{resource}", {'Cookie' => cookie})
+        sig = JSON.parse(res.body)
+        return sig['value']
+      end
+      trace(:info, "Resource fetched")
+    rescue Exception => e
+      trace(:fatal, "Unable to fetch #{resource} from server")
+      raise(e)
+    end
   end
 
   # executed from rcs-collector-config
@@ -266,8 +274,8 @@ class Config
       opts.on( '--migrate', 'Run the migration script' ) do |value|
         options[:migrate] = true
       end
-      opts.on( '--wait-db', 'Increase requests timeout (wait more for the db to be reachable)' ) do |value|
-        options[:wait_db] = 1
+      opts.on( '--auth', 'Attempt a login to rcs-db with the given user and pass' ) do |value|
+        options[:auth] = true
       end
     end
 
