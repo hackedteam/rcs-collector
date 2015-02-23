@@ -12,13 +12,21 @@ require 'rcs-common/path_utils'
 $options = {}
 
 OptionParser.new do |parser|
-  parser.on("-o", "--output PATH", "Optionally specify the output file path") { |value|
+  parser.banner << "\n\nZip generation options:"
+
+  parser.on("-o", "--output PATH", "Specify the output file path") { |value|
     $options[:output] = value
   }
 
-  parser.on("--hide-addresses", "Optionally mask ip addresses and domain names that can appear in the output") { |value|
+  parser.on("--hide-addresses", "Mask ip addresses and domain names that may appear") { |value|
     $options[:hide_addresses] = true
   }
+
+  parser.on("-c", "--certs", "Include certificate files") {
+    $options[:certs] = true
+  }
+
+  parser.separator "\nDiagnostic options:"
 
   parser.on("-h", "--help", "Show this message") {
     puts parser
@@ -31,7 +39,7 @@ OptionParser.new do |parser|
     $options[:log_level] = value
   }
 
-  parser.on("--version", "Print the RCS version") do
+  parser.on("-v", "--version", "Print the RCS version") do
     $options[:version] = true
   end
 end.parse!
@@ -68,21 +76,12 @@ buffer = Zip::OutputStream.write_buffer do |out|
     out.write(hide_addresses(File.read(path)))
   end
 
-  out.put_next_entry("machine")
-  pretty_print(machine_info, out)
-
-  config_files.each do |path|
+  config_files($options).each do |path|
     entry = path[path.index('config/')..-1]
     out.put_next_entry(entry)
     content = File.read(path)
     content = hide_addresses(content) unless %w[.pem .crt].include?(File.extname(path))
     out.write(content)
-  end
-
-  hosts_path = 'C:\Windows\system32\drivers\etc\hosts'
-  if File.exists?(hosts_path)
-    out.put_next_entry('hosts')
-    out.write(File.read(hosts_path))
   end
 
   ['rcs-collector-stats', 'rcs-collector-queue', 'rcs-carrier-stats'].each do |command|
@@ -91,8 +90,20 @@ buffer = Zip::OutputStream.write_buffer do |out|
   end
 
   if windows?
-    out.put_next_entry("systeminfo")
-    out.puts(hide_addresses(command_output("systeminfo")))
+    out.put_next_entry("environment/machine")
+    pretty_print(machine_info, out)
+
+    out.put_next_entry('environment/hosts')
+    out.write(hide_addresses(File.read('C:\Windows\system32\drivers\etc\hosts')))
+
+    out.put_next_entry('environment/ipconfig')
+    out.write(hide_addresses(command_output("ipconfig")))
+
+    out.put_next_entry("environment/systeminfo")
+    out.write(hide_addresses(command_output("systeminfo")))
+
+    out.put_next_entry("environment/tree")
+    out.write(hide_addresses(command_output("tree")))
   end
 end
 
