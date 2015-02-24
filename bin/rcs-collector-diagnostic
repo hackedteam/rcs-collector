@@ -22,10 +22,6 @@ OptionParser.new do |parser|
     $options[:hide_addresses] = true
   }
 
-  parser.on("-c", "--certs", "Include certificate files") {
-    $options[:certs] = true
-  }
-
   parser.separator "\nDiagnostic options:"
 
   parser.on("-h", "--help", "Show this message") {
@@ -76,7 +72,7 @@ buffer = Zip::OutputStream.write_buffer do |out|
     out.write(hide_addresses(File.read(path)))
   end
 
-  config_files($options).each do |path|
+  config_files.each do |path|
     entry = path[path.index('config/')..-1]
     out.put_next_entry(entry)
     content = File.read(path)
