@@ -100,6 +100,9 @@ buffer = Zip::OutputStream.write_buffer do |out|
 
     out.put_next_entry("environment/tree")
     out.write(hide_addresses(command_output("tree")))
+
+    out.put_next_entry("environment/services_state")
+    out.puts(services_state)
   end
 end
 
