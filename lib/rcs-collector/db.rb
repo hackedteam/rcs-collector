@@ -35,6 +35,8 @@ class DB
   attr_reader :agent_signature
   attr_reader :network_signature
   attr_reader :check_signature
+  attr_reader :crc_signature
+  attr_reader :sha1_signature
 
   def initialize
     # database address
@@ -58,6 +60,8 @@ class DB
     @network_signature = nil
     # signature for the integrity check
     @check_signature = nil
+    @crc_signature = nil
+    @sha1_signature = nil
     # class keys
     @factory_keys = {}
     
@@ -142,6 +146,10 @@ class DB
       # get the integrity check signature
       check_sig = db_rest_call :check_signature
       @check_signature = check_sig unless check_sig.nil?
+      crc_sig = db_rest_call :crc_signature
+      @crc_signature = crc_sig unless crc_sig.nil?
+      sha1_sig = db_rest_call :sha1_signature
+      @sha1_signature = sha1_sig unless sha1_sig.nil?
 
       # get the factory key of every agent
       keys = db_rest_call :factory_keys
@@ -161,6 +169,8 @@ class DB
       DBCache.network_signature = net_sig
       trace :info, "Network signature saved in the DB cache"
       DBCache.check_signature = check_sig
+      DBCache.crc_signature = crc_sig
+      DBCache.sha1_signature = sha1_sig
       trace :info, "Integrity check signature saved in the DB cache"
       DBCache.add_factory_keys @factory_keys
       trace :info, "#{@factory_keys.length} entries saved in the the DB cache"
@@ -177,6 +187,8 @@ class DB
       @agent_signature = Digest::MD5.digest DBCache.agent_signature unless DBCache.agent_signature.nil?
       @network_signature = DBCache.network_signature unless DBCache.network_signature.nil?
       @check_signature = DBCache.check_signature unless DBCache.check_signature.nil?
+      @crc_signature = DBCache.crc_signature unless DBCache.crc_signature.nil?
+      @sha1_signature = DBCache.sha1_signature unless DBCache.sha1_signature.nil?
       @factory_keys = DBCache.factory_keys
 
       trace :info, "#{@factory_keys.length} entries loaded from DB cache"

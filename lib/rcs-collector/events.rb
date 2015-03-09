@@ -78,7 +78,7 @@ class HTTPHandler < EM::HttpServer::Server
   def http_request_errback(exception)
     http_error_string(500, "Server error")
 
-    trace :warn, "HACK ALERT: #{@peer} something caused a deep exception: #{exception.message}"
+    trace :error, "INTERNAL SERVER ERROR: #{@peer} something caused a deep exception: #{exception.message}"
   end
 
   # return the content of the X-Forwarded-For header
@@ -111,7 +111,7 @@ class HTTPHandler < EM::HttpServer::Server
 
     #trace :info, "[#{@peer}] Incoming HTTP Connection"
     size = (@http_content) ? @http_content.bytesize : 0
-    trace :debug, "[#{@peer}] REQ: [#{@http_request_method}] #{@http_request_uri} #{@http_query_string} (#{Time.now - @request_time}) #{size.to_s_bytes}"
+    trace :debug, "[#{@peer}] REQ: [#{@http_request_method}] #{@http_request_uri} #{@http_query_string} (#{Time.now - @request_time}) #{size.to_s_bytes}" unless @http_request_method.eql? 'WATCHDOG'
 
     # get it again since if the connection is kept-alive we need a fresh timing for each
     # request and not the total from the beginning of the connection

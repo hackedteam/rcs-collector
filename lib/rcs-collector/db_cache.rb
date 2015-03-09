@@ -26,6 +26,8 @@ class DBCache
     schema = ["CREATE TABLE agent_signature (signature CHAR(32))",
               "CREATE TABLE network_signature (signature CHAR(32))",
               "CREATE TABLE check_signature (signature CHAR(32))",
+              "CREATE TABLE crc_signature (signature CHAR(64))",
+              "CREATE TABLE sha1_signature (signature CHAR(64))",
               "CREATE TABLE factory_keys (id CHAR(16), key CHAR(32), good BOOLEAN)",
               "CREATE TABLE configs (bid CHAR(32), config BLOB)",
               "CREATE TABLE uploads (bid CHAR(32), uid CHAR(32), filename TEXT, content BLOB)",
@@ -164,6 +166,72 @@ class DBCache
     begin
       db = SQLite.open CACHE_FILE
       row = db.execute("SELECT signature FROM check_signature;")
+      signature = row.first.first
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    return signature
+  end
+
+  ##############################################
+  # CRC SIGNATURE
+  ##############################################
+
+  def self.crc_signature=(sig)
+    # ensure the db was already created, otherwise create it
+    create! unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite.open CACHE_FILE
+      db.execute("DELETE FROM crc_signature;")
+      db.execute("INSERT INTO crc_signature VALUES ('#{sig}');")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot save the cache: #{e.message}"
+    end
+  end
+
+  def self.crc_signature
+    return nil unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite.open CACHE_FILE
+      row = db.execute("SELECT signature FROM crc_signature;")
+      signature = row.first.first
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot read the cache: #{e.message}"
+    end
+
+    return signature
+  end
+
+  ##############################################
+  # SHA1 SIGNATURE
+  ##############################################
+
+  def self.sha1_signature=(sig)
+    # ensure the db was already created, otherwise create it
+    create! unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite.open CACHE_FILE
+      db.execute("DELETE FROM sha1_signature;")
+      db.execute("INSERT INTO sha1_signature VALUES ('#{sig}');")
+      db.close
+    rescue Exception => e
+      trace :warn, "Cannot save the cache: #{e.message}"
+    end
+  end
+
+  def self.sha1_signature
+    return nil unless File.exist?(CACHE_FILE)
+
+    begin
+      db = SQLite.open CACHE_FILE
+      row = db.execute("SELECT signature FROM sha1_signature;")
       signature = row.first.first
       db.close
     rescue Exception => e

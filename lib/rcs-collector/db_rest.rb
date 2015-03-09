@@ -254,6 +254,28 @@ class DB_rest
     end
   end
 
+  def crc_signature
+    begin
+      ret = rest_call('GET', '/signature/crc')
+      sign = JSON.parse(ret.body)['value']
+      return sign
+    rescue Exception => e
+      trace :error, "Error calling crc_signature: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def sha1_signature
+    begin
+      ret = rest_call('GET', '/signature/sha1')
+      sign = JSON.parse(ret.body)['value']
+      return sign
+    rescue Exception => e
+      trace :error, "Error calling sha1_signature: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
   # used to authenticate the agents
   def factory_keys(ident = '')
     begin

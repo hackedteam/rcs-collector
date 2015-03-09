@@ -26,6 +26,7 @@ GEM
       minitest (~> 5.1)
       thread_safe (~> 0.3, >= 0.3.4)
       tzinfo (~> 1.1)
+    bcrypt (3.1.9)
     bdb (0.2.6.5)
       tuple (>= 0.1.2)
     bson (2.3.0)
@@ -99,6 +100,7 @@ PLATFORMS
   x86-mingw32
 
 DEPENDENCIES
+  bcrypt
   bundler (> 1.0.0)
   em-http-server (>= 0.1.7)
   eventmachine (= 1.0.3)

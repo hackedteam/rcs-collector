@@ -12,6 +12,7 @@ gem 'persistent_http'
 gem 'uuidtools'
 gem 'rubyzip', "= 1.0.0"
 gem 'sqlite3'
+gem 'bcrypt'
 
 platforms :jruby do
   gem 'json'
