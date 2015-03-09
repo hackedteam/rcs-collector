@@ -8,6 +8,7 @@ require 'json'
 require 'optparse'
 require 'rcs-common/diagnosticable'
 require 'rcs-common/path_utils'
+require 'rcs-common/winfirewall'
 
 $options = {}
 
@@ -103,6 +104,9 @@ buffer = Zip::OutputStream.write_buffer do |out|
 
     out.put_next_entry("environment/services_state")
     out.puts(services_state)
+
+    out.put_next_entry("environment/firewall_rules")
+    out.puts(WinFirewall.raw_rules)
   end
 end
 
