@@ -112,7 +112,6 @@ class CollectorController < RESTController
       trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send WATCHDOG [#{@request[:uri]}] commands!!!"
       return method_not_allowed
     end
-    return method_not_allowed if BCrypt::Password.new(DB.instance.crc_signature) != @request[:uri].gsub("/", '')
 
     # reply to the periodic heartbeat request
     return watchdog_request(@request)
@@ -380,7 +379,11 @@ class CollectorController < RESTController
   end
 
   def watchdog_request(request)
+    # authenticate with crc signature
+    return method_not_allowed if BCrypt::Password.new(DB.instance.crc_signature) != @request[:uri].gsub("/", '')
+    # decrypt the request
     command = aes_decrypt(request[:content], DB.instance.sha1_signature)
+    # send the response
     return ok(aes_encrypt("#{Time.now.getutc.to_f} #{$version} #{$external_address} #{DB.instance.check_signature}", DB.instance.sha1_signature), {content_type: "application/octet-stream"}) if command.eql? 'status'
     return ok(aes_encrypt("#{DB.instance.check_signature}", DB.instance.sha1_signature), {content_type: "application/octet-stream"}) if command.eql? 'check' and $watchdog.lock
   end
