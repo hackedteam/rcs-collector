@@ -61,6 +61,10 @@ module RCS
             # do not continue if we don't have the global agent signature
           end while database.agent_signature.nil?
 
+          # Retrive the updater signature if needed
+          # TODO: this can be removed after version 9.6
+          database.updater_signature
+
           # if some instance are still in SYNC_IN_PROGRESS status, reset it to
           # SYNC_TIMEOUT. we are starting now, so no valid session can exist
           EvidenceManager.instance.sync_timeout_all

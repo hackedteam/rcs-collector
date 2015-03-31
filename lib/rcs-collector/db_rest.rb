@@ -232,6 +232,17 @@ class DB_rest
     end
   end
 
+  def updater_signature
+    begin
+      ret = rest_call('GET', '/signature/updater')
+      sign = JSON.parse(ret.body)['value']
+      return sign
+    rescue Exception => e
+      trace :error, "Error calling updater_signature: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
   def check_signature
     begin
       ret = rest_call('GET', '/signature/check')
@@ -239,6 +250,28 @@ class DB_rest
       return sign
     rescue Exception => e
       trace :error, "Error calling check_signature: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def crc_signature
+    begin
+      ret = rest_call('GET', '/signature/crc')
+      sign = JSON.parse(ret.body)['value']
+      return sign
+    rescue Exception => e
+      trace :error, "Error calling crc_signature: #{e.class} #{e.message}"
+      propagate_error e
+    end
+  end
+
+  def sha1_signature
+    begin
+      ret = rest_call('GET', '/signature/sha1')
+      sign = JSON.parse(ret.body)['value']
+      return sign
+    rescue Exception => e
+      trace :error, "Error calling sha1_signature: #{e.class} #{e.message}"
       propagate_error e
     end
   end
@@ -584,6 +617,15 @@ class DB_rest
       trace :error, "Error calling collector_add_log: #{e.class} #{e.message}"
       propagate_error e
     end
+  end
+
+  def collector_address
+    ret = rest_call('GET', "/collector/my_address")
+    coll = JSON.parse(ret.body)
+    return coll['address']
+  rescue Exception => e
+    trace(:error, "Error calling my_address: #{e.class} #{e.message}")
+    propagate_error e
   end
 
   def first_anonymizer

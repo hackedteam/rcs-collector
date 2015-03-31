@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+$LOAD_PATH.unshift File.join(File.dirname(__FILE__), '..', 'lib')
+
+# if not windows
+if RbConfig::CONFIG['host_os'] !~ /mingw/
+  require 'bundler/setup'
+end
+
+Dir.chdir(File.expand_path(File.join(__dir__, '..')))
+
+require 'rcs-common/updater/server'
+
+RCS::Updater::Server.start

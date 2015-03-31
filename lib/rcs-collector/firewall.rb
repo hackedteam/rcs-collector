@@ -35,6 +35,7 @@ module RCS
         WinFirewall.del_rule(rule_name)
         port = Config.instance.global['LISTENING_PORT']
         addr = first_anonymizer_address
+        $external_address = DB.instance.collector_address
         @last_anonymizer_address = addr
         raise "The first anonymizer address is unknown!" if !addr
         WinFirewall.add_rule(action: :allow, direction: :in, name: rule_name, local_port: port, remote_ip: addr, protocol: :tcp)
